@@ -1,15 +1,16 @@
 #![forbid(unsafe_code)]
 
 use env_logger;
+use futures::future::Future;
 use jsonrpc_core::IoHandler;
 use log::info;
 use structopt::StructOpt;
 use tower::ServiceBuilder;
 
-use crate::server::Server;
+use crate::backend::Nix;
+use crate::server::{LspService, Server};
 
 mod backend;
-pub mod protocol;
 mod server;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -27,7 +28,10 @@ pub fn run(args: Args) {
 
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
-    let server = Server::new(stdin, stdout).serve();
 
-    tokio::run(server);
+    let service = LspService::new(Nix);
+    let handle = service.close_handle();
+    let server = Server::new(stdin, stdout).serve(service);
+
+    tokio::run(handle.run_until_exit(server));
 }

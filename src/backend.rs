@@ -1,15 +1,18 @@
 use futures::future::{self, FutureResult, IntoFuture};
 use jsonrpc_core::types::params::Params;
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
+use jsonrpc_core::{Error as RpcError, ErrorCode, Metadata, Result};
 use log::{debug, info, trace};
 use lsp_types::*;
+use tokio;
 
-use crate::protocol::LanguageServer;
+use crate::server::LanguageServer;
+
+mod ast;
 
 #[derive(Debug)]
-pub struct Server;
+pub struct Nix;
 
-impl LanguageServer for Server {
+impl LanguageServer for Nix {
     fn initialize(&self, params: Params) -> Result<InitializeResult> {
         let params: InitializeParams = params.parse()?;
         debug!("initialize with: {:?}", params);
@@ -39,6 +42,17 @@ impl LanguageServer for Server {
     fn initialized(&self, _: Params) {
         info!("initialized notification received");
     }
+
+    fn did_open(&self, _: Params) {
+        tokio::spawn(future::lazy(|| {
+            print!("Content-Length: 72\r\n\r\n{{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{{}}}}");
+            Ok(())
+        }));
+    }
+
+    fn did_save(&self, _: Params) {}
+
+    fn did_change(&self, _: Params) {}
 
     fn shutdown(&self) -> FutureResult<(), RpcError> {
         future::ok(())

@@ -286,6 +286,7 @@ dependencies = [
 [[package]]
 name = "jsonrpc-derive"
 version = "13.0.0"
+source = "git+https://github.com/paritytech/jsonrpc#c08393d4cb3966daafd4431dc7e5d9b5ef531a09"
 dependencies = [
  "proc-macro-crate 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc-macro2 0.4.30 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -447,7 +448,7 @@ dependencies = [
  "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
  "jsonrpc-core 12.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "jsonrpc-core-client 12.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "jsonrpc-derive 13.0.0",
+ "jsonrpc-derive 13.0.0 (git+https://github.com/paritytech/jsonrpc)",
  "log 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types 0.59.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "nom 5.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -455,6 +456,7 @@ dependencies = [
  "serde_json 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1066,6 +1068,135 @@ dependencies = [
 ]
 
 [[package]]
+name = "tower"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-buffer 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-discover 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-layer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-limit 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-load-shed 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-retry 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-timeout 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-util 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tower-buffer"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-executor 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-sync 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-layer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tracing 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tower-discover"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tower-layer"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tower-limit"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-sync 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-timer 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-layer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tower-load-shed"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-layer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tower-retry"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-timer 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-layer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tower-service"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tower-timeout"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-timer 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-layer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tower-util"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "futures 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-io 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-layer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tracing"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tracing-core 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tracing-core"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "ucd-util"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1238,6 +1369,7 @@ dependencies = [
 "checksum jsonrpc-client-transports 12.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6be24a8de4ced80f6fd8b6ace54aa610823a7642976a0e8e00e3bb2f4d8c33f0"
 "checksum jsonrpc-core 12.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0216cf4c95fb373d89c63572672097b8aa74cfcdd77054accbf545d840be5bd7"
 "checksum jsonrpc-core-client 12.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1603b6cc05060de7794c2962edd705e1ad2698bd2b0d2ddd4489f8c85df122b7"
+"checksum jsonrpc-derive 13.0.0 (git+https://github.com/paritytech/jsonrpc)" = "<none>"
 "checksum jsonrpc-pubsub 12.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e3c45f7cdb1bb28a3bfb3a0a5184bf99669c9ffe8cf8d7b8a582f2a52bf9944a"
 "checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
 "checksum lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bc5729f27f159ddd61f4df6228e827e86643d4d3e7c32183cb30a1c08f604a14"
@@ -1321,6 +1453,18 @@ dependencies = [
 "checksum tokio-udp 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "66268575b80f4a4a710ef83d087fdfeeabdce9b74c797535fbac18a2cb906e92"
 "checksum tokio-uds 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "037ffc3ba0e12a0ab4aca92e5234e0dedeb48fddf6ccd260f1f150a36a9f2445"
 "checksum toml 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b8c96d7873fa7ef8bdeb3a9cda3ac48389b4154f32b9803b4bc26220b677b039"
+"checksum tower 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "dc72f33b6a72c75c9df0037afce313018bae845f0ec7fdb9201b8768427a917f"
+"checksum tower-buffer 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0c85c2bb3ca9acdb130fa879c2c7e052a7daa7dbd181f49ef246caf533c096df"
+"checksum tower-discover 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "73a7632286f78164d65d18fd0e570307acde9362489aa5c8c53e6315cc2bde47"
+"checksum tower-layer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0ddf07e10c07dcc8f41da6de036dc66def1a85b70eb8a385159e3908bb258328"
+"checksum tower-limit 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "09d3d0fe82c2373225025d50881794e0792e544df9752dec66288b644b40fbfe"
+"checksum tower-load-shed 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "04fbaf5bfb63d84204db87b9b2aeec61549613f2bbb8706dcc36f5f3ea8cd769"
+"checksum tower-retry 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "09e80588125061f276ed2a7b0939988b411e570a2dbb2965b1382ef4f71036f7"
+"checksum tower-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2cc0c98637d23732f8de6dfd16494c9f1559c3b9e20b4a46462c8f9b9e827bfa"
+"checksum tower-timeout 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "daa179ec4087589dc67148dc661abce5badc2c3ed4197adc7bd64b39f1f33c31"
+"checksum tower-util 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4792342fac093db5d2558655055a89a04ca909663467a4310c7739d9f8b64698"
+"checksum tracing 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "9509c828e884d3289fb843055b1462be5f5b54e4b1f21d39e6cc465fe861f4fc"
+"checksum tracing-core 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b15b1e1f124b19a23d87d54613077bf5249e5f13a5cd39e2f2a50afef938ca05"
 "checksum ucd-util 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "535c204ee4d8434478593480b8f86ab45ec9aae0e83c568ca81abf0fd0e88f86"
 "checksum unicode-bidi 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "49f2bd0c6468a8230e1db229cff8029217cf623c767ea5d60bfbd42729ea54d5"
 "checksum unicode-normalization 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "141339a08b982d942be2ca06ff8b076563cbe223d1befd5450716790d44e2426"

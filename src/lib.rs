@@ -2,29 +2,32 @@
 
 use env_logger;
 use jsonrpc_core::IoHandler;
-use log::debug;
+use log::info;
 use structopt::StructOpt;
+use tower::ServiceBuilder;
 
-use crate::rpc::{LanguageServerProtocol, Server};
-use crate::server::ServerBuilder;
+use crate::server::Server;
 
-mod parser;
-mod rpc;
+mod backend;
+pub mod protocol;
 mod server;
 
-pub type Error = Box<dyn std::error::Error + Send + Sync>;
+pub type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 #[derive(Debug, StructOpt)]
 pub struct Args {
-    /// Start the language server in interactive mode.
-    #[structopt(long = "cli")]
-    pub enable_cli: bool,
+    /// Enable interactive mode
+    #[structopt(short = "i", long = "interactive")]
+    interactive: bool,
 }
 
-pub fn run(_args: Args) {
+pub fn run(args: Args) {
     env_logger::init();
-    debug!("Nix Language Server {}", env!("CARGO_PKG_VERSION"));
-    let mut io = IoHandler::new();
-    io.extend_with(Server.to_delegate());
-    ServerBuilder::new(io).build();
+    info!("Nix Language Server {}", env!("CARGO_PKG_VERSION"));
+
+    let stdin = tokio::io::stdin();
+    let stdout = tokio::io::stdout();
+    let server = Server::new(stdin, stdout).serve();
+
+    tokio::run(server);
 }

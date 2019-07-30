@@ -1,28 +1,15 @@
-use futures::future::{self, FutureResult};
+use futures::future::{self, FutureResult, IntoFuture};
 use jsonrpc_core::types::params::Params;
-use jsonrpc_core::{Error as RpcError, Result};
+use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use log::{debug, info, trace};
 use lsp_types::*;
 
-#[jsonrpc_derive::rpc]
-pub trait LanguageServerProtocol {
-    #[rpc(name = "initialize", raw_params)]
-    fn initialize(&self, params: Params) -> Result<InitializeResult>;
-
-    #[rpc(name = "initialized", raw_params)]
-    fn initialized(&self, params: Params);
-
-    #[rpc(name = "shutdown")]
-    fn shutdown(&self) -> FutureResult<(), RpcError>;
-
-    #[rpc(name = "exit")]
-    fn exit(&self);
-}
+use crate::protocol::LanguageServer;
 
 #[derive(Debug)]
 pub struct Server;
 
-impl LanguageServerProtocol for Server {
+impl LanguageServer for Server {
     fn initialize(&self, params: Params) -> Result<InitializeResult> {
         let params: InitializeParams = params.parse()?;
         debug!("initialize with: {:?}", params);
@@ -55,9 +42,5 @@ impl LanguageServerProtocol for Server {
 
     fn shutdown(&self) -> FutureResult<(), RpcError> {
         future::ok(())
-    }
-
-    fn exit(&self) {
-        info!("exit notification received");
     }
 }

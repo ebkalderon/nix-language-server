@@ -1,9 +1,11 @@
 #![forbid(unsafe_code)]
 
+use std::process;
+
 use env_logger;
 use futures::future::Future;
 use jsonrpc_core::IoHandler;
-use log::info;
+use log::{error, info};
 use structopt::StructOpt;
 use tower::ServiceBuilder;
 
@@ -29,7 +31,12 @@ pub fn run(args: Args) {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let service = LspService::new(Nix);
+    let backend = Nix::new().unwrap_or_else(|err| {
+        error!("backend error: {}", err);
+        process::exit(1);
+    });
+
+    let service = LspService::new(backend);
     let handle = service.close_handle();
     let server = Server::new(stdin, stdout).serve(service);
 

@@ -1,11 +1,10 @@
+pub use self::tokens::{Ident, Literal};
+
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use std::path::PathBuf;
 
 use codespan::Span;
 
-use self::tokens::{Ident, Literal};
-
-pub mod tokens;
+mod tokens;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {

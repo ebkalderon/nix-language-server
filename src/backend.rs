@@ -6,7 +6,6 @@ use jsonrpc_core::types::params::Params;
 use jsonrpc_core::{Error as RpcError, Result as RpcResult};
 use log::{debug, info};
 use lsp_types::*;
-use tokio;
 
 use self::repl::Repl;
 use crate::server::LanguageServer;
@@ -74,10 +73,7 @@ impl LanguageServer for Nix {
     }
 
     fn did_open(&self, _: Params) {
-        tokio::spawn(future::lazy(|| {
-            print!("Content-Length: 72\r\n\r\n{{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{{}}}}");
-            Ok(())
-        }));
+        print!("Content-Length: 72\r\n\r\n{{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{{}}}}");
     }
 
     fn did_save(&self, _: Params) {}

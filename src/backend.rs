@@ -1,10 +1,10 @@
 use std::sync::Mutex;
 
 use codespan::CodeMap;
-use futures::future::{self, FutureResult, IntoFuture};
+use futures::future::{self, FutureResult};
 use jsonrpc_core::types::params::Params;
-use jsonrpc_core::{Error as RpcError, ErrorCode, Metadata, Result as RpcResult};
-use log::{debug, info, trace};
+use jsonrpc_core::{Error as RpcError, Result as RpcResult};
+use log::{debug, info};
 use lsp_types::*;
 use tokio;
 
@@ -22,13 +22,16 @@ struct State {
 
 #[derive(Debug)]
 pub struct Nix {
-    repl: Mutex<Repl>,
+    state: Mutex<State>,
 }
 
 impl Nix {
     pub fn new() -> Result<Self, Error> {
         Ok(Nix {
-            repl: Mutex::new(Repl::new()?),
+            state: Mutex::new(State {
+                repl: Repl::new()?,
+                codemap: CodeMap::new(),
+            }),
         })
     }
 }
@@ -62,11 +65,11 @@ impl LanguageServer for Nix {
 
     fn initialized(&self, _: Params) {
         info!("initialized notification received");
-        let mut repl = self.repl.lock().unwrap_or_else(|r| r.into_inner());
-        info!("Completions: {:?}", repl.completions("__").unwrap());
+        let mut state = self.state.lock().unwrap_or_else(|r| r.into_inner());
+        info!("Completions: {:?}", state.repl.completions("__").unwrap());
         info!(
             "Diagnostics: {:?}",
-            repl.diagnostics("{ foo = bar; baz = 12 } ").unwrap()
+            state.repl.diagnostics("{ foo = bar; baz = 12 } ").unwrap()
         );
     }
 

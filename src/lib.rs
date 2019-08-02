@@ -3,11 +3,8 @@
 use std::process;
 
 use env_logger;
-use futures::future::Future;
-use jsonrpc_core::IoHandler;
 use log::{error, info};
 use structopt::StructOpt;
-use tower::ServiceBuilder;
 
 use crate::backend::Nix;
 use crate::server::{LspService, Server};
@@ -24,7 +21,7 @@ pub struct Args {
     interactive: bool,
 }
 
-pub fn run(args: Args) {
+pub fn run(_args: Args) {
     env_logger::init();
     info!("Nix Language Server {}", env!("CARGO_PKG_VERSION"));
 

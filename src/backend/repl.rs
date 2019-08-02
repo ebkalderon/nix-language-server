@@ -1,8 +1,8 @@
 use std::fmt::{Debug, Formatter, Result as FmtResult};
-use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
-use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, Stdio};
+use std::io::Write;
+use std::process::{Command, Stdio};
 
-use log::{error, info, warn};
+use log::error;
 use rexpect::session::{self, PtySession, ReadUntil};
 
 use crate::Error;

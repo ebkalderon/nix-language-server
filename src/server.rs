@@ -3,7 +3,7 @@ pub use self::stdio::Server;
 
 use futures::future::FutureResult;
 use jsonrpc_core::types::params::Params;
-use jsonrpc_core::{Error as RpcError, Metadata, Result};
+use jsonrpc_core::{Error as RpcError, Result};
 use jsonrpc_derive::rpc;
 use lsp_types::*;
 

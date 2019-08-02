@@ -1,0 +1,10 @@
+[package]
+name = "nix-parser"
+version = "0.1.0"
+authors = ["Eyal Kalderon <ebkalderon@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+nom = "5.0.0"
+url = "2.0.0"
+codespan = "0.3.0"

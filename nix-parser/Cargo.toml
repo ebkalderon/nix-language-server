@@ -6,6 +6,6 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [dependencies]
-nom = "5.0.0"
-url = "2.0.0"
 codespan = "0.3.0"
+http = "0.1.18"
+nom = "5.0.0"

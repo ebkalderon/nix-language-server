@@ -10,7 +10,7 @@ use nom::sequence::{delimited, pair};
 use crate::parser::{IResult, Span};
 
 pub fn path(input: Span) -> IResult<PathBuf> {
-    let prefix = pair(opt(count(is_a("~."), 1)), char('/'));
+    let prefix = opt(pair(opt(count(is_a("~."), 1)), char('/')));
     let segment = many1(alt((alphanumeric1, is_a("._-+"))));
     let path = recognize(pair(prefix, separated_nonempty_list(char('/'), segment)));
     map(path, |p: Span| PathBuf::from(p.fragment))(input)
@@ -57,6 +57,10 @@ mod tests {
         let (_, current_dir) = all_consuming(path)(string).unwrap();
         assert_eq!(current_dir.to_string_lossy(), "./.");
 
+        let string = Span::new("../.");
+        let (_, parent_dir) = all_consuming(path)(string).unwrap();
+        assert_eq!(parent_dir.to_string_lossy(), "../.");
+
         let string = Span::new("./foo/bar");
         let (_, simple) = all_consuming(path)(string).unwrap();
         assert_eq!(simple.to_string_lossy(), "./foo/bar");
@@ -64,6 +68,10 @@ mod tests {
         let string = Span::new("./a/b.c/d+e/F_G/h-i/123");
         let (_, complex) = all_consuming(path)(string).unwrap();
         assert_eq!(complex.to_string_lossy(), "./a/b.c/d+e/F_G/h-i/123");
+
+        let string = Span::new("foo/bar");
+        let (_, no_prefix) = all_consuming(path)(string).unwrap();
+        assert_eq!(no_prefix.to_string_lossy(), "foo/bar");
     }
 
     #[test]

@@ -1,20 +1,22 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 
+use codespan::ByteSpan;
 use http::Uri;
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct Ident(String);
+pub struct Ident(String, ByteSpan);
 
-impl<'a> From<&'a str> for Ident {
-    fn from(s: &'a str) -> Self {
-        Ident(s.to_owned())
+impl<'a> From<(&'a str, ByteSpan)> for Ident {
+    fn from((string, span): (&'a str, ByteSpan)) -> Self {
+        Ident(string.to_owned(), span)
     }
 }
 
-impl From<String> for Ident {
-    fn from(s: String) -> Self {
-        Ident(s)
+impl From<(String, ByteSpan)> for Ident {
+    fn from((string, span): (String, ByteSpan)) -> Self {
+        Ident(string, span)
     }
 }
 
@@ -24,81 +26,103 @@ impl Display for Ident {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub struct IdentPath(Vec<Ident>, ByteSpan);
+
+impl<'a, T, U> From<(U, ByteSpan)> for IdentPath
+where
+    T: Into<Ident>,
+    U: IntoIterator<Item = T>,
+{
+    fn from((idents, span): (U, ByteSpan)) -> Self {
+        IdentPath(idents.into_iter().map(Into::into).collect(), span)
+    }
+}
+
+impl Display for IdentPath {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        let idents: Vec<_> = self.0.iter().map(ToString::to_string).collect();
+        write!(fmt, "{}", idents.join("."))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Literal {
-    Null,
-    Boolean(bool),
-    Float(f64),
-    Integer(i64),
-    Path(PathBuf),
-    String(String),
-    Uri(Uri),
+    Null(ByteSpan),
+    Boolean(bool, ByteSpan),
+    Float(f64, ByteSpan),
+    Integer(i64, ByteSpan),
+    Path(PathBuf, ByteSpan),
+    PathTemplate(String, ByteSpan),
+    String(String, ByteSpan),
+    Uri(Uri, ByteSpan),
 }
 
-impl<T: Into<Literal>> From<Option<T>> for Literal {
-    fn from(value: Option<T>) -> Self {
-        value.map(|lit| lit.into()).unwrap_or_else(|| Literal::Null)
+impl From<((), ByteSpan)> for Literal {
+    fn from((_, span): ((), ByteSpan)) -> Self {
+        Literal::Null(span)
     }
 }
 
-impl From<bool> for Literal {
-    fn from(boolean: bool) -> Self {
-        Literal::Boolean(boolean)
+impl From<(bool, ByteSpan)> for Literal {
+    fn from((boolean, span): (bool, ByteSpan)) -> Self {
+        Literal::Boolean(boolean, span)
     }
 }
 
-impl From<f64> for Literal {
-    fn from(float: f64) -> Self {
-        Literal::Float(float)
+impl From<(f64, ByteSpan)> for Literal {
+    fn from((float, span): (f64, ByteSpan)) -> Self {
+        Literal::Float(float, span)
     }
 }
 
-impl From<i64> for Literal {
-    fn from(int: i64) -> Self {
-        Literal::Integer(int)
+impl From<(i64, ByteSpan)> for Literal {
+    fn from((int, span): (i64, ByteSpan)) -> Self {
+        Literal::Integer(int, span)
     }
 }
 
-impl<'a> From<&'a Path> for Literal {
-    fn from(p: &'a Path) -> Self {
-        Literal::Path(p.to_owned())
+impl<'a> From<(&'a Path, ByteSpan)> for Literal {
+    fn from((path, span): (&'a Path, ByteSpan)) -> Self {
+        Literal::Path(path.to_owned(), span)
     }
 }
 
-impl From<PathBuf> for Literal {
-    fn from(p: PathBuf) -> Self {
-        Literal::Path(p)
+impl From<(PathBuf, ByteSpan)> for Literal {
+    fn from((path, span): (PathBuf, ByteSpan)) -> Self {
+        Literal::Path(path, span)
     }
 }
 
-impl<'a> From<&'a str> for Literal {
-    fn from(s: &'a str) -> Self {
-        Literal::String(s.to_owned())
+impl<'a> From<(&'a str, ByteSpan)> for Literal {
+    fn from((s, span): (&'a str, ByteSpan)) -> Self {
+        Literal::String(s.to_owned(), span)
     }
 }
 
-impl From<String> for Literal {
-    fn from(s: String) -> Self {
-        Literal::String(s)
+impl From<(String, ByteSpan)> for Literal {
+    fn from((s, span): (String, ByteSpan)) -> Self {
+        Literal::String(s, span)
     }
 }
 
-impl From<Uri> for Literal {
-    fn from(uri: Uri) -> Self {
-        Literal::Uri(uri)
+impl From<(Uri, ByteSpan)> for Literal {
+    fn from((uri, span): (Uri, ByteSpan)) -> Self {
+        Literal::Uri(uri, span)
     }
 }
 
 impl Display for Literal {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
-            Literal::Null => write!(fmt, "null"),
-            Literal::Boolean(ref b) => write!(fmt, "{}", b),
-            Literal::Float(ref f) => write!(fmt, "{}", f),
-            Literal::Integer(ref i) => write!(fmt, "{}", i),
-            Literal::Path(ref p) => write!(fmt, "{}", p.to_string_lossy()),
-            Literal::String(ref s) => write!(fmt, "\"{}\"", s),
-            Literal::Uri(ref u) => write!(fmt, "{}", u),
+            Literal::Null(_) => write!(fmt, "null"),
+            Literal::Boolean(ref b, _) => write!(fmt, "{}", b),
+            Literal::Float(ref f, _) => write!(fmt, "{}", f),
+            Literal::Integer(ref i, _) => write!(fmt, "{}", i),
+            Literal::Path(ref p, _) => write!(fmt, "{}", p.to_string_lossy()),
+            Literal::PathTemplate(ref p, _) => write!(fmt, "<{}>", p),
+            Literal::String(ref s, _) => write!(fmt, "\"{}\"", s),
+            Literal::Uri(ref u, _) => write!(fmt, "{}", u),
         }
     }
 }

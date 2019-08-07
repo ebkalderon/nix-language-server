@@ -14,7 +14,7 @@ pub fn literal(input: Spanned) -> IResult<Literal> {
     let null = map_spanned(input, null, Literal::from);
     let path = map_spanned(input, path, Literal::from);
     let path_template = map_spanned(input, path_template, Literal::from);
-    alt((boolean, null, path))(input)
+    alt((boolean, null, path, path_template))(input)
 }
 
 pub fn boolean(input: Spanned) -> IResult<bool> {

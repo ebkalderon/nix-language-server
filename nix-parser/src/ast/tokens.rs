@@ -1,5 +1,4 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 
 use codespan::ByteSpan;

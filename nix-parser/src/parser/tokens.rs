@@ -1,13 +1,11 @@
 pub use self::keywords::*;
 pub use self::literal::literal;
 
-use std::iter;
-
 use nom::branch::alt;
-use nom::bytes::complete::{is_a, is_not, tag};
+use nom::bytes::complete::{is_a, is_not};
 use nom::character::complete::{alpha1, alphanumeric1, char, multispace1, not_line_ending};
-use nom::combinator::{flat_map, map, map_parser, not, peek, recognize, verify};
-use nom::multi::{count, many0, many1, separated_nonempty_list};
+use nom::combinator::{map, map_parser, recognize, verify};
+use nom::multi::{count, many0, separated_nonempty_list};
 use nom::sequence::{pair, preceded};
 
 use super::{map_spanned, IResult, Spanned};

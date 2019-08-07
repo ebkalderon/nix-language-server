@@ -1,11 +1,5 @@
-use std::str::{self, FromStr};
-
 use codespan::{ByteIndex, ByteSpan};
-use nom::combinator::all_consuming;
-use nom::error::ParseError;
-use nom::multi::many0;
-use nom::sequence::{delimited, pair, preceded, terminated};
-use nom_locate::{self, LocatedSpan};
+use nom_locate::LocatedSpan;
 
 mod tokens;
 
@@ -13,7 +7,7 @@ type Spanned<'a> = LocatedSpan<&'a str>;
 type IResult<'a, T> = nom::IResult<Spanned<'a>, T>;
 
 pub fn parse_expr<S: AsRef<str>>(expr: S) -> Result<(), String> {
-    let text = Spanned::new(expr.as_ref());
+    let _text = Spanned::new(expr.as_ref());
     unimplemented!()
 }
 

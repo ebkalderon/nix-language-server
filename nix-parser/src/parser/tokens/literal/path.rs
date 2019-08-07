@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
 use nom::branch::alt;
-use nom::bytes::complete::{is_a, is_not};
+use nom::bytes::complete::is_a;
 use nom::character::complete::{alphanumeric1, char};
-use nom::combinator::{map, not, opt, recognize};
+use nom::combinator::{map, opt, recognize};
 use nom::multi::{count, many1, separated_nonempty_list};
 use nom::sequence::{delimited, pair};
 
-use crate::parser::{tokens, IResult, Spanned};
+use crate::parser::{IResult, Spanned};
 
 pub fn path(input: Spanned) -> IResult<PathBuf> {
     let prefix = pair(opt(count(is_a("~."), 1)), char('/'));

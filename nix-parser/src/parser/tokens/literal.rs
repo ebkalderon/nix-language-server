@@ -38,7 +38,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn boolean() {
+    fn boolean_literal() {
         let string = Span::new("true");
         let (_, true_val) = all_consuming(boolean)(string).unwrap();
         assert_eq!(true_val, true);
@@ -49,7 +49,7 @@ mod tests {
     }
 
     #[test]
-    fn null() {
+    fn null_literal() {
         let string = Span::new("null");
         let (_, null) = all_consuming(null)(string).unwrap();
         assert_eq!(null, ());

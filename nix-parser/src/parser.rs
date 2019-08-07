@@ -3,21 +3,21 @@ use nom_locate::LocatedSpan;
 
 mod tokens;
 
-type Spanned<'a> = LocatedSpan<&'a str>;
-type IResult<'a, T> = nom::IResult<Spanned<'a>, T>;
+type Span<'a> = LocatedSpan<&'a str>;
+type IResult<'a, T> = nom::IResult<Span<'a>, T>;
 
 pub fn parse_expr<S: AsRef<str>>(expr: S) -> Result<(), String> {
-    let _text = Spanned::new(expr.as_ref());
+    let _text = Span::new(expr.as_ref());
     unimplemented!()
 }
 
 fn map_spanned<'a, O1, O2, F, G>(
-    span: Spanned<'a>,
+    span: Span<'a>,
     first: F,
     second: G,
-) -> impl Fn(Spanned<'a>) -> IResult<'a, O2>
+) -> impl Fn(Span<'a>) -> IResult<O2>
 where
-    F: Fn(Spanned<'a>) -> IResult<'a, O1>,
+    F: Fn(Span<'a>) -> IResult<O1>,
     G: Fn((O1, ByteSpan)) -> O2,
 {
     move |input| {
@@ -27,8 +27,8 @@ where
     }
 }
 
-fn into_byte_span(s: Spanned) -> ByteSpan {
-    let start = ByteIndex(s.offset as u32);
-    let end = ByteIndex(s.offset as u32 + (s.fragment.len().saturating_sub(1) as u32));
-    ByteSpan::new(start, end)
+fn into_byte_span(s: Span) -> ByteSpan {
+    let start = s.offset;
+    let end = start + s.fragment.len().saturating_sub(1);
+    ByteSpan::new(ByteIndex(start as u32), ByteIndex(end as u32))
 }

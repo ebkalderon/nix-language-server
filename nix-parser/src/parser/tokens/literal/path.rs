@@ -2,15 +2,15 @@ use std::path::PathBuf;
 
 use nom::branch::alt;
 use nom::bytes::complete::is_a;
-use nom::character::complete::{alphanumeric1, char};
+use nom::character::complete::{alphanumeric1, char, one_of};
 use nom::combinator::{map, opt, recognize};
-use nom::multi::{count, many1, separated_nonempty_list};
+use nom::multi::{many1, separated_nonempty_list};
 use nom::sequence::{delimited, pair};
 
 use crate::parser::{IResult, Span};
 
 pub fn path(input: Span) -> IResult<PathBuf> {
-    let prefix = opt(pair(opt(count(is_a("~."), 1)), char('/')));
+    let prefix = opt(pair(opt(one_of("~.")), char('/')));
     let segment = many1(alt((alphanumeric1, is_a("._-+"))));
     let path = recognize(pair(prefix, separated_nonempty_list(char('/'), segment)));
     map(path, |p: Span| PathBuf::from(p.fragment))(input)

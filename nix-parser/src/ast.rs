@@ -358,6 +358,20 @@ impl Display for ExprWith {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct ExprLetIn {
+    binds: Vec<Bind>,
+    body: Box<Expr>,
+    span: ByteSpan,
+}
+
+impl Display for ExprLetIn {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        let binds: Vec<_> = self.binds.iter().map(ToString::to_string).collect();
+        write!(fmt, "let {} in {}", binds.join(" "), self.body)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Formal {
     Simple(Ident),
     Default {
@@ -379,20 +393,6 @@ impl Display for Formal {
             } => write!(fmt, "{} ? {}", name, default),
             Formal::Ellipsis(_) => fmt.write_str("..."),
         }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ExprLetIn {
-    binds: Vec<Bind>,
-    body: Box<Expr>,
-    span: ByteSpan,
-}
-
-impl Display for ExprLetIn {
-    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let binds: Vec<_> = self.binds.iter().map(ToString::to_string).collect();
-        write!(fmt, "let {} in {}", binds.join(" "), self.body)
     }
 }
 

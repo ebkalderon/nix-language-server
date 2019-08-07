@@ -31,17 +31,3 @@ pub fn ident_path(input: Spanned) -> IResult<IdentPath> {
     let ident_path = separated_nonempty_list(char('.'), map_parser(is_not("."), identifier));
     map_spanned(input, ident_path, IdentPath::from)(input)
 }
-
-#[cfg(test)]
-mod tests {
-    use nom::combinator::all_consuming;
-
-    use super::*;
-
-    #[test]
-    fn parse_identifier() {
-        let thing = Spanned::new("lety.bar.baz");
-        let (_, actual) = all_consuming(ident_path)(thing).unwrap();
-        println!("Parsed: {:?}", actual);
-    }
-}

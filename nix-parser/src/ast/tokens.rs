@@ -6,6 +6,28 @@ use codespan::ByteSpan;
 use http::Uri;
 
 #[derive(Clone, Debug, Eq)]
+pub struct Comment(String, ByteSpan);
+
+impl Display for Comment {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        let lines: String = self.0.split("\n").map(|l| format!("# {}\n", l)).collect();
+        write!(fmt, "{}", lines)
+    }
+}
+
+impl PartialEq for Comment {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl PartialOrd for Comment {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+#[derive(Clone, Debug, Eq)]
 pub struct Ident(String, ByteSpan);
 
 impl Display for Ident {

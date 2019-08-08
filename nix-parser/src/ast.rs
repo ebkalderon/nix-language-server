@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 
 use codespan::ByteSpan;
 
-use self::tokens::{Ident, IdentPath, Literal};
+use self::tokens::{Comment, Ident, IdentPath, Literal};
 
 pub mod tokens;
 
@@ -257,6 +257,7 @@ pub enum Bind {
         name: IdentPath,
         expr: Box<Expr>,
         span: ByteSpan,
+        comment: Option<Comment>,
     },
     Inherit {
         names: Vec<Ident>,
@@ -273,8 +274,17 @@ impl Display for Bind {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
             Bind::Simple {
-                ref name, ref expr, ..
-            } => write!(fmt, "{} = {};", name, expr),
+                ref name,
+                ref expr,
+                ref comment,
+                ..
+            } => {
+                if let Some(ref comment) = comment {
+                    write!(fmt, "{}{} = {};", comment, name, expr)
+                } else {
+                    write!(fmt, "{} = {};", name, expr)
+                }
+            }
             Bind::Inherit { ref names, .. } => {
                 let names: Vec<_> = names.iter().map(ToString::to_string).collect();
                 write!(fmt, "inherit {};", names.join(" "))
@@ -297,14 +307,18 @@ impl PartialEq for Bind {
         match (self, other) {
             (
                 Simple {
-                    ref name, ref expr, ..
+                    ref name,
+                    ref expr,
+                    ref comment,
+                    ..
                 },
                 Simple {
                     name: ref n2,
                     expr: ref e2,
+                    comment: ref c2,
                     ..
                 },
-            ) => name == n2 && expr == e2,
+            ) => name == n2 && expr == e2 && comment == c2,
             (Inherit { ref names, .. }, Inherit { names: ref n2, .. }) => names == n2,
             (
                 InheritExpr {

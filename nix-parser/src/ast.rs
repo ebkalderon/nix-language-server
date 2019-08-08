@@ -258,89 +258,83 @@ impl PartialEq for ExprBinary {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Bind {
-    Simple {
-        name: IdentPath,
-        expr: Box<Expr>,
-        span: ByteSpan,
-        comment: Option<Comment>,
-    },
-    Inherit {
-        names: Vec<Ident>,
-        span: ByteSpan,
-    },
-    InheritExpr {
-        expr: Box<Expr>,
-        names: Vec<Ident>,
-        span: ByteSpan,
-    },
+    Simple(BindSimple),
+    Inherit(BindInherit),
+    InheritExpr(BindInheritExpr),
 }
 
 impl Display for Bind {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
-            Bind::Simple {
-                ref name,
-                ref expr,
-                ref comment,
-                ..
-            } => {
-                if let Some(ref comment) = comment {
-                    write!(fmt, "{}{} = {};", comment, name, expr)
-                } else {
-                    write!(fmt, "{} = {};", name, expr)
-                }
-            }
-            Bind::Inherit { ref names, .. } => {
-                let names: Vec<_> = names.iter().map(ToString::to_string).collect();
-                write!(fmt, "inherit {};", names.join(" "))
-            }
-            Bind::InheritExpr {
-                ref expr,
-                ref names,
-                ..
-            } => {
-                let names: Vec<_> = names.iter().map(ToString::to_string).collect();
-                write!(fmt, "inherit ({}) {};", expr, names.join(" "))
-            }
+            Bind::Simple(ref b) => write!(fmt, "{}", b),
+            Bind::Inherit(ref b) => write!(fmt, "{}", b),
+            Bind::InheritExpr(ref b) => write!(fmt, "{}", b),
         }
     }
 }
 
-impl PartialEq for Bind {
-    fn eq(&self, other: &Self) -> bool {
-        use Bind::*;
-        match (self, other) {
-            (
-                Simple {
-                    ref name,
-                    ref expr,
-                    ref comment,
-                    ..
-                },
-                Simple {
-                    name: ref n2,
-                    expr: ref e2,
-                    comment: ref c2,
-                    ..
-                },
-            ) => name == n2 && expr == e2 && comment == c2,
-            (Inherit { ref names, .. }, Inherit { names: ref n2, .. }) => names == n2,
-            (
-                InheritExpr {
-                    ref expr,
-                    ref names,
-                    ..
-                },
-                InheritExpr {
-                    expr: ref e2,
-                    names: ref n2,
-                    ..
-                },
-            ) => expr == e2 && names == n2,
-            _ => false,
+#[derive(Clone, Debug)]
+pub struct BindSimple {
+    comment: Option<Comment>,
+    name: IdentPath,
+    expr: Box<Expr>,
+    span: ByteSpan,
+}
+
+impl Display for BindSimple {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        if let Some(ref comment) = self.comment {
+            write!(fmt, "{}{} = {};", comment, self.name, self.expr)
+        } else {
+            write!(fmt, "{} = {};", self.name, self.expr)
         }
+    }
+}
+
+impl PartialEq for BindSimple {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && self.expr == other.expr && self.comment == other.comment
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BindInherit {
+    names: Vec<Ident>,
+    span: ByteSpan,
+}
+
+impl Display for BindInherit {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        let names: Vec<_> = self.names.iter().map(ToString::to_string).collect();
+        write!(fmt, "inherit {};", names.join(" "))
+    }
+}
+
+impl PartialEq for BindInherit {
+    fn eq(&self, other: &Self) -> bool {
+        self.names == other.names
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BindInheritExpr {
+    expr: Box<Expr>,
+    names: Vec<Ident>,
+    span: ByteSpan,
+}
+
+impl Display for BindInheritExpr {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        let names: Vec<_> = self.names.iter().map(ToString::to_string).collect();
+        write!(fmt, "inherit ({}) {};", self.expr, names.join(" "))
+    }
+}
+
+impl PartialEq for BindInheritExpr {
+    fn eq(&self, other: &Self) -> bool {
+        self.expr == other.expr && self.names == other.names
     }
 }
 
@@ -538,11 +532,7 @@ impl PartialEq for ExprLetIn {
 #[derive(Clone, Debug)]
 pub enum Formal {
     Simple(Ident),
-    Default {
-        name: Ident,
-        default: Box<Expr>,
-        span: ByteSpan,
-    },
+    Default(Ident, Box<Expr>, ByteSpan),
     Ellipsis(ByteSpan),
 }
 
@@ -550,11 +540,7 @@ impl Display for Formal {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
             Formal::Simple(ref name) => write!(fmt, "{}", name),
-            Formal::Default {
-                ref name,
-                ref default,
-                ..
-            } => write!(fmt, "{} ? {}", name, default),
+            Formal::Default(ref name, ref default, _) => write!(fmt, "{} ? {}", name, default),
             Formal::Ellipsis(_) => fmt.write_str("..."),
         }
     }
@@ -565,18 +551,7 @@ impl PartialEq for Formal {
         use Formal::*;
         match (self, other) {
             (Simple(ref i1), Simple(ref i2)) => i1 == i2,
-            (
-                Default {
-                    ref name,
-                    ref default,
-                    ..
-                },
-                Default {
-                    name: ref n2,
-                    default: ref d2,
-                    ..
-                },
-            ) => name == n2 && default == d2,
+            (Default(ref n1, ref d1, _), Default(ref n2, ref d2, _)) => n1 == n2 && d1 == d2,
             (Ellipsis(_), Ellipsis(_)) => true,
             _ => false,
         }

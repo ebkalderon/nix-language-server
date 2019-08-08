@@ -6,6 +6,13 @@ use self::tokens::{Comment, Ident, IdentPath, Literal};
 
 pub mod tokens;
 
+/// A source file with a top-level doc comment.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SourceFile {
+    comment: Option<Comment>,
+    expr: Box<Expr>,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     /// A parenthesized expression.

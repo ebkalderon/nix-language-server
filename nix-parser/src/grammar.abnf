@@ -1,0 +1,159 @@
+; ABNF (RFC5234) syntax for Nix
+; Use UTF-8 encoding
+;
+end-of-line = %x0A / %x0D.0A
+comment-line = %x23 chars end-of-line
+single-quote = %x27 ; '
+double-quote = %x22 ; "
+backslash = %x5C ; \
+dollar = %x24 ; $
+left-curly-bracket = %x7B ; {
+right-curly-bracket = %x7D ; }
+left-square-bracket = %x5B ; [
+right-square-bracket = %x5D ; ]
+left-round-bracket = %x28 ; (
+right-round-bracket = %x29 ; )
+at = %x40 ; @
+let = %x6C.65.74 ; let
+in = %x69.6E ; in
+question = %x3F ; ?
+if = %x69.66 ; if
+then = %x74.68.65.6E ; then
+else = %x65.6C.73.65 ; else
+semicolon = %x3B ; ;
+colon = %x3A ; :
+comma = %x2C ; ,
+with = %x77.69.74.68; with
+assert = %x61.73.73.65.72.74 ; assert
+or = %x6F.72 ; or
+rec = %x72.65.63 ; rec
+inherit = %x69.6E.68.65.72.69.74 ; inherit
+plus = %x2B; +
+minus = %x2D ; -
+hyphen = minus ; -
+multiply = %x2A ; *
+divide = %x2F ; /
+dot = %x2E ; .
+not = %x21 ; !
+less = %x3C ; <
+less-equal = %x3C.3D ; <=
+equal = %x3D ; =
+greater = %x3E ; >
+greater-equal = %x3E.3D ; >=
+set-update = %x2F.2F ; //
+logic-imply = %x2D.3E ; ->
+logic-equal = %x3D.3D ; ==
+logic-not-equal = %x21.3D ; !=
+logic-and = %x26.26 ; &&
+logic-or = %x7C.7C ; ||
+antiquote-start = %x24.7B ; ${
+antiquote-end = right-curly-bracket ; }
+
+double-quote-string = double-quote double-quote-string-continue ; no backtracking on second non-terminal
+
+double-quote-escapable = backslash / double-quote / dollar / "n" / "t" / "r"
+
+; tokenizer: there is no token separator for this non-terminal and preserve new lines and tabs
+; folding non-terminal
+double-quote-string-continue =
+    double-quote
+  / backslash double-quote-escapable double-quote-string-continue ; no backtracking on second non-terminal
+  / dollar left-curly-bracket expr right-curly-bracket double-quote-string-continue ; no backtracking on second non-terminal
+
+single-quote-string = 2*2(single-quote) single-quote-string-continue ; no backtracking on second non-terminal
+
+; tokenizer: there is no token separator for this non-terminal and preserve new lines and tabs
+; folding non-terminal
+single-quote-string-continue =
+    3*3(single-quote) single-quote-string-continue ; backtrack
+  / 2*2(single-quote) dollar single-quote-string-continue ; backtrack
+  / dollar left-curly-bracket expr right-curly-bracket single-quote-string-continue ; no backtracking on second non-terminal
+  / 2*2(single-quote) ; terminated
+
+expr =
+    with expr semicolon ; backtrack
+  / assert expr semicolon ; backtrack
+  / let bindings in expr ; backtrack
+  ; function
+  / left-curly-bracket formal-args right-curly-bracket [ at ident ] colon expr ; backtrack
+  / ident at left-curly-bracket formal-args right-curly-bracket colon expr ; backtrack
+  / logic-imply-expr
+  / sum-expr
+
+logic-imply-expr = logic-expr logic-imply (logic-imply-expr / logic-expr)
+
+logic-or-expr = logic-and-expr [ logic-or logic-or-expr ]
+
+logic-and-expr = cmp-expr [ logic-and logic-and-expr ]
+
+cmp-expr = sum-expr [ ( less / greater / less-equal / greater-equal / logic-equal / logic-not-equal ) sum-expr ]
+
+; left-associative non-terminal
+sum-expr = prod-expr plus sum-expr / prod-expr minus sum-expr / prod-expr
+
+; left-associative non-terminal
+prod-expr = unary-expr multiply prod-expr / unary-expr divide prod-expr / unary-expr
+
+unary-expr = not membership-expr / minus membership-expr / membership-expr
+
+; try non-terminal
+membership-expr =
+    app-expr [
+        question ident
+      / question antiquote-start expr antiquote-end
+      / question string
+    ]
+
+unary-expr-in-list = not membership-expr-in-list / minus membership-expr-in-list / membership-expr-in-list
+
+; try non-terminal
+membership-expr-in-list =
+    atomic-expr [
+        question ident
+      / question antiquote-start expr antiquote-end
+      / question string
+    ]
+
+; left-associative non-terminal
+app-expr = atomic-expr app-expr / atomic-expr
+
+atomic-expr =
+    single-quote-string
+  / double-quote-string
+  ; set family
+  / [rec / let] left-curly-bracket set-bindings right-curly-bracket ; no backtracking on second non-terminal, soft-bail on second non-terminal terminating on third non-terminal
+
+  ; sub expr
+  / left-round-bracket expr right-round-bracket ; no backtracking on second non-terminal, soft-bail on second non-terminal terminating on third non-terminal
+
+  ; list
+  / left-square-bracket list-elements right-square-bracket ; no backtracking on second non-terminal, soft-bail on second non-terminal terminating on third non-terminal
+
+  / path
+  / url
+  / proj-expr
+  / ident
+  / number
+
+proj-expr = initial-member-access [ or unary-expr ]
+
+; left-associative non-terminal
+initial-member-access = ident dot member-access
+member-access =
+    string [ dot member-access ]
+  / antiquote-start expr antiquote-end [ dot member-access ]
+  / ident expr antiquote-end [ dot member-access ]
+
+ident-list = (ident / antiquote-start expr antiquote-end) [ ident-list ]
+
+set-bindings =
+    inherit [ left-round-bracket expr right-round-bracket ] ident-list semicolon [ set-bindings ] ; no backtracking on third non-terminal, soft-bail on second non-terminal
+  / antiquote-start expr antiquote-end equal expr semicolon [ set-bindings ] ; no backtracking on third non-terminal, soft-bail on second and fifth non-terminal
+  / ident equal expr semicolon [ set-bindings ] ; no backtracking on third non-terminal, soft-bail on third non-terminal
+
+list-elements = unary-expr-in-list [ list-elements ]
+
+path = PATH-REGEX
+url = URL-REGEX
+ident = ident-REGEX
+number = number-REGEX

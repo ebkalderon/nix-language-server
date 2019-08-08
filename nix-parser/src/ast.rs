@@ -80,7 +80,7 @@ impl Display for Expr {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ExprParen {
     expr: Box<Expr>,
     span: ByteSpan,
@@ -92,7 +92,13 @@ impl Display for ExprParen {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for ExprParen {
+    fn eq(&self, other: &Self) -> bool {
+        self.expr == other.expr
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ExprList {
     elems: Vec<Expr>,
     span: ByteSpan,
@@ -105,7 +111,13 @@ impl Display for ExprList {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for ExprList {
+    fn eq(&self, other: &Self) -> bool {
+        self.elems == other.elems
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ExprSet {
     binds: Vec<Bind>,
     span: ByteSpan,
@@ -115,6 +127,12 @@ impl Display for ExprSet {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         let binds: Vec<_> = self.binds.iter().map(ToString::to_string).collect();
         write!(fmt, "{{{}}}", binds.join(" "))
+    }
+}
+
+impl PartialEq for ExprSet {
+    fn eq(&self, other: &Self) -> bool {
+        self.binds == other.binds
     }
 }
 
@@ -135,7 +153,7 @@ impl Display for UnaryOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ExprUnary {
     op: UnaryOp,
     expr: Box<Expr>,
@@ -145,6 +163,12 @@ pub struct ExprUnary {
 impl Display for ExprUnary {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "{}{}", self.op, self.expr)
+    }
+}
+
+impl PartialEq for ExprUnary {
+    fn eq(&self, other: &Self) -> bool {
+        self.op == other.op && self.expr == other.expr
     }
 }
 
@@ -207,7 +231,7 @@ impl Display for BinaryOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ExprBinary {
     op: BinaryOp,
     lhs: Box<Expr>,
@@ -221,7 +245,13 @@ impl Display for ExprBinary {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for ExprBinary {
+    fn eq(&self, other: &Self) -> bool {
+        self.op == other.op && self.lhs == other.lhs && self.rhs == other.rhs
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum Bind {
     Simple {
         name: IdentPath,
@@ -261,7 +291,39 @@ impl Display for Bind {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for Bind {
+    fn eq(&self, other: &Self) -> bool {
+        use Bind::*;
+        match (self, other) {
+            (
+                Simple {
+                    ref name, ref expr, ..
+                },
+                Simple {
+                    name: ref n2,
+                    expr: ref e2,
+                    ..
+                },
+            ) => name == n2 && expr == e2,
+            (Inherit { ref names, .. }, Inherit { names: ref n2, .. }) => names == n2,
+            (
+                InheritExpr {
+                    ref expr,
+                    ref names,
+                    ..
+                },
+                InheritExpr {
+                    expr: ref e2,
+                    names: ref n2,
+                    ..
+                },
+            ) => expr == e2 && names == n2,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ExprLet {
     binds: Vec<Bind>,
     span: ByteSpan,
@@ -274,7 +336,13 @@ impl Display for ExprLet {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for ExprLet {
+    fn eq(&self, other: &Self) -> bool {
+        self.binds == other.binds
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ExprRec {
     binds: Vec<Bind>,
     span: ByteSpan,
@@ -287,20 +355,65 @@ impl Display for ExprRec {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for ExprRec {
+    fn eq(&self, other: &Self) -> bool {
+        self.binds == other.binds
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum AttrKey {
+    Ident(Ident),
+    String(String, ByteSpan),
+    Expr(Box<Expr>),
+}
+
+impl Display for AttrKey {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        match *self {
+            AttrKey::Ident(ref i) => write!(fmt, "{}", i),
+            AttrKey::String(ref s, _) => write!(fmt, "{}", s),
+            AttrKey::Expr(ref e) => write!(fmt, "{}", e),
+        }
+    }
+}
+
+impl PartialEq for AttrKey {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (AttrKey::Ident(ref i1), AttrKey::Ident(ref i2)) => i1 == i2,
+            (AttrKey::String(ref s1, _), AttrKey::String(ref s2, _)) => s1 == s2,
+            (AttrKey::Expr(ref e1), AttrKey::Expr(ref e2)) => e1 == e2,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ExprProj {
     expr: Box<Expr>,
-    attr: Ident,
+    attr: AttrKey,
+    fallback: Option<Box<Expr>>,
     span: ByteSpan,
 }
 
 impl Display for ExprProj {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "{}.{}", self.expr, self.attr)
+        if let Some(ref val) = self.fallback.as_ref() {
+            write!(fmt, "{}.{} or {}", self.expr, self.attr, val)
+        } else {
+            write!(fmt, "{}.{}", self.expr, self.attr)
+        }
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for ExprProj {
+    fn eq(&self, other: &Self) -> bool {
+        self.expr == other.expr && self.attr == other.attr
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ExprIf {
     cond: Box<Expr>,
     body: Box<Expr>,
@@ -318,7 +431,13 @@ impl Display for ExprIf {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for ExprIf {
+    fn eq(&self, other: &Self) -> bool {
+        self.cond == other.cond && self.body == other.body && self.fallback == other.fallback
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ExprOr {
     expr: Box<Expr>,
     fallback: Box<Expr>,
@@ -331,7 +450,13 @@ impl Display for ExprOr {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for ExprOr {
+    fn eq(&self, other: &Self) -> bool {
+        self.expr == other.expr && self.fallback == other.fallback
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ExprAssert {
     cond: Box<Expr>,
     expr: Box<Expr>,
@@ -344,7 +469,13 @@ impl Display for ExprAssert {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for ExprAssert {
+    fn eq(&self, other: &Self) -> bool {
+        self.cond == other.cond && self.expr == other.expr
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ExprWith {
     with: Box<Expr>,
     expr: Box<Expr>,
@@ -357,7 +488,13 @@ impl Display for ExprWith {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for ExprWith {
+    fn eq(&self, other: &Self) -> bool {
+        self.with == other.with && self.expr == other.expr
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ExprLetIn {
     binds: Vec<Bind>,
     body: Box<Expr>,
@@ -371,7 +508,13 @@ impl Display for ExprLetIn {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for ExprLetIn {
+    fn eq(&self, other: &Self) -> bool {
+        self.binds == other.binds && self.body == other.body
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum Formal {
     Simple(Ident),
     Default {
@@ -396,6 +539,29 @@ impl Display for Formal {
     }
 }
 
+impl PartialEq for Formal {
+    fn eq(&self, other: &Self) -> bool {
+        use Formal::*;
+        match (self, other) {
+            (Simple(ref i1), Simple(ref i2)) => i1 == i2,
+            (
+                Default {
+                    ref name,
+                    ref default,
+                    ..
+                },
+                Default {
+                    name: ref n2,
+                    default: ref d2,
+                    ..
+                },
+            ) => name == n2 && default == d2,
+            (Ellipsis(_), Ellipsis(_)) => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExprFnDecl {
     Simple(SimpleFnDecl),
@@ -413,7 +579,7 @@ impl Display for ExprFnDecl {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct SimpleFnDecl {
     name: Ident,
     body: Box<Expr>,
@@ -426,7 +592,13 @@ impl Display for SimpleFnDecl {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for SimpleFnDecl {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && self.body == other.body
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct FormalsFnDecl {
     formals: Vec<Formal>,
     body: Box<Expr>,
@@ -440,7 +612,13 @@ impl Display for FormalsFnDecl {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for FormalsFnDecl {
+    fn eq(&self, other: &Self) -> bool {
+        self.formals == other.formals && self.body == other.body
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct FormalsExtraFnDecl {
     extra: Ident,
     is_prefix: bool,
@@ -460,15 +638,30 @@ impl Display for FormalsExtraFnDecl {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for FormalsExtraFnDecl {
+    fn eq(&self, other: &Self) -> bool {
+        self.extra == other.extra
+            && self.is_prefix == other.is_prefix
+            && self.formals == other.formals
+            && self.body == other.body
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ExprFnApp {
-    name: Ident,
-    body: Box<Expr>,
+    function: Box<Expr>,
+    argument: Box<Expr>,
     span: ByteSpan,
 }
 
 impl Display for ExprFnApp {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "{} {}", self.name, self.body)
+        write!(fmt, "{} {}", self.function, self.argument)
+    }
+}
+
+impl PartialEq for ExprFnApp {
+    fn eq(&self, other: &Self) -> bool {
+        self.function == other.function && self.argument == other.argument
     }
 }

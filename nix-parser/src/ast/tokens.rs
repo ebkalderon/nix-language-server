@@ -1,11 +1,18 @@
+use std::cmp::Ordering;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::path::{Path, PathBuf};
 
 use codespan::ByteSpan;
 use http::Uri;
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq)]
 pub struct Ident(String, ByteSpan);
+
+impl Display for Ident {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        write!(fmt, "{}", self.0)
+    }
+}
 
 impl<'a> From<(&'a str, ByteSpan)> for Ident {
     fn from((string, span): (&'a str, ByteSpan)) -> Self {
@@ -19,14 +26,27 @@ impl From<(String, ByteSpan)> for Ident {
     }
 }
 
-impl Display for Ident {
-    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "{}", self.0)
+impl PartialEq for Ident {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
     }
 }
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+impl PartialOrd for Ident {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+#[derive(Clone, Debug, Eq)]
 pub struct IdentPath(Vec<Ident>, ByteSpan);
+
+impl Display for IdentPath {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        let idents: Vec<_> = self.0.iter().map(ToString::to_string).collect();
+        write!(fmt, "{}", idents.join("."))
+    }
+}
 
 impl<'a, T, U> From<(U, ByteSpan)> for IdentPath
 where
@@ -38,14 +58,19 @@ where
     }
 }
 
-impl Display for IdentPath {
-    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let idents: Vec<_> = self.0.iter().map(ToString::to_string).collect();
-        write!(fmt, "{}", idents.join("."))
+impl PartialEq for IdentPath {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialOrd for IdentPath {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum Literal {
     Null(ByteSpan),
     Boolean(bool, ByteSpan),
@@ -55,6 +80,21 @@ pub enum Literal {
     PathTemplate(String, ByteSpan),
     String(String, ByteSpan),
     Uri(Uri, ByteSpan),
+}
+
+impl Display for Literal {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        match *self {
+            Literal::Null(_) => write!(fmt, "null"),
+            Literal::Boolean(ref b, _) => write!(fmt, "{}", b),
+            Literal::Float(ref f, _) => write!(fmt, "{}", f),
+            Literal::Integer(ref i, _) => write!(fmt, "{}", i),
+            Literal::Path(ref p, _) => write!(fmt, "{}", p.to_string_lossy()),
+            Literal::PathTemplate(ref p, _) => write!(fmt, "<{}>", p),
+            Literal::String(ref s, _) => write!(fmt, "\"{}\"", s),
+            Literal::Uri(ref u, _) => write!(fmt, "{}", u),
+        }
+    }
 }
 
 impl From<((), ByteSpan)> for Literal {
@@ -111,17 +151,36 @@ impl From<(Uri, ByteSpan)> for Literal {
     }
 }
 
-impl Display for Literal {
-    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        match *self {
-            Literal::Null(_) => write!(fmt, "null"),
-            Literal::Boolean(ref b, _) => write!(fmt, "{}", b),
-            Literal::Float(ref f, _) => write!(fmt, "{}", f),
-            Literal::Integer(ref i, _) => write!(fmt, "{}", i),
-            Literal::Path(ref p, _) => write!(fmt, "{}", p.to_string_lossy()),
-            Literal::PathTemplate(ref p, _) => write!(fmt, "<{}>", p),
-            Literal::String(ref s, _) => write!(fmt, "\"{}\"", s),
-            Literal::Uri(ref u, _) => write!(fmt, "{}", u),
+impl PartialEq for Literal {
+    fn eq(&self, other: &Self) -> bool {
+        use Literal::*;
+        match (self, other) {
+            (Null(_), Null(_)) => true,
+            (Boolean(ref b1, _), Boolean(ref b2, _)) => *b1 == *b2,
+            (Float(ref f1, _), Float(ref f2, _)) => f1 == f2,
+            (Integer(ref i1, _), Integer(ref i2, _)) => i1 == i2,
+            (Path(ref p1, _), Path(ref p2, _)) => p1 == p2,
+            (PathTemplate(ref p1, _), PathTemplate(ref p2, _)) => p1 == p2,
+            (String(ref s1, _), String(ref s2, _)) => s1 == s2,
+            (Uri(ref u1, _), Uri(ref u2, _)) => u1 == u2,
+            _ => false,
+        }
+    }
+}
+
+impl PartialOrd for Literal {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        use Literal::*;
+        match (self, other) {
+            (Null(_), Null(_)) => Some(Ordering::Equal),
+            (Boolean(ref b1, _), Boolean(ref b2, _)) => b1.partial_cmp(b2),
+            (Float(ref f1, _), Float(ref f2, _)) => f1.partial_cmp(f2),
+            (Integer(ref i1, _), Integer(ref i2, _)) => i1.partial_cmp(i2),
+            (Path(ref p1, _), Path(ref p2, _)) => p1.partial_cmp(p2),
+            (PathTemplate(ref p1, _), PathTemplate(ref p2, _)) => p1.partial_cmp(p2),
+            (String(ref s1, _), String(ref s2, _)) => s1.partial_cmp(s2),
+            (Uri(ref u1, _), Uri(ref u2, _)) => u1.to_string().partial_cmp(&u2.to_string()),
+            _ => None,
         }
     }
 }

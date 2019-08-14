@@ -44,7 +44,7 @@ pub fn identifier(input: Span) -> IResult<Ident> {
 }
 
 pub fn ident_path(input: Span) -> IResult<IdentPath> {
-    let ident_path = separated_nonempty_list(char('.'), identifier);
+    let ident_path = separated_nonempty_list(char('.'), cut(identifier));
     map(ident_path, |idents| IdentPath::from((idents, input)))(input)
 }
 

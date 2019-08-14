@@ -7,7 +7,8 @@ use nom::error::context;
 use nom::multi::many1;
 use nom::sequence::{delimited, pair, preceded, separated_pair, terminated, tuple};
 
-use crate::ast::{tokens::IdentPath, Bind, BindInherit, BindInheritExpr, BindSimple, Expr};
+use super::expr;
+use crate::ast::{Bind, BindInherit, BindInheritExpr, BindSimple};
 use crate::parser::{tokens, IResult, Span};
 use crate::ToByteSpan;
 
@@ -22,9 +23,7 @@ fn simple(input: Span) -> IResult<BindSimple> {
     let comment = opt(terminated(tokens::comment, multispace0));
 
     let name = terminated(tokens::ident_path, tokens::space);
-    let expr = map(terminated(tokens::literal, tokens::space), |e| {
-        Box::new(Expr::Literal(e))
-    });
+    let expr = map(expr, Box::new);
 
     let lhs = map_parser(take_until("="), all_consuming(name));
     let equals = pair(char('='), tokens::space);
@@ -51,14 +50,11 @@ fn inherit_expr(input: Span) -> IResult<BindInheritExpr> {
 
     let open_paren = pair(char('('), tokens::space);
     let close_paren = pair(char(')'), tokens::space);
-    let expr = map(terminated(tokens::literal, tokens::space), |e| {
-        Box::new(Expr::Literal(e))
-    });
-    let expr = delimited(open_paren, expr, close_paren);
+    let expr = map(delimited(open_paren, expr, close_paren), Box::new);
 
     let name = terminated(tokens::identifier, tokens::space);
-
     let inherit = delimited(key_inherit, pair(expr, many1(name)), char(';'));
+
     map(inherit, |(expr, names)| {
         BindInheritExpr::new(expr, names, input.to_byte_span())
     })(input)
@@ -68,7 +64,8 @@ fn inherit_expr(input: Span) -> IResult<BindInheritExpr> {
 mod tests {
     use super::*;
 
-    use crate::ast::tokens::{Comment, Ident, Literal};
+    use crate::ast::tokens::{Comment, Ident, IdentPath, Literal};
+    use crate::ast::Expr;
     use crate::ToByteSpan;
 
     #[test]

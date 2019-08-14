@@ -155,7 +155,7 @@ impl Display for Literal {
         match *self {
             Literal::Null(_) => write!(fmt, "null"),
             Literal::Boolean(ref b, _) => write!(fmt, "{}", b),
-            Literal::Float(ref f, _) => write!(fmt, "{}", f),
+            Literal::Float(ref f, _) => write!(fmt, "{:?}", f),
             Literal::Integer(ref i, _) => write!(fmt, "{}", i),
             Literal::Path(ref p, _) => write!(fmt, "{}", p.to_string_lossy()),
             Literal::PathTemplate(ref p, _) => write!(fmt, "<{}>", p),

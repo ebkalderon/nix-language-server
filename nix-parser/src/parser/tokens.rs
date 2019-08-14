@@ -5,7 +5,7 @@ use nom::branch::alt;
 use nom::bytes::complete::{is_a, tag, take_until, take_while};
 use nom::character::complete::{alpha1, char, multispace0, multispace1, not_line_ending, space0};
 use nom::character::is_alphanumeric;
-use nom::combinator::{map, recognize, verify};
+use nom::combinator::{cut, map, recognize, verify};
 use nom::error::context;
 use nom::multi::{count, many0, separated_nonempty_list};
 use nom::sequence::{delimited, pair, preceded};
@@ -22,7 +22,7 @@ pub fn comment(input: Span) -> IResult<Comment> {
     let text = map(rows, |r| r.join("\n"));
     let single = map(text, |text| Comment::from((text, input)));
 
-    let span = delimited(tag("/*"), recognize(take_until("*/")), tag("*/"));
+    let span = delimited(tag("/*"), recognize(take_until("*/")), cut(tag("*/")));
     let rows = map(span, |s: Span| s.fragment.lines().map(|l| l.trim_start()));
     let text = map(rows, |r| r.collect::<Vec<_>>().join("\n"));
     let multiple = map(text, |text| Comment::from((text, input)));

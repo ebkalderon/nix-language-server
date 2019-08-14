@@ -17,6 +17,18 @@ impl Display for Comment {
     }
 }
 
+impl<'a> From<&'a str> for Comment {
+    fn from(s: &'a str) -> Self {
+        Comment(s.to_owned(), ByteSpan::default())
+    }
+}
+
+impl From<String> for Comment {
+    fn from(s: String) -> Self {
+        Comment(s, ByteSpan::default())
+    }
+}
+
 impl<T, S> From<(T, S)> for Comment
 where
     T: Into<String>,
@@ -45,6 +57,18 @@ pub struct Ident(String, ByteSpan);
 impl Display for Ident {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "{}", self.0)
+    }
+}
+
+impl<'a> From<&'a str> for Ident {
+    fn from(s: &'a str) -> Self {
+        Ident(s.to_owned(), ByteSpan::default())
+    }
+}
+
+impl From<String> for Ident {
+    fn from(s: String) -> Self {
+        Ident(s, ByteSpan::default())
     }
 }
 
@@ -128,6 +152,62 @@ impl Display for Literal {
             Literal::String(ref s, _) => write!(fmt, "\"{}\"", s),
             Literal::Uri(ref u, _) => write!(fmt, "{}", u),
         }
+    }
+}
+
+impl<T: Into<Literal>> From<Option<T>> for Literal {
+    fn from(value: Option<T>) -> Self {
+        value
+            .map(Into::into)
+            .unwrap_or(Literal::Null(ByteSpan::default()))
+    }
+}
+
+impl From<()> for Literal {
+    fn from(_: ()) -> Self {
+        Literal::Null(ByteSpan::default())
+    }
+}
+
+impl From<bool> for Literal {
+    fn from(boolean: bool) -> Self {
+        Literal::Boolean(boolean, ByteSpan::default())
+    }
+}
+
+impl From<f64> for Literal {
+    fn from(float: f64) -> Self {
+        Literal::Float(float, ByteSpan::default())
+    }
+}
+
+impl From<i64> for Literal {
+    fn from(int: i64) -> Self {
+        Literal::Integer(int, ByteSpan::default())
+    }
+}
+
+impl<'a> From<&'a Path> for Literal {
+    fn from(path: &'a Path) -> Self {
+        Literal::Path(path.to_owned(), ByteSpan::default())
+    }
+}
+
+impl From<PathBuf> for Literal {
+    fn from(path: PathBuf) -> Self {
+        Literal::Path(path, ByteSpan::default())
+    }
+}
+
+impl<'a> From<&'a str> for Literal {
+    fn from(s: &'a str) -> Self {
+        Literal::String(s.to_owned(), ByteSpan::default())
+    }
+}
+
+impl From<String> for Literal {
+    fn from(s: String) -> Self {
+        Literal::String(s, ByteSpan::default())
     }
 }
 

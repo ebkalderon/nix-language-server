@@ -1,15 +1,12 @@
-use std::str::FromStr;
-
 use codespan::{ByteIndex, ByteSpan};
-use nom::bytes::complete::take_until;
-use nom::character::complete::{char, multispace0};
-use nom::combinator::{all_consuming, map_parser, peek, recognize};
+use nom::character::complete::multispace0;
+use nom::combinator::all_consuming;
 use nom::error::VerboseError;
-use nom::multi::{many1, separated_nonempty_list};
-use nom::sequence::{pair, preceded, terminated};
+use nom::multi::many1;
+use nom::sequence::{preceded, terminated};
 use nom_locate::LocatedSpan;
 
-use crate::ast::{Bind, Expr, SourceFile};
+use crate::ast::{Bind, SourceFile};
 use crate::ToByteSpan;
 
 mod expr;

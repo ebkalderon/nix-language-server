@@ -1,11 +1,10 @@
 use nom::branch::alt;
-use nom::character::complete::char;
 use nom::combinator::map;
-use nom::sequence::{delimited, terminated};
+use nom::sequence::terminated;
 
 use self::atomic::paren;
 use super::{tokens, IResult, Span};
-use crate::ast::{Expr, ExprParen};
+use crate::ast::Expr;
 
 mod atomic;
 pub(crate) mod bind;

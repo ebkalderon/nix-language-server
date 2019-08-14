@@ -1,22 +1,16 @@
 pub use self::keywords::*;
 pub use self::literal::literal;
 
-use std::iter;
-
 use nom::branch::alt;
-use nom::bytes::complete::{is_a, is_not, tag, take_until, take_while, take_while1};
-use nom::character::complete::{
-    alpha1, alphanumeric1, anychar, char, line_ending, multispace0, multispace1, not_line_ending,
-    space0,
-};
+use nom::bytes::complete::{is_a, tag, take_until, take_while};
+use nom::character::complete::{alpha1, char, multispace0, multispace1, not_line_ending, space0};
 use nom::character::is_alphanumeric;
-use nom::combinator::{all_consuming, cut, map, map_parser, not, peek, recognize, verify};
-use nom::error::{context, ErrorKind, ParseError, VerboseError};
-use nom::multi::{count, many0, many1, separated_nonempty_list};
-use nom::sequence::{delimited, pair, preceded, terminated, tuple};
-use nom_locate::position;
+use nom::combinator::{map, recognize, verify};
+use nom::error::context;
+use nom::multi::{count, many0, separated_nonempty_list};
+use nom::sequence::{delimited, pair, preceded};
 
-use super::{IResult, Span, ToByteSpan};
+use super::{IResult, Span};
 use crate::ast::tokens::{Comment, Ident, IdentPath};
 
 mod keywords;

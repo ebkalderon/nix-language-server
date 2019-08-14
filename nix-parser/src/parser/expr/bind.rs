@@ -1,11 +1,9 @@
-use codespan::ByteSpan;
 use nom::branch::alt;
-use nom::bytes::complete::{take, take_until};
+use nom::bytes::complete::take_until;
 use nom::character::complete::{char, multispace0};
-use nom::combinator::{all_consuming, map, map_parser, opt, recognize};
-use nom::error::context;
+use nom::combinator::{all_consuming, map, map_parser, opt};
 use nom::multi::many1;
-use nom::sequence::{delimited, pair, preceded, separated_pair, terminated, tuple};
+use nom::sequence::{delimited, pair, separated_pair, terminated};
 
 use super::expr;
 use crate::ast::{Bind, BindInherit, BindInheritExpr, BindSimple};

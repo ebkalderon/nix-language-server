@@ -1,6 +1,6 @@
 use nom::character::complete::char;
 use nom::combinator::map;
-use nom::sequence::{delimited, pair, terminated};
+use nom::sequence::{delimited, pair};
 
 use super::expr;
 use crate::ast::ExprParen;

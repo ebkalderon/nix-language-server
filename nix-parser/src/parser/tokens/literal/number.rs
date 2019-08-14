@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use nom::character::complete::{char, digit0, digit1, one_of};
-use nom::combinator::{map, map_res, opt, recognize};
+use nom::combinator::{map_res, opt, recognize};
 use nom::sequence::{pair, tuple};
 
 use crate::parser::{IResult, Span};

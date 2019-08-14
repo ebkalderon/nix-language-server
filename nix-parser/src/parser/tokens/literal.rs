@@ -1,3 +1,4 @@
+pub use self::number::{float, integer};
 pub use self::path::{path, path_template};
 
 use nom::branch::alt;
@@ -8,16 +9,19 @@ use crate::ast::tokens::Literal;
 use crate::parser::{IResult, Span};
 use crate::ToByteSpan;
 
+mod number;
 mod path;
 
 pub fn literal(input: Span) -> IResult<Literal> {
     let boolean = map(boolean, |b| Literal::from((b, input)));
+    let float = map(float, |f| Literal::from((f, input)));
+    let integer = map(integer, |i| Literal::from((i, input)));
     let null = map(null, |n| Literal::from((n, input)));
     let path = map(path, |p| Literal::from((p, input)));
     let temp = map(path_template, |t| {
         Literal::PathTemplate(t, input.to_byte_span())
     });
-    alt((boolean, null, path, temp))(input)
+    alt((boolean, float, integer, null, path, temp))(input)
 }
 
 pub fn boolean(input: Span) -> IResult<bool> {

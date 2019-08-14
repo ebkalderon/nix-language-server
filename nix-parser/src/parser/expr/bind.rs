@@ -79,7 +79,7 @@ mod tests {
             uncommented,
             BindSimple::new(
                 None,
-                IdentPath::from((vec![Ident::from("foo"), Ident::from("bar")], Span::new(""))),
+                IdentPath::from(vec!["foo", "bar"]),
                 Box::new(Expr::Literal(Literal::from(true))),
                 Span::new("").to_byte_span(),
             )
@@ -91,7 +91,7 @@ mod tests {
             commented,
             BindSimple::new(
                 Some(Comment::from("hello world \nthis is a   doc comment   ")),
-                IdentPath::from((vec![Ident::from("foo"), Ident::from("bar")], Span::new(""))),
+                IdentPath::from(vec!["foo", "bar"]),
                 Box::new(Expr::Literal(Literal::from(true))),
                 Span::new("").to_byte_span(),
             )

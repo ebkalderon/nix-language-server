@@ -16,7 +16,7 @@ pub fn expr(input: Span) -> IResult<Expr> {
 
 fn atomic(input: Span) -> IResult<Expr> {
     let paren = map(paren, Expr::Paren);
-    let attr = map(tokens::ident_path, Expr::Attr);
     let literal = map(tokens::literal, Expr::Literal);
-    alt((paren, attr, literal))(input)
+    let attr = map(tokens::ident_path, Expr::Attr);
+    alt((paren, literal, attr))(input)
 }

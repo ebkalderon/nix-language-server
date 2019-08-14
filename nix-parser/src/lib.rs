@@ -8,3 +8,9 @@ pub mod parser;
 pub trait ToByteSpan {
     fn to_byte_span(&self) -> ByteSpan;
 }
+
+impl ToByteSpan for ByteSpan {
+    fn to_byte_span(&self) -> ByteSpan {
+        *self
+    }
+}

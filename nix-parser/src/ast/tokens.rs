@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 use codespan::ByteSpan;
 use http::Uri;
 
+use crate::ToByteSpan;
+
 #[derive(Clone, Debug, Eq)]
 pub struct Comment(String, ByteSpan);
 
@@ -12,6 +14,16 @@ impl Display for Comment {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         let lines: String = self.0.split("\n").map(|l| format!("# {}\n", l)).collect();
         write!(fmt, "{}", lines)
+    }
+}
+
+impl<T, S> From<(T, S)> for Comment
+where
+    T: Into<String>,
+    S: ToByteSpan,
+{
+    fn from((string, span): (T, S)) -> Self {
+        Comment(string.into(), span.to_byte_span())
     }
 }
 
@@ -36,15 +48,13 @@ impl Display for Ident {
     }
 }
 
-impl<'a> From<(&'a str, ByteSpan)> for Ident {
-    fn from((string, span): (&'a str, ByteSpan)) -> Self {
-        Ident(string.to_owned(), span)
-    }
-}
-
-impl From<(String, ByteSpan)> for Ident {
-    fn from((string, span): (String, ByteSpan)) -> Self {
-        Ident(string, span)
+impl<T, S> From<(T, S)> for Ident
+where
+    T: Into<String>,
+    S: ToByteSpan,
+{
+    fn from((string, span): (T, S)) -> Self {
+        Ident(string.into(), span.to_byte_span())
     }
 }
 
@@ -70,13 +80,15 @@ impl Display for IdentPath {
     }
 }
 
-impl<'a, T, U> From<(U, ByteSpan)> for IdentPath
+impl<'a, T, U, S> From<(U, S)> for IdentPath
 where
     T: Into<Ident>,
     U: IntoIterator<Item = T>,
+    S: ToByteSpan,
 {
-    fn from((idents, span): (U, ByteSpan)) -> Self {
-        IdentPath(idents.into_iter().map(Into::into).collect(), span)
+    fn from((idents, span): (U, S)) -> Self {
+        let elems = idents.into_iter().map(Into::into).collect();
+        IdentPath(elems, span.to_byte_span())
     }
 }
 
@@ -119,57 +131,57 @@ impl Display for Literal {
     }
 }
 
-impl From<((), ByteSpan)> for Literal {
-    fn from((_, span): ((), ByteSpan)) -> Self {
-        Literal::Null(span)
+impl<S: ToByteSpan> From<((), S)> for Literal {
+    fn from((_, span): ((), S)) -> Self {
+        Literal::Null(span.to_byte_span())
     }
 }
 
-impl From<(bool, ByteSpan)> for Literal {
-    fn from((boolean, span): (bool, ByteSpan)) -> Self {
-        Literal::Boolean(boolean, span)
+impl<S: ToByteSpan> From<(bool, S)> for Literal {
+    fn from((boolean, span): (bool, S)) -> Self {
+        Literal::Boolean(boolean, span.to_byte_span())
     }
 }
 
-impl From<(f64, ByteSpan)> for Literal {
-    fn from((float, span): (f64, ByteSpan)) -> Self {
-        Literal::Float(float, span)
+impl<S: ToByteSpan> From<(f64, S)> for Literal {
+    fn from((float, span): (f64, S)) -> Self {
+        Literal::Float(float, span.to_byte_span())
     }
 }
 
-impl From<(i64, ByteSpan)> for Literal {
-    fn from((int, span): (i64, ByteSpan)) -> Self {
-        Literal::Integer(int, span)
+impl<S: ToByteSpan> From<(i64, S)> for Literal {
+    fn from((int, span): (i64, S)) -> Self {
+        Literal::Integer(int, span.to_byte_span())
     }
 }
 
-impl<'a> From<(&'a Path, ByteSpan)> for Literal {
-    fn from((path, span): (&'a Path, ByteSpan)) -> Self {
-        Literal::Path(path.to_owned(), span)
+impl<'a, S: ToByteSpan> From<(&'a Path, S)> for Literal {
+    fn from((path, span): (&'a Path, S)) -> Self {
+        Literal::Path(path.to_owned(), span.to_byte_span())
     }
 }
 
-impl From<(PathBuf, ByteSpan)> for Literal {
-    fn from((path, span): (PathBuf, ByteSpan)) -> Self {
-        Literal::Path(path, span)
+impl<S: ToByteSpan> From<(PathBuf, S)> for Literal {
+    fn from((path, span): (PathBuf, S)) -> Self {
+        Literal::Path(path, span.to_byte_span())
     }
 }
 
-impl<'a> From<(&'a str, ByteSpan)> for Literal {
-    fn from((s, span): (&'a str, ByteSpan)) -> Self {
-        Literal::String(s.to_owned(), span)
+impl<'a, S: ToByteSpan> From<(&'a str, S)> for Literal {
+    fn from((s, span): (&'a str, S)) -> Self {
+        Literal::String(s.to_owned(), span.to_byte_span())
     }
 }
 
-impl From<(String, ByteSpan)> for Literal {
-    fn from((s, span): (String, ByteSpan)) -> Self {
-        Literal::String(s, span)
+impl<S: ToByteSpan> From<(String, S)> for Literal {
+    fn from((s, span): (String, S)) -> Self {
+        Literal::String(s, span.to_byte_span())
     }
 }
 
-impl From<(Uri, ByteSpan)> for Literal {
-    fn from((uri, span): (Uri, ByteSpan)) -> Self {
-        Literal::Uri(uri, span)
+impl<S: ToByteSpan> From<(Uri, S)> for Literal {
+    fn from((uri, span): (Uri, S)) -> Self {
+        Literal::Uri(uri, span.to_byte_span())
     }
 }
 

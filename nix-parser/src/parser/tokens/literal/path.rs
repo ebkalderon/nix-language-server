@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use nom::branch::alt;
-use nom::bytes::complete::is_a;
+use nom::bytes::complete::{is_a, take_until};
 use nom::character::complete::{alphanumeric1, char, one_of};
-use nom::combinator::{map, opt, recognize};
+use nom::combinator::{all_consuming, map, map_parser, opt, recognize};
 use nom::multi::{many1, separated_nonempty_list};
 use nom::sequence::{delimited, pair};
 
@@ -17,8 +17,8 @@ pub fn path(input: Span) -> IResult<PathBuf> {
 }
 
 pub fn path_template(input: Span) -> IResult<String> {
-    let name = recognize(many1(alt((alphanumeric1, is_a("._-+")))));
-    let template = delimited(char('<'), name, char('>'));
+    let name = all_consuming(recognize(many1(alt((alphanumeric1, is_a("._-+/"))))));
+    let template = delimited(char('<'), map_parser(take_until(">"), name), char('>'));
     map(template, |tmp: Span| tmp.fragment.to_string())(input)
 }
 

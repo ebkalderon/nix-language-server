@@ -93,6 +93,12 @@ pub struct ExprParen {
     span: ByteSpan,
 }
 
+impl ExprParen {
+    pub fn new(expr: Box<Expr>, span: ByteSpan) -> Self {
+        ExprParen { expr, span }
+    }
+}
+
 impl Display for ExprParen {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "({})", self.expr)

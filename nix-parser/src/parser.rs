@@ -26,8 +26,8 @@ impl<'a> ToByteSpan for Span<'a> {
     }
 }
 
-pub fn parse_expr<'a>(expr: &'a str) -> Result<Vec<Bind>, String> {
-    let text = Span::new(expr);
+pub fn parse_expr<S: AsRef<str>>(expr: S) -> Result<Vec<Bind>, String> {
+    let text = Span::new(expr.as_ref());
     let expr = many1(terminated(expr::bind::bind, multispace0));
     all_consuming(preceded(tokens::space, expr))(text)
         .map(|(_, bind)| bind)

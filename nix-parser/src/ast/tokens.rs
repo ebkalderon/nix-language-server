@@ -104,6 +104,16 @@ impl Display for IdentPath {
     }
 }
 
+impl<'a, T> From<Vec<T>> for IdentPath
+where
+    T: Into<Ident>,
+{
+    fn from(idents: Vec<T>) -> Self {
+        let elems = idents.into_iter().map(Into::into).collect();
+        IdentPath(elems, ByteSpan::default())
+    }
+}
+
 impl<'a, T, U, S> From<(U, S)> for IdentPath
 where
     T: Into<Ident>,

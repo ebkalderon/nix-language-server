@@ -1,34 +1,44 @@
+use std::str::FromStr;
+
 use codespan::{ByteIndex, ByteSpan};
+use nom::bytes::complete::take_until;
+use nom::character::complete::{char, multispace0};
+use nom::combinator::{all_consuming, map_parser, peek, recognize};
+use nom::error::VerboseError;
+use nom::multi::separated_nonempty_list;
+use nom::sequence::{pair, preceded, terminated};
 use nom_locate::LocatedSpan;
 
+use crate::ast::{Bind, Expr, SourceFile};
+use crate::ToByteSpan;
+
+mod expr;
 mod tokens;
 
 type Span<'a> = LocatedSpan<&'a str>;
-type IResult<'a, T> = nom::IResult<Span<'a>, T>;
+type IResult<'a, T> = nom::IResult<Span<'a>, T, VerboseError<Span<'a>>>;
 
-pub fn parse_expr<S: AsRef<str>>(expr: S) -> Result<(), String> {
-    let _text = Span::new(expr.as_ref());
-    unimplemented!()
-}
-
-fn map_spanned<'a, O1, O2, F, G>(
-    span: Span<'a>,
-    first: F,
-    second: G,
-) -> impl Fn(Span<'a>) -> IResult<O2>
-where
-    F: Fn(Span<'a>) -> IResult<O1>,
-    G: Fn((O1, ByteSpan)) -> O2,
-{
-    move |input| {
-        let byte_span = into_byte_span(span);
-        let (input, o1) = first(input)?;
-        Ok((input, second((o1, byte_span))))
+impl<'a> ToByteSpan for Span<'a> {
+    fn to_byte_span(&self) -> ByteSpan {
+        let start = self.offset;
+        let end = start + self.fragment.len().saturating_sub(1);
+        ByteSpan::new(ByteIndex(start as u32), ByteIndex(end as u32))
     }
 }
 
-fn into_byte_span(s: Span) -> ByteSpan {
-    let start = s.offset;
-    let end = start + s.fragment.len().saturating_sub(1);
-    ByteSpan::new(ByteIndex(start as u32), ByteIndex(end as u32))
+pub fn parse_expr<'a>(expr: &'a str) -> Result<Vec<Bind>, String> {
+    let text = Span::new(expr);
+    let bind = map_parser(
+        recognize(pair(take_until(";"), char(';'))),
+        expr::bind::bind,
+    );
+    let expr = separated_nonempty_list(multispace0, all_consuming(terminated(bind, multispace0)));
+    preceded(tokens::space, expr)(text)
+        .map(|(_, bind)| bind)
+        .map_err(|err| format!("{:?}", err))
+}
+
+pub fn parse_source_file<'a>(source: &'a str) -> Result<SourceFile, VerboseError<Span<'a>>> {
+    let _text = Span::new(source);
+    unimplemented!()
 }

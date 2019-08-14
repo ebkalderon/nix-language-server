@@ -5,16 +5,19 @@ use nom::bytes::complete::{tag, take};
 use nom::combinator::map;
 
 use crate::ast::tokens::Literal;
-use crate::parser::{map_spanned, IResult, Span};
+use crate::parser::{IResult, Span};
+use crate::ToByteSpan;
 
 mod path;
 
 pub fn literal(input: Span) -> IResult<Literal> {
-    let boolean = map_spanned(input, boolean, Literal::from);
-    let null = map_spanned(input, null, Literal::from);
-    let path = map_spanned(input, path, Literal::from);
-    let path_template = map_spanned(input, path_template, Literal::from);
-    alt((boolean, null, path, path_template))(input)
+    let boolean = map(boolean, |b| Literal::from((b, input)));
+    let null = map(null, |n| Literal::from((n, input)));
+    let path = map(path, |p| Literal::from((p, input)));
+    let temp = map(path_template, |t| {
+        Literal::PathTemplate(t, input.to_byte_span())
+    });
+    alt((boolean, null, path, temp))(input)
 }
 
 pub fn boolean(input: Span) -> IResult<bool> {

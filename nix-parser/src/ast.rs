@@ -117,6 +117,12 @@ pub struct ExprList {
     span: ByteSpan,
 }
 
+impl ExprList {
+    pub fn new(elems: Vec<Expr>, span: ByteSpan) -> Self {
+        ExprList { elems, span }
+    }
+}
+
 impl Display for ExprList {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         let elems: Vec<_> = self.elems.iter().map(ToString::to_string).collect();
@@ -134,6 +140,12 @@ impl PartialEq for ExprList {
 pub struct ExprSet {
     binds: Vec<Bind>,
     span: ByteSpan,
+}
+
+impl ExprSet {
+    pub fn new(binds: Vec<Bind>, span: ByteSpan) -> Self {
+        ExprSet { binds, span }
+    }
 }
 
 impl Display for ExprSet {
@@ -171,6 +183,12 @@ pub struct ExprUnary {
     op: UnaryOp,
     expr: Box<Expr>,
     span: ByteSpan,
+}
+
+impl ExprUnary {
+    pub fn new(op: UnaryOp, expr: Box<Expr>, span: ByteSpan) -> Self {
+        ExprUnary { op, expr, span }
+    }
 }
 
 impl Display for ExprUnary {
@@ -250,6 +268,12 @@ pub struct ExprBinary {
     lhs: Box<Expr>,
     rhs: Box<Expr>,
     span: ByteSpan,
+}
+
+impl ExprBinary {
+    pub fn new(op: UnaryOp, lhs: Box<Expr>, rhs: Box<Expr>, span: ByteSpan) -> Self {
+        ExprBinary { op, lhs, rhs, span }
+    }
 }
 
 impl Display for ExprBinary {
@@ -373,6 +397,12 @@ pub struct ExprLet {
     span: ByteSpan,
 }
 
+impl ExprLet {
+    pub fn new(binds: Vec<Bind>, span: ByteSpan) -> Self {
+        ExprLet { binds, span }
+    }
+}
+
 impl Display for ExprLet {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         let binds: Vec<_> = self.binds.iter().map(ToString::to_string).collect();
@@ -390,6 +420,12 @@ impl PartialEq for ExprLet {
 pub struct ExprRec {
     binds: Vec<Bind>,
     span: ByteSpan,
+}
+
+impl ExprRec {
+    pub fn new(binds: Vec<Bind>, span: ByteSpan) -> Self {
+        ExprRec { binds, span }
+    }
 }
 
 impl Display for ExprRec {
@@ -441,6 +477,22 @@ pub struct ExprProj {
     span: ByteSpan,
 }
 
+impl ExprProj {
+    pub fn new(
+        expr: Box<Expr>,
+        attr: AttrKey,
+        fallback: Option<Box<Expr>>,
+        span: ByteSpan,
+    ) -> Self {
+        ExprProj {
+            expr,
+            attr,
+            fallback,
+            span,
+        }
+    }
+}
+
 impl Display for ExprProj {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         if let Some(ref val) = self.fallback.as_ref() {
@@ -463,6 +515,22 @@ pub struct ExprIf {
     body: Box<Expr>,
     fallback: Box<Expr>,
     span: ByteSpan,
+}
+
+impl ExprIf {
+    pub fn new(
+        cond: Box<Expr>,
+        body: Box<Expr>,
+        fallback: Option<Box<Expr>>,
+        span: ByteSpan,
+    ) -> Self {
+        ExprIf {
+            cond,
+            body,
+            fallback,
+            span,
+        }
+    }
 }
 
 impl Display for ExprIf {
@@ -488,6 +556,16 @@ pub struct ExprOr {
     span: ByteSpan,
 }
 
+impl ExprOr {
+    pub fn new(expr: Box<Expr>, fallback: Box<Expr>, span: ByteSpan) -> Self {
+        ExprOr {
+            expr,
+            fallback,
+            span,
+        }
+    }
+}
+
 impl Display for ExprOr {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "{} or {}", self.expr, self.fallback)
@@ -505,6 +583,12 @@ pub struct ExprAssert {
     cond: Box<Expr>,
     expr: Box<Expr>,
     span: ByteSpan,
+}
+
+impl ExprAssert {
+    pub fn new(cond: Box<Expr>, expr: Box<Expr>, span: ByteSpan) -> Self {
+        ExprAssert { cond, expr, span }
+    }
 }
 
 impl Display for ExprAssert {
@@ -526,6 +610,12 @@ pub struct ExprWith {
     span: ByteSpan,
 }
 
+impl ExprWith {
+    pub fn new(with: Box<Expr>, expr: Box<Expr>, span: ByteSpan) -> Self {
+        ExprWith { with, expr, span }
+    }
+}
+
 impl Display for ExprWith {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "with {}; {}", self.with, self.expr)
@@ -543,6 +633,12 @@ pub struct ExprLetIn {
     binds: Vec<Bind>,
     body: Box<Expr>,
     span: ByteSpan,
+}
+
+impl ExprLetIn {
+    pub fn new(binds: Box<Expr>, body: Box<Expr>, span: ByteSpan) -> Self {
+        ExprLetIn { binds, body, span }
+    }
 }
 
 impl Display for ExprLetIn {
@@ -611,6 +707,12 @@ pub struct SimpleFnDecl {
     span: ByteSpan,
 }
 
+impl SimpleFnDecl {
+    pub fn new(name: Ident, body: Box<Expr>, span: ByteSpan) -> Self {
+        SimpleFnDecl { name, body, span }
+    }
+}
+
 impl Display for SimpleFnDecl {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "{}: {}", self.name, self.body)
@@ -628,6 +730,16 @@ pub struct FormalsFnDecl {
     formals: Vec<Formal>,
     body: Box<Expr>,
     span: ByteSpan,
+}
+
+impl FormalsFnDecl {
+    pub fn new(formals: Vec<Formal>, body: Box<Expr>, span: ByteSpan) -> Self {
+        FormalsFnDecl {
+            formals,
+            body,
+            span,
+        }
+    }
 }
 
 impl Display for FormalsFnDecl {
@@ -650,6 +762,24 @@ pub struct FormalsExtraFnDecl {
     formals: Vec<Formal>,
     body: Box<Expr>,
     span: ByteSpan,
+}
+
+impl FormalsExtraFnDecl {
+    pub fn new(
+        extra: Ident,
+        is_prefix: bool,
+        formals: Vec<Formal>,
+        body: Box<Expr>,
+        span: ByteSpan,
+    ) -> Self {
+        FormalsExtraFnDecl {
+            extra,
+            is_prefix,
+            formals,
+            body,
+            span,
+        }
+    }
 }
 
 impl Display for FormalsExtraFnDecl {
@@ -677,6 +807,16 @@ pub struct ExprFnApp {
     function: Box<Expr>,
     argument: Box<Expr>,
     span: ByteSpan,
+}
+
+impl ExprFnApp {
+    pub fn new(function: Box<Expr>, argument: Box<Expr>, span: ByteSpan) -> Self {
+        ExprFnApp {
+            function,
+            argument,
+            span,
+        }
+    }
 }
 
 impl Display for ExprFnApp {

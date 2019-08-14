@@ -1,6 +1,6 @@
 use codespan::ByteSpan;
 use nom::branch::alt;
-use nom::bytes::complete::take_until;
+use nom::bytes::complete::{take, take_until};
 use nom::character::complete::{char, multispace0};
 use nom::combinator::{all_consuming, map, map_parser, opt, recognize};
 use nom::error::context;
@@ -14,13 +14,7 @@ use crate::ToByteSpan;
 pub fn bind(input: Span) -> IResult<Bind> {
     let inherit = map(inherit, Bind::Inherit);
     let inherit_expr = map(inherit_expr, Bind::InheritExpr);
-
-    let comment = opt(terminated(tokens::comment, multispace0));
-    let simple = map(pair(comment, simple), |(comment, mut simple)| {
-        simple.comment = comment;
-        Bind::Simple(simple)
-    });
-
+    let simple = map(simple, Bind::Simple);
     alt((inherit, inherit_expr, simple))(input)
 }
 
@@ -36,10 +30,10 @@ fn simple(input: Span) -> IResult<BindSimple> {
     let equals = pair(char('='), tokens::space);
     let rhs = map_parser(take_until(";"), all_consuming(expr));
     let semi = pair(tokens::space, char(';'));
-    let bind = terminated(separated_pair(lhs, equals, rhs), semi);
+    let bind = pair(comment, terminated(separated_pair(lhs, equals, rhs), semi));
 
-    map(bind, |(name, expr)| {
-        BindSimple::new(None, name, expr, input.to_byte_span())
+    map(bind, |(comment, (name, expr))| {
+        BindSimple::new(comment, name, expr, input.to_byte_span())
     })(input)
 }
 

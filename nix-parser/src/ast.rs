@@ -271,7 +271,7 @@ pub struct ExprBinary {
 }
 
 impl ExprBinary {
-    pub fn new(op: UnaryOp, lhs: Box<Expr>, rhs: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(op: BinaryOp, lhs: Box<Expr>, rhs: Box<Expr>, span: ByteSpan) -> Self {
         ExprBinary { op, lhs, rhs, span }
     }
 }
@@ -518,12 +518,7 @@ pub struct ExprIf {
 }
 
 impl ExprIf {
-    pub fn new(
-        cond: Box<Expr>,
-        body: Box<Expr>,
-        fallback: Option<Box<Expr>>,
-        span: ByteSpan,
-    ) -> Self {
+    pub fn new(cond: Box<Expr>, body: Box<Expr>, fallback: Box<Expr>, span: ByteSpan) -> Self {
         ExprIf {
             cond,
             body,
@@ -636,7 +631,7 @@ pub struct ExprLetIn {
 }
 
 impl ExprLetIn {
-    pub fn new(binds: Box<Expr>, body: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(binds: Vec<Bind>, body: Box<Expr>, span: ByteSpan) -> Self {
         ExprLetIn { binds, body, span }
     }
 }

@@ -283,7 +283,7 @@ impl Display for Bind {
 
 #[derive(Clone, Debug)]
 pub struct BindSimple {
-    pub(crate) comment: Option<Comment>,
+    comment: Option<Comment>,
     name: IdentPath,
     expr: Box<Expr>,
     span: ByteSpan,

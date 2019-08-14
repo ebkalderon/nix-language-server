@@ -1,7 +1,7 @@
 use nom::branch::alt;
 use nom::bytes::complete::take_until;
 use nom::character::complete::{char, multispace0};
-use nom::combinator::{all_consuming, map, map_parser, opt};
+use nom::combinator::{all_consuming, cut, map, map_parser, opt};
 use nom::multi::many1;
 use nom::sequence::{delimited, pair, separated_pair, terminated};
 
@@ -26,7 +26,7 @@ fn simple(input: Span) -> IResult<BindSimple> {
     let lhs = map_parser(take_until("="), all_consuming(name));
     let equals = pair(char('='), tokens::space);
     let rhs = map_parser(take_until(";"), all_consuming(expr));
-    let semi = pair(tokens::space, char(';'));
+    let semi = pair(tokens::space, cut(char(';')));
     let bind = pair(comment, terminated(separated_pair(lhs, equals, rhs), semi));
 
     map(bind, |(comment, (name, expr))| {
@@ -47,7 +47,7 @@ fn inherit_expr(input: Span) -> IResult<BindInheritExpr> {
     let key_inherit = pair(tokens::keyword_inherit, tokens::space);
 
     let open_paren = pair(char('('), tokens::space);
-    let close_paren = pair(char(')'), tokens::space);
+    let close_paren = pair(cut(char(')')), tokens::space);
     let expr = map(delimited(open_paren, expr, close_paren), Box::new);
 
     let name = terminated(tokens::identifier, tokens::space);

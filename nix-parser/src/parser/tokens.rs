@@ -36,7 +36,7 @@ pub fn space(input: Span) -> IResult<()> {
 }
 
 pub fn identifier(input: Span) -> IResult<Ident> {
-    let first = context("invalid starting char", count(alt((alpha1, is_a("_-"))), 1));
+    let first = cut(count(alt((alpha1, is_a("_"))), 1));
     let rest = take_while(is_identifier_char);
     let ident = recognize(pair(first, rest));
     let verified = verify(ident, |span| !is_keyword(span));

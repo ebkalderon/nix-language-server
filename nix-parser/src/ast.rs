@@ -277,10 +277,21 @@ impl Display for Bind {
 
 #[derive(Clone, Debug)]
 pub struct BindSimple {
-    comment: Option<Comment>,
+    pub(crate) comment: Option<Comment>,
     name: IdentPath,
     expr: Box<Expr>,
     span: ByteSpan,
+}
+
+impl BindSimple {
+    pub fn new(c: Option<Comment>, n: IdentPath, e: Box<Expr>, s: ByteSpan) -> Self {
+        BindSimple {
+            comment: c,
+            name: n,
+            expr: e,
+            span: s,
+        }
+    }
 }
 
 impl Display for BindSimple {
@@ -305,6 +316,12 @@ pub struct BindInherit {
     span: ByteSpan,
 }
 
+impl BindInherit {
+    pub fn new(names: Vec<Ident>, span: ByteSpan) -> Self {
+        BindInherit { names, span }
+    }
+}
+
 impl Display for BindInherit {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         let names: Vec<_> = self.names.iter().map(ToString::to_string).collect();
@@ -323,6 +340,12 @@ pub struct BindInheritExpr {
     expr: Box<Expr>,
     names: Vec<Ident>,
     span: ByteSpan,
+}
+
+impl BindInheritExpr {
+    pub fn new(expr: Box<Expr>, names: Vec<Ident>, span: ByteSpan) -> Self {
+        BindInheritExpr { expr, names, span }
+    }
 }
 
 impl Display for BindInheritExpr {

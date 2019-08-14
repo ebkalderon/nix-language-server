@@ -5,7 +5,7 @@ use nom::bytes::complete::take_until;
 use nom::character::complete::{char, multispace0};
 use nom::combinator::{all_consuming, map_parser, peek, recognize};
 use nom::error::VerboseError;
-use nom::multi::separated_nonempty_list;
+use nom::multi::{many1, separated_nonempty_list};
 use nom::sequence::{pair, preceded, terminated};
 use nom_locate::LocatedSpan;
 
@@ -28,12 +28,8 @@ impl<'a> ToByteSpan for Span<'a> {
 
 pub fn parse_expr<'a>(expr: &'a str) -> Result<Vec<Bind>, String> {
     let text = Span::new(expr);
-    let bind = map_parser(
-        recognize(pair(take_until(";"), char(';'))),
-        expr::bind::bind,
-    );
-    let expr = separated_nonempty_list(multispace0, all_consuming(terminated(bind, multispace0)));
-    preceded(tokens::space, expr)(text)
+    let expr = many1(terminated(expr::bind::bind, multispace0));
+    all_consuming(preceded(tokens::space, expr))(text)
         .map(|(_, bind)| bind)
         .map_err(|err| format!("{:?}", err))
 }

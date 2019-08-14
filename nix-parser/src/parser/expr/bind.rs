@@ -79,14 +79,8 @@ mod tests {
             uncommented,
             BindSimple::new(
                 None,
-                IdentPath::from((
-                    vec![
-                        Ident::from(("foo", Span::new(""))),
-                        Ident::from(("bar", Span::new("")))
-                    ],
-                    Span::new("")
-                )),
-                Box::new(Expr::Literal(Literal::from((true, Span::new(""))))),
+                IdentPath::from((vec![Ident::from("foo"), Ident::from("bar")], Span::new(""))),
+                Box::new(Expr::Literal(Literal::from(true))),
                 Span::new("").to_byte_span(),
             )
         );
@@ -96,18 +90,9 @@ mod tests {
         assert_eq!(
             commented,
             BindSimple::new(
-                Some(Comment::from((
-                    "hello world \nthis is a   doc comment   ",
-                    Span::new("")
-                ))),
-                IdentPath::from((
-                    vec![
-                        Ident::from(("foo", Span::new(""))),
-                        Ident::from(("bar", Span::new("")))
-                    ],
-                    Span::new("")
-                )),
-                Box::new(Expr::Literal(Literal::from((true, Span::new(""))))),
+                Some(Comment::from("hello world \nthis is a   doc comment   ")),
+                IdentPath::from((vec![Ident::from("foo"), Ident::from("bar")], Span::new(""))),
+                Box::new(Expr::Literal(Literal::from(true))),
                 Span::new("").to_byte_span(),
             )
         );

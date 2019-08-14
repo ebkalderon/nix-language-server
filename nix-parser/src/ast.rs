@@ -290,12 +290,12 @@ pub struct BindSimple {
 }
 
 impl BindSimple {
-    pub fn new(c: Option<Comment>, n: IdentPath, e: Box<Expr>, s: ByteSpan) -> Self {
+    pub fn new(comment: Option<Comment>, name: IdentPath, expr: Box<Expr>, span: ByteSpan) -> Self {
         BindSimple {
-            comment: c,
-            name: n,
-            expr: e,
-            span: s,
+            comment,
+            name,
+            expr,
+            span,
         }
     }
 }

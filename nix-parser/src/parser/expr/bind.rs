@@ -1,7 +1,7 @@
 use nom::branch::alt;
 use nom::bytes::complete::take_until;
 use nom::character::complete::{char, multispace0};
-use nom::combinator::{all_consuming, cut, map, map_parser, opt};
+use nom::combinator::{cut, map, opt};
 use nom::multi::many1;
 use nom::sequence::{delimited, pair, separated_pair, terminated};
 
@@ -20,13 +20,10 @@ pub fn bind(input: Span) -> IResult<Bind> {
 fn simple(input: Span) -> IResult<BindSimple> {
     let comment = opt(terminated(tokens::comment, multispace0));
 
-    let name = terminated(tokens::ident_path, tokens::space);
-    let expr = map(expr, Box::new);
-
-    let lhs = map_parser(take_until("="), all_consuming(name));
+    let lhs = terminated(tokens::ident_path, tokens::space);
     let equals = pair(char('='), tokens::space);
-    let rhs = map_parser(take_until(";"), all_consuming(expr));
-    let semi = pair(tokens::space, cut(char(';')));
+    let rhs = map(expr, Box::new);
+    let semi = cut(char(';'));
     let bind = pair(comment, terminated(separated_pair(lhs, equals, rhs), semi));
 
     map(bind, |(comment, (name, expr))| {
@@ -60,8 +57,9 @@ fn inherit_expr(input: Span) -> IResult<BindInheritExpr> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use nom::combinator::all_consuming;
 
+    use super::*;
     use crate::ast::tokens::{Comment, Ident, IdentPath, Literal};
     use crate::ast::Expr;
     use crate::ToByteSpan;

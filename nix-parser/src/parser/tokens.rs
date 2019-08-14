@@ -2,7 +2,7 @@ pub use self::keywords::*;
 pub use self::literal::literal;
 
 use nom::branch::alt;
-use nom::bytes::complete::{is_a, tag, take_until, take_while};
+use nom::bytes::complete::{is_a, tag, take_until};
 use nom::character::complete::{alpha1, char, multispace0, multispace1, not_line_ending, space0};
 use nom::character::is_alphanumeric;
 use nom::combinator::{cut, map, recognize, verify};
@@ -36,18 +36,14 @@ pub fn space(input: Span) -> IResult<()> {
 }
 
 pub fn identifier(input: Span) -> IResult<Ident> {
-    let first = cut(count(alt((alpha1, is_a("_"))), 1));
-    let rest = take_while(is_identifier_char);
+    let first = count(alt((alpha1, is_a("_"))), 1);
+    let rest = many0(alt((alpha1, is_a("_-'"))));
     let ident = recognize(pair(first, rest));
     let verified = verify(ident, |span| !is_keyword(span));
     map(verified, |span: Span| Ident::from((span.fragment, span)))(input)
 }
 
 pub fn ident_path(input: Span) -> IResult<IdentPath> {
-    let ident_path = separated_nonempty_list(char('.'), cut(identifier));
+    let ident_path = separated_nonempty_list(char('.'), identifier);
     map(ident_path, |idents| IdentPath::from((idents, input)))(input)
-}
-
-fn is_identifier_char(c: char) -> bool {
-    is_alphanumeric(c as u8) || "_-'".contains(c)
 }

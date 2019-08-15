@@ -2,11 +2,10 @@ pub use self::keywords::*;
 pub use self::literal::literal;
 
 use nom::branch::alt;
-use nom::bytes::complete::{is_a, tag, take_until};
+use nom::bytes::complete::{is_a, tag, take_until, take_while};
 use nom::character::complete::{alpha1, char, multispace0, multispace1, not_line_ending, space0};
 use nom::character::is_alphanumeric;
 use nom::combinator::{cut, map, recognize, verify};
-use nom::error::context;
 use nom::multi::{count, many0, separated_nonempty_list};
 use nom::sequence::{delimited, pair, preceded};
 
@@ -37,7 +36,7 @@ pub fn space(input: Span) -> IResult<()> {
 
 pub fn identifier(input: Span) -> IResult<Ident> {
     let first = count(alt((alpha1, is_a("_"))), 1);
-    let rest = many0(alt((alpha1, is_a("_-'"))));
+    let rest = take_while(|c: char| is_alphanumeric(c as u8) || "_-'".contains(c));
     let ident = recognize(pair(first, rest));
     let verified = verify(ident, |span| !is_keyword(span));
     map(verified, |span: Span| Ident::from((span.fragment, span)))(input)

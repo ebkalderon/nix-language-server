@@ -12,7 +12,7 @@ pub struct Comment(String, ByteSpan);
 
 impl Display for Comment {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let lines: String = self.0.lines().map(|l| format!("# {}\n", l)).collect();
+        let lines: String = self.0.lines().map(|l| format!("#{}\n", l)).collect();
         write!(fmt, "{}", lines)
     }
 }

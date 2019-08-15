@@ -18,7 +18,7 @@ mod keywords;
 mod literal;
 
 pub fn comment(input: Span) -> IResult<Comment> {
-    let span = map(not_line_ending, |s: Span| s.fragment.trim_start());
+    let span = map(not_line_ending, |s: Span| s.fragment);
     let rows = separated_nonempty_list(line_ending, preceded(char('#'), span));
     let text = map(rows, |r| r.join("\n"));
     let single = map(text, |text| Comment::from((text, input)));

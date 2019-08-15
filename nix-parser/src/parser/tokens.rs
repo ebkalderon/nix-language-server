@@ -24,7 +24,7 @@ pub fn comment(input: Span) -> IResult<Comment> {
     let single = map(text, |text| Comment::from((text, input)));
 
     let span = delimited(tag("/*"), take_until("*/"), cut(tag("*/")));
-    let rows = map(span, |s: Span| s.fragment.lines().map(|l| l.trim_start()));
+    let rows = map(span, |s: Span| s.fragment.trim().lines().map(|l| l.trim()));
     let text = map(rows, |r| r.collect::<Vec<_>>().join("\n"));
     let multiple = map(text, |text| Comment::from((text, input)));
 

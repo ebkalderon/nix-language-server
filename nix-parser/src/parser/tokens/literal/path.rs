@@ -1,23 +1,27 @@
 use std::path::PathBuf;
 
 use nom::branch::alt;
-use nom::bytes::complete::{is_a, take_until};
-use nom::character::complete::{alphanumeric1, char, one_of};
+use nom::bytes::complete::{is_a, take_while1};
+use nom::character::{complete::char, is_alphanumeric};
 use nom::combinator::{cut, map, opt, recognize};
-use nom::multi::{many1, separated_nonempty_list};
-use nom::sequence::{delimited, pair};
+use nom::multi::separated_nonempty_list;
+use nom::sequence::{delimited, tuple};
 
 use crate::parser::{IResult, Span};
 
 pub fn path(input: Span) -> IResult<PathBuf> {
-    let prefix = opt(pair(opt(one_of("~.")), char('/')));
-    let segment = many1(alt((alphanumeric1, is_a("._-+"))));
-    let path = recognize(pair(prefix, separated_nonempty_list(char('/'), segment)));
+    let prefix = opt(alt((is_a("~"), path_segment)));
+    let segments = separated_nonempty_list(char('/'), path_segment);
+    let path = recognize(tuple((prefix, char('/'), segments)));
     map(path, |p: Span| PathBuf::from(p.fragment))(input)
 }
 
+fn path_segment(input: Span) -> IResult<Span> {
+    take_while1(|c: char| is_alphanumeric(c as u8) || "._-+".contains(c))(input)
+}
+
 pub fn path_template(input: Span) -> IResult<String> {
-    let name = recognize(many1(alt((alphanumeric1, is_a("/._-+")))));
+    let name = take_while1(|c: char| is_alphanumeric(c as u8) || "/._-+".contains(c));
     let template = delimited(char('<'), name, cut(char('>')));
     map(template, |tmp: Span| tmp.fragment.to_string())(input)
 }

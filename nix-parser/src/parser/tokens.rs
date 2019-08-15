@@ -4,7 +4,7 @@ pub use self::literal::literal;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_until, take_while};
 use nom::character::complete::{
-    anychar, char, line_ending, multispace0, multispace1, not_line_ending,
+    anychar, char, line_ending, multispace0, multispace1, not_line_ending, space0,
 };
 use nom::character::{is_alphabetic, is_alphanumeric};
 use nom::combinator::{cut, map, recognize, verify};
@@ -19,7 +19,7 @@ mod literal;
 
 pub fn comment(input: Span) -> IResult<Comment> {
     let span = map(not_line_ending, |s: Span| s.fragment);
-    let rows = separated_nonempty_list(line_ending, preceded(char('#'), span));
+    let rows = separated_nonempty_list(pair(line_ending, space0), preceded(char('#'), span));
     let text = map(rows, |r| r.join("\n"));
     let single = map(text, |text| Comment::from((text, input)));
 

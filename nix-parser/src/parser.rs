@@ -1,15 +1,16 @@
 use codespan::{ByteIndex, ByteSpan};
-use nom::character::complete::multispace0;
 use nom::combinator::all_consuming;
 use nom::error::VerboseError;
-use nom::multi::many1;
 use nom::sequence::{preceded, terminated};
 use nom_locate::LocatedSpan;
 
+use self::expr::bind;
+use self::partial::{many1_partial, verify_full, Partial};
 use crate::ast::{Bind, SourceFile};
 use crate::ToByteSpan;
 
 mod expr;
+mod partial;
 mod tokens;
 
 type Span<'a> = LocatedSpan<&'a str>;
@@ -23,12 +24,20 @@ impl<'a> ToByteSpan for Span<'a> {
     }
 }
 
-pub fn parse_expr<S: AsRef<str>>(expr: S) -> Result<Vec<Bind>, String> {
-    let text = Span::new(expr.as_ref());
-    let expr = many1(terminated(expr::bind::bind, multispace0));
-    all_consuming(preceded(tokens::space, expr))(text)
-        .map(|(_, bind)| bind)
-        .map_err(|err| format!("{:?}", err))
+pub fn parse_expr_partial<'a>(expr: &'a str) -> Result<Partial<'a, Vec<Bind>>, String> {
+    let text = Span::new(expr);
+    let expr = many1_partial(";", preceded(tokens::space_until_final_comment, bind::bind));
+    all_consuming(terminated(expr, tokens::space))(text)
+        .map(|(_, binds)| binds)
+        .map_err(|e| format!("{:?}", e))
+}
+
+pub fn parse_expr<'a>(expr: &'a str) -> Result<Vec<Bind>, String> {
+    let text = Span::new(expr);
+    let expr = many1_partial(";", preceded(tokens::space_until_final_comment, bind::bind));
+    all_consuming(terminated(verify_full(expr), tokens::space))(text)
+        .map(|(_, binds)| binds)
+        .map_err(|e| format!("{:?}", e))
 }
 
 pub fn parse_source_file<'a>(source: &'a str) -> Result<SourceFile, VerboseError<Span<'a>>> {

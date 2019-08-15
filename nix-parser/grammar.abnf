@@ -67,13 +67,15 @@ single-quote-string = 2*2(single-quote) single-quote-string-continue ; no backtr
 single-quote-string-continue =
     3*3(single-quote) single-quote-string-continue ; backtrack
   / 2*2(single-quote) dollar single-quote-string-continue ; backtrack
-  / dollar left-curly-bracket expr right-curly-bracket single-quote-string-continue ; no backtracking on second non-terminal
-  / 2*2(single-quote) ; terminated
+  / 2*2(single-quote) backslash single-quote-string-continue ; backtrack
+  / dollar left-curly-bracket expr right-curly-bracket single-quote-string-continue ; no backtracking on third non-terminal
+  / 2*2(single-quote) ; backtrack, terminated
+  / anychar single-quote-string-continue
 
 expr =
     with expr semicolon ; backtrack
   / assert expr semicolon ; backtrack
-  / let bindings in expr ; backtrack
+  / let set-bindings in expr ; backtrack
   ; function
   / left-curly-bracket formal-args right-curly-bracket [ at ident ] colon expr ; backtrack
   / ident at left-curly-bracket formal-args right-curly-bracket colon expr ; backtrack
@@ -128,6 +130,9 @@ atomic-expr =
 
   ; list
   / left-square-bracket list-elements right-square-bracket ; no backtracking on second non-terminal, soft-bail on second non-terminal terminating on third non-terminal
+
+  ; conditional
+  / if expr then expr else expr ; no backtracking on second non-terminal, soft-bail on second non-terminal terminating on third non-terminal; soft-bail on fourth non-terminal terminating on fifth non-terminal
 
   / path
   / url

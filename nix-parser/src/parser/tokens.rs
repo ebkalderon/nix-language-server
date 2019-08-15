@@ -17,6 +17,7 @@ use crate::ast::tokens::{Comment, Ident, IdentPath};
 
 mod keywords;
 mod literal;
+mod strings;
 
 pub fn comment(input: Span) -> IResult<Comment> {
     let span = map(not_line_ending, |s: Span| s.fragment);

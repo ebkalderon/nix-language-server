@@ -34,7 +34,7 @@ fn simple(input: Span) -> IResult<BindSimple> {
 fn inherit(input: Span) -> IResult<BindInherit> {
     let key_inherit = pair(tokens::keyword_inherit, tokens::space);
     let name = terminated(tokens::identifier, tokens::space);
-    let inherit = delimited(key_inherit, many1(name), char(';'));
+    let inherit = delimited(key_inherit, many1(name), cut(char(';')));
     map(inherit, |names| {
         BindInherit::new(names, input.to_byte_span())
     })(input)
@@ -48,7 +48,7 @@ fn inherit_expr(input: Span) -> IResult<BindInheritExpr> {
     let expr = map(delimited(open_paren, expr, close_paren), Box::new);
 
     let name = terminated(tokens::identifier, tokens::space);
-    let inherit = delimited(key_inherit, pair(expr, many1(name)), char(';'));
+    let inherit = delimited(key_inherit, pair(expr, many1(name)), cut(char(';')));
 
     map(inherit, |(expr, names)| {
         BindInheritExpr::new(expr, names, input.to_byte_span())

@@ -21,10 +21,9 @@ fn simple(input: Span) -> IResult<BindSimple> {
     let comment = opt(terminated(tokens::comment, multispace0));
 
     let lhs = terminated(tokens::ident_path, tokens::space);
-    let equals = pair(char('='), tokens::space);
-    let rhs = map(expr, Box::new);
-    let semi = cut(char(';'));
-    let bind = pair(comment, terminated(separated_pair(lhs, equals, rhs), semi));
+    let equals = pair(cut(char('=')), tokens::space);
+    let rhs = terminated(map(expr, Box::new), cut(char(';')));
+    let bind = pair(comment, separated_pair(lhs, equals, rhs));
 
     map(bind, |(comment, (name, expr))| {
         BindSimple::new(comment, name, expr, input.to_byte_span())

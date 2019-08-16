@@ -76,6 +76,37 @@ macro_rules! nix_token {
     };
 }
 
+/// Returns an AST constructed by `nix!()` and also the source expression as a static string.
+///
+/// This is useful for testing whether the parser and the `nix!()` macro both produce the same AST.
+///
+/// # Example
+///
+/// ```rust,edition2018
+/// # use nix_parser::nix_expr_and_str;
+/// # use nix_parser::ast::{tokens::Literal, Expr};
+/// #
+/// let (expr, s) = nix_expr_and_str!(~/foo/bar);
+/// assert_eq!(expr, Expr::Literal(Literal::Path("~/foo/bar".into(), Default::default())));
+/// assert_eq!(s, "~/foo/bar");
+/// ```
+#[doc(hidden)]
+#[macro_export]
+macro_rules! nix_expr_and_str {
+    ($($expr:tt)+) => {
+        (
+            $crate::nix_expr!($($expr)+),
+            stringify!($($expr)+)
+                .replace(" . ", ".")
+                .replace("- ", "-")
+                .replace("! ", "!")
+                .replace("/ /", "//")
+                .replace(" / ", "/")
+                .replace("$ ", "$")
+        )
+    };
+}
+
 #[doc(hidden)]
 #[macro_export]
 macro_rules! nix_expr {

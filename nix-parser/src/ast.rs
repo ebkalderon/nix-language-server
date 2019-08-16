@@ -6,6 +6,8 @@ use self::tokens::{Comment, Ident, IdentPath, Literal};
 
 pub mod tokens;
 
+mod macros;
+
 /// A source file with a top-level doc comment.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SourceFile {

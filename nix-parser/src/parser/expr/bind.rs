@@ -82,7 +82,7 @@ mod tests {
         assert_eq!(
             commented,
             BindSimple::new(
-                Some(Comment::from("hello world \nthis is a   doc comment   ")),
+                Some(Comment::from(" hello world \nthis is a   doc comment   ")),
                 IdentPath::from(vec!["foo", "bar"]),
                 Box::new(Expr::Literal(Literal::from(true))),
                 Span::new("").to_byte_span(),

@@ -38,14 +38,14 @@ impl FromStr for Expr {
 pub fn parse_expr(expr: &str) -> Result<Expr, String> {
     let text = Span::new(expr);
     all_consuming(preceded(tokens::space, verify_full(expr::expr)))(text)
-        .map(|(_, binds)| binds)
+        .map(|(_, expr)| expr)
         .map_err(|e| format!("{:?}", e))
 }
 
 pub fn parse_expr_partial(expr: &str) -> Result<Partial<Expr>, String> {
     let text = Span::new(expr);
     all_consuming(preceded(tokens::space, expr::expr))(text)
-        .map(|(_, binds)| binds)
+        .map(|(_, expr)| expr)
         .map_err(|e| format!("{:?}", e))
 }
 

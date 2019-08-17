@@ -35,6 +35,14 @@ impl FromStr for Expr {
     }
 }
 
+impl FromStr for SourceFile {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        parse_source_file(s)
+    }
+}
+
 pub fn parse_expr(expr: &str) -> Result<Expr, String> {
     let text = Span::new(expr);
     all_consuming(preceded(tokens::space, verify_full(expr::expr)))(text)

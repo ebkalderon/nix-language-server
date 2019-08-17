@@ -81,6 +81,23 @@ impl<'a, T> Partial<'a, T> {
     }
 }
 
+impl<'a, T> Extend<Partial<'a, T>> for Partial<'a, Vec<T>> {
+    fn extend<I>(&mut self, iter: I)
+    where
+        I: IntoIterator<Item = Partial<'a, T>>,
+    {
+        for partial in iter {
+            if let Some(errors) = partial.errors() {
+                self.extend_errors(errors);
+            }
+
+            if let Some(value) = partial.value {
+                self.values.push(value);
+            }
+        }
+    }
+}
+
 impl<'a, T> From<T> for Partial<'a, T> {
     fn from(value: T) -> Self {
         Partial::new(Some(value))

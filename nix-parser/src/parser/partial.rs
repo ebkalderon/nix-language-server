@@ -3,7 +3,7 @@ use std::iter::FromIterator;
 use nom::bytes::complete::{tag, take_until};
 use nom::combinator::{all_consuming, map, recognize};
 use nom::error::VerboseError;
-use nom::multi::many1;
+use nom::multi::{many0, many1};
 use nom::sequence::pair;
 
 use super::{IResult, Span};
@@ -126,8 +126,7 @@ where
     move |input| match f(input) {
         Ok((input, value)) => Ok((input, Partial::new(Some(value)))),
         Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
-            let (end, _) = nom::combinator::rest(input)?;
-            Ok((end, Partial::with_errors(None, e)))
+            Ok((input, Partial::with_errors(None, e)))
         }
         Err(err) => Err(err),
     }
@@ -147,6 +146,24 @@ where
             Err(err) => Err(err),
         }
     }
+}
+
+pub fn map_partial<'a, O1, O2, P, F>(partial: P, f: F) -> impl Fn(Span<'a>) -> IResult<Partial<O2>>
+where
+    P: Fn(Span<'a>) -> IResult<Partial<O1>>,
+    F: Fn(O1) -> O2,
+{
+    move |input| {
+        let (input, partial) = partial(input)?;
+        Ok((input, partial.map(&f)))
+    }
+}
+
+pub fn many0_partial<'a, O, F>(sep: &'a str, f: F) -> impl Fn(Span<'a>) -> IResult<Partial<Vec<O>>>
+where
+    F: Fn(Span<'a>) -> IResult<O>,
+{
+    move |input| map(many0(partial_until(sep, &f)), Partial::from_iter)(input)
 }
 
 pub fn many1_partial<'a, O, F>(sep: &'a str, f: F) -> impl Fn(Span<'a>) -> IResult<Partial<Vec<O>>>

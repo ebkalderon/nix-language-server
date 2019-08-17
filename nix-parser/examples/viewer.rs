@@ -2,7 +2,8 @@ use std::io::Read;
 use std::process;
 use std::{env, io};
 
-use nix_parser::parser::{parse_source_file, parse_source_file_partial};
+use nix_parser::ast::SourceFile;
+use nix_parser::parser::parse_source_file_partial;
 
 fn main() {
     let mut expr = String::new();
@@ -18,7 +19,7 @@ fn main() {
 }
 
 fn full(expr: &str) {
-    let expr = parse_source_file(&expr).unwrap_or_else(|e| {
+    let expr: SourceFile = expr.parse().unwrap_or_else(|e| {
         eprintln!("parse error: {:?}", e);
         process::exit(1);
     });

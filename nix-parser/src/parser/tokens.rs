@@ -32,8 +32,9 @@ pub fn comment(input: Span) -> IResult<Comment> {
 }
 
 pub fn space(input: Span) -> IResult<()> {
-    let comment = recognize(comment);
-    map(many0(alt((comment, multispace1))), |_| ())(input)
+    let line = delimited(char('#'), not_line_ending, line_ending);
+    let block = delimited(tag("/*"), take_until("*/"), cut(tag("*/")));
+    map(many0(alt((multispace1, line, block))), |_| ())(input)
 }
 
 pub fn space_until_final_comment(input: Span) -> IResult<()> {

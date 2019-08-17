@@ -24,8 +24,8 @@ pub fn comment(input: Span) -> IResult<Comment> {
     let single = map(text, |text| Comment::from((text, input)));
 
     let span = delimited(tag("/*"), take_until("*/"), cut(tag("*/")));
-    let rows = map(span, |s: Span| s.fragment.trim().lines().map(|l| l.trim()));
-    let text = map(rows, |r| r.collect::<Vec<_>>().join("\n"));
+    let rows = map(span, |s: Span| s.fragment.lines().collect::<Vec<_>>());
+    let text = map(rows, |r| r.join("\n"));
     let multiple = map(text, |text| Comment::from((text, input)));
 
     alt((single, multiple))(input)
@@ -59,4 +59,49 @@ pub fn identifier(input: Span) -> IResult<Ident> {
 pub fn ident_path(input: Span) -> IResult<IdentPath> {
     let ident_path = separated_nonempty_list(char('.'), identifier);
     map(ident_path, |idents| IdentPath::from((idents, input)))(input)
+}
+
+#[cfg(test)]
+mod tests {
+    use nom::combinator::all_consuming;
+
+    use super::*;
+
+    #[test]
+    fn comments() {
+        let string = Span::new("# hello world\n    #    long indent");
+        let (_, single_line) = all_consuming(comment)(string).expect("single-line comment failed");
+        assert_eq!(single_line, Comment::from(" hello world\n    long indent"));
+
+        let string = Span::new("/* foo\n   bar   \n   baz\n*/");
+        let (_, multi_line) = all_consuming(comment)(string).expect("multi-line comment failed");
+        assert_eq!(multi_line, Comment::from(" foo\n   bar   \n   baz"));
+    }
+
+    #[test]
+    fn comsuming_spaces() {
+        let string = Span::new(" \n\r\t# line comment\n/* block comment */stop here");
+        let (rest, _) = space(string).expect("all spaces failed");
+        assert_eq!(
+            rest,
+            Span {
+                offset: 38,
+                line: 3,
+                fragment: "stop here",
+                extra: (),
+            }
+        );
+
+        let string = Span::new("    # foo\n    /*\n  bar\n*/\n    # stop here\nbaz");
+        let (rest, _) = space_until_final_comment(string).expect("spaces until doc comment failed");
+        assert_eq!(
+            rest,
+            Span {
+                offset: 30,
+                line: 5,
+                fragment: "# stop here\nbaz",
+                extra: (),
+            }
+        );
+    }
 }

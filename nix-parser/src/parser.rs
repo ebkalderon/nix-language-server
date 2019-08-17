@@ -1,5 +1,7 @@
 pub use self::partial::Partial;
 
+use std::str::FromStr;
+
 use codespan::{ByteIndex, ByteSpan};
 use nom::combinator::all_consuming;
 use nom::error::VerboseError;
@@ -22,6 +24,14 @@ impl<'a> ToByteSpan for Span<'a> {
         let start = self.offset;
         let end = start + self.fragment.len().saturating_sub(1);
         ByteSpan::new(ByteIndex(start as u32), ByteIndex(end as u32))
+    }
+}
+
+impl FromStr for Expr {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        parse_expr(s)
     }
 }
 

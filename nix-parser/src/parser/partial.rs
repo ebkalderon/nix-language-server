@@ -160,11 +160,11 @@ pub fn verify_full<'a, O, F>(f: F) -> impl Fn(Span<'a>) -> IResult<O>
 where
     F: Fn(Span<'a>) -> IResult<Partial<O>>,
 {
-    move |input| match f(input) {
-        Ok((input, partial)) => partial
+    move |input| {
+        let (input, partial) = f(input)?;
+        partial
             .verify()
             .map(move |v| (input, v))
-            .map_err(nom::Err::Failure),
-        Err(err) => Err(err),
+            .map_err(nom::Err::Failure)
     }
 }

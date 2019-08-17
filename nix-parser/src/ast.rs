@@ -15,6 +15,22 @@ pub struct SourceFile {
     expr: Box<Expr>,
 }
 
+impl SourceFile {
+    pub fn new(comment: Option<Comment>, expr: Box<Expr>) -> Self {
+        SourceFile { comment, expr }
+    }
+}
+
+impl Display for SourceFile {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        if let Some(ref comment) = &self.comment {
+            write!(fmt, "{}\n{}", comment, self.expr)
+        } else {
+            write!(fmt, "{}", self.expr)
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     /// A parenthesized expression.

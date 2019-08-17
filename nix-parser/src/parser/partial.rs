@@ -244,7 +244,7 @@ where
         let (input, partial) = f(input)?;
         partial
             .verify()
-            .map(move |v| (input, v))
+            .map(move |value| (input, value))
             .map_err(nom::Err::Failure)
     }
 }

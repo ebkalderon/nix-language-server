@@ -91,8 +91,8 @@ impl<'a, T> Extend<Partial<'a, T>> for Partial<'a, Vec<T>> {
                 self.extend_errors(errors);
             }
 
-            if let Some(value) = partial.value {
-                self.values.push(value);
+            if let (Some(values), Some(value)) = (self.value.as_mut(), partial.value) {
+                values.push(value);
             }
         }
     }

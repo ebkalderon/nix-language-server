@@ -21,14 +21,14 @@ pub fn comment(input: Span) -> IResult<Comment> {
     let span = map(not_line_ending, |s: Span| s.fragment);
     let rows = separated_nonempty_list(pair(line_ending, space0), preceded(char('#'), span));
     let text = map(rows, |r| r.join("\n"));
-    let single = map(text, |text| Comment::from((text, input)));
+    let line = map(text, |text| Comment::from((text, input)));
 
     let span = delimited(tag("/*"), take_until("*/"), cut(tag("*/")));
     let rows = map(span, |s: Span| s.fragment.lines().collect::<Vec<_>>());
     let text = map(rows, |r| r.join("\n"));
-    let multiple = map(text, |text| Comment::from((text, input)));
+    let block = map(text, |text| Comment::from((text, input)));
 
-    alt((single, multiple))(input)
+    alt((line, block))(input)
 }
 
 pub fn space(input: Span) -> IResult<()> {

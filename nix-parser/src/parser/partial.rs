@@ -116,6 +116,9 @@ impl<'a, T> FromIterator<Partial<'a, T>> for Partial<'a, Vec<T>> {
     }
 }
 
+/// FIXME: Poorly tested, not sure if behaves as expected. Looking to turn this into a partial
+/// parser that comsumes until `EOF`, and `partial_until()` is simply a wrapper which restricts the
+/// input until a certain character is detected or given parser combinator succeeds.
 pub fn partial<'a, F, O>(f: F) -> impl Fn(Span<'a>) -> IResult<Partial<O>>
 where
     F: Fn(Span<'a>) -> IResult<O>,

@@ -1,12 +1,12 @@
 use nom::branch::alt;
-use nom::bytes::complete::take_until;
 use nom::character::complete::{char, multispace0};
 use nom::combinator::{cut, map, opt};
 use nom::multi::many1;
-use nom::sequence::{delimited, pair, separated_pair, terminated};
+use nom::sequence::{delimited, pair, preceded, separated_pair, terminated};
 
 use super::expr;
 use crate::ast::{Bind, BindInherit, BindInheritExpr, BindSimple};
+use crate::parser::partial::verify_full;
 use crate::parser::{tokens, IResult, Span};
 use crate::ToByteSpan;
 
@@ -22,7 +22,7 @@ fn simple(input: Span) -> IResult<BindSimple> {
 
     let lhs = terminated(tokens::ident_path, tokens::space);
     let equals = pair(cut(char('=')), tokens::space);
-    let rhs = terminated(map(expr, Box::new), cut(char(';')));
+    let rhs = terminated(map(verify_full(expr), Box::new), cut(char(';')));
     let bind = pair(comment, separated_pair(lhs, equals, rhs));
 
     map(bind, |(comment, (name, expr))| {
@@ -31,25 +31,27 @@ fn simple(input: Span) -> IResult<BindSimple> {
 }
 
 fn inherit(input: Span) -> IResult<BindInherit> {
+    let comment = opt(terminated(tokens::comment, multispace0));
     let key_inherit = pair(tokens::keyword_inherit, tokens::space);
     let name = terminated(tokens::identifier, tokens::space);
-    let inherit = delimited(key_inherit, many1(name), cut(char(';')));
-    map(inherit, |names| {
-        BindInherit::new(names, input.to_byte_span())
-    })(input)
+    let bind = preceded(comment, delimited(key_inherit, many1(name), cut(char(';'))));
+    map(bind, |names| BindInherit::new(names, input.to_byte_span()))(input)
 }
 
 fn inherit_expr(input: Span) -> IResult<BindInheritExpr> {
+    let comment = opt(terminated(tokens::comment, multispace0));
     let key_inherit = pair(tokens::keyword_inherit, tokens::space);
 
     let open_paren = pair(char('('), tokens::space);
     let close_paren = pair(cut(char(')')), tokens::space);
-    let expr = map(delimited(open_paren, expr, close_paren), Box::new);
+    let verified = verify_full(expr);
+    let expr = map(delimited(open_paren, verified, close_paren), Box::new);
 
     let name = terminated(tokens::identifier, tokens::space);
     let inherit = delimited(key_inherit, pair(expr, many1(name)), cut(char(';')));
+    let bind = preceded(comment, inherit);
 
-    map(inherit, |(expr, names)| {
+    map(bind, |(expr, names)| {
         BindInheritExpr::new(expr, names, input.to_byte_span())
     })(input)
 }

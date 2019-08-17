@@ -73,9 +73,9 @@ pub fn parse_source_file(source: &str) -> Result<SourceFile, String> {
 /// the source file comment.
 pub fn parse_source_file_partial(source: &str) -> Result<Partial<SourceFile>, String> {
     let text = Span::new(source);
-    let comment = preceded(tokens::space_until_final_comment, tokens::comment);
+    let comment = preceded(tokens::space_until_final_comment, opt(tokens::comment));
     let expr = map_partial(preceded(tokens::space, expr::expr), Box::new);
-    let file = map(pair(comment, expr), |(c, expr)| expr.map(|e| (Some(c), e)));
+    let file = map(pair(comment, expr), |(c, expr)| expr.map(|e| (c, e)));
     all_consuming(map_partial(file, |(c, e)| SourceFile::new(c, e)))(text)
         .map(|(_, source)| source)
         .map_err(|e| format!("{:?}", e))

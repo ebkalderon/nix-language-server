@@ -8,7 +8,7 @@ use nom::error::VerboseError;
 use nom::sequence::{pair, preceded};
 use nom_locate::LocatedSpan;
 
-use self::partial::verify_full;
+use self::partial::{map_partial, verify_full};
 use crate::ast::{Expr, SourceFile};
 use crate::ToByteSpan;
 
@@ -35,13 +35,6 @@ impl FromStr for Expr {
     }
 }
 
-pub fn parse_expr_partial(expr: &str) -> Result<Partial<Expr>, String> {
-    let text = Span::new(expr);
-    all_consuming(preceded(tokens::space, expr::expr))(text)
-        .map(|(_, binds)| binds)
-        .map_err(|e| format!("{:?}", e))
-}
-
 pub fn parse_expr(expr: &str) -> Result<Expr, String> {
     let text = Span::new(expr);
     all_consuming(preceded(tokens::space, verify_full(expr::expr)))(text)
@@ -49,12 +42,33 @@ pub fn parse_expr(expr: &str) -> Result<Expr, String> {
         .map_err(|e| format!("{:?}", e))
 }
 
+pub fn parse_expr_partial(expr: &str) -> Result<Partial<Expr>, String> {
+    let text = Span::new(expr);
+    all_consuming(preceded(tokens::space, expr::expr))(text)
+        .map(|(_, binds)| binds)
+        .map_err(|e| format!("{:?}", e))
+}
+
+/// FIXME: Need to either use `take_until` or perhaps `nom_locate::position()` to fix the span of
+/// the source file comment.
 pub fn parse_source_file(source: &str) -> Result<SourceFile, String> {
     let text = Span::new(source);
     let comment = preceded(tokens::space_until_final_comment, opt(tokens::comment));
     let expr = map(preceded(tokens::space, verify_full(expr::expr)), Box::new);
     let file = pair(comment, expr);
     all_consuming(map(file, |(comment, expr)| SourceFile::new(comment, expr)))(text)
+        .map(|(_, source)| source)
+        .map_err(|e| format!("{:?}", e))
+}
+
+/// FIXME: Need to either use `take_until` or perhaps `nom_locate::position()` to fix the span of
+/// the source file comment.
+pub fn parse_source_file_partial(source: &str) -> Result<Partial<SourceFile>, String> {
+    let text = Span::new(source);
+    let comment = preceded(tokens::space_until_final_comment, tokens::comment);
+    let expr = map_partial(preceded(tokens::space, expr::expr), Box::new);
+    let file = map(pair(comment, expr), |(c, expr)| expr.map(|e| (Some(c), e)));
+    all_consuming(map_partial(file, |(c, e)| SourceFile::new(c, e)))(text)
         .map(|(_, source)| source)
         .map_err(|e| format!("{:?}", e))
 }

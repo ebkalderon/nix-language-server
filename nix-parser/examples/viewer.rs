@@ -18,14 +18,13 @@ fn main() {
 }
 
 fn full(expr: &str) {
-    let binds = parse_expr(&expr).unwrap_or_else(|e| {
+    let expr = parse_expr(&expr).unwrap_or_else(|e| {
         eprintln!("parse error: {:?}", e);
         process::exit(1);
     });
 
-    println!("# Full AST:\n\n{:?}\n", binds);
-    let display: Vec<_> = binds.iter().map(ToString::to_string).collect();
-    println!("# Display:\n\n{}", display.join("\n"));
+    println!("# Full AST:\n\n{:?}\n", expr);
+    println!("# Display:\n\n{}", expr);
 }
 
 fn partial(expr: &str) {
@@ -34,15 +33,14 @@ fn partial(expr: &str) {
         process::exit(1);
     });
 
-    if let Some(ref binds) = partial.value() {
+    if let Some(ref expr) = partial.value() {
         if partial.has_errors() {
             println!("# Partial AST:\n\n{:?}\n", partial);
         } else {
-            println!("# Full AST:\n\n{:?}\n", binds);
+            println!("# Full AST:\n\n{:?}\n", expr);
         }
 
-        let display: Vec<_> = binds.iter().map(ToString::to_string).collect();
-        println!("# Display:\n\n{}", display.join("\n"));
+        println!("# Display:\n\n{}", expr);
     } else {
         eprintln!("No expression value produced");
         process::exit(1);

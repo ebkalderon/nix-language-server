@@ -3,9 +3,9 @@ pub use self::partial::Partial;
 use std::str::FromStr;
 
 use codespan::{ByteIndex, ByteSpan};
-use nom::combinator::all_consuming;
+use nom::combinator::{all_consuming, map, opt};
 use nom::error::VerboseError;
-use nom::sequence::preceded;
+use nom::sequence::{pair, preceded};
 use nom_locate::LocatedSpan;
 
 use self::partial::verify_full;
@@ -49,7 +49,12 @@ pub fn parse_expr(expr: &str) -> Result<Expr, String> {
         .map_err(|e| format!("{:?}", e))
 }
 
-pub fn parse_source_file<'a>(source: &'a str) -> Result<SourceFile, VerboseError<Span<'a>>> {
-    let _text = Span::new(source);
-    unimplemented!()
+pub fn parse_source_file(source: &str) -> Result<SourceFile, String> {
+    let text = Span::new(source);
+    let comment = preceded(tokens::space_until_final_comment, opt(tokens::comment));
+    let expr = map(preceded(tokens::space, verify_full(expr::expr)), Box::new);
+    let file = pair(comment, expr);
+    all_consuming(map(file, |(comment, expr)| SourceFile::new(comment, expr)))(text)
+        .map(|(_, source)| source)
+        .map_err(|e| format!("{:?}", e))
 }

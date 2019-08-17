@@ -1,10 +1,12 @@
+pub use self::partial::Partial;
+
 use codespan::{ByteIndex, ByteSpan};
 use nom::combinator::all_consuming;
 use nom::error::VerboseError;
 use nom::sequence::preceded;
 use nom_locate::LocatedSpan;
 
-use self::partial::{verify_full, Partial};
+use self::partial::verify_full;
 use crate::ast::{Expr, SourceFile};
 use crate::ToByteSpan;
 

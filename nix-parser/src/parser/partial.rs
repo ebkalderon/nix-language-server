@@ -15,6 +15,7 @@ pub struct Partial<'a, T> {
 }
 
 impl<'a, T> Partial<'a, T> {
+    /// Constructs a new `Partial<T>` with the given initial value.
     pub fn new(value: Option<T>) -> Self {
         Partial {
             value,
@@ -22,14 +23,17 @@ impl<'a, T> Partial<'a, T> {
         }
     }
 
+    /// Constructs a new `Partial<T>` with the given initial value and a stack of errors.
     pub fn with_errors(value: Option<T>, errors: VerboseError<Span<'a>>) -> Self {
         Partial { value, errors }
     }
 
+    /// Returns whether this partial value contains errors.
     pub fn has_errors(&self) -> bool {
         !self.errors.errors.is_empty()
     }
 
+    /// Returns the errors associated with the partial value, if any.
     pub fn errors(&self) -> Option<VerboseError<Span<'a>>> {
         if self.has_errors() {
             Some(self.errors.clone())
@@ -38,14 +42,36 @@ impl<'a, T> Partial<'a, T> {
         }
     }
 
+    /// Appends the given error to the error stack contained in this partial value.
     pub fn extend_errors(&mut self, error: VerboseError<Span<'a>>) {
         self.errors.errors.extend(error.errors);
     }
 
+    /// Returns the contained partial value, if any.
     pub fn value(&self) -> Option<&T> {
         self.value.as_ref()
     }
 
+    /// Maps a `Partial<T>` to `Partial<U>` by applying a function to a contained value.
+    ///
+    /// This transformation is applied regardless of whether this `Partial<T>` contains errors.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use nix_parser::parser::Partial;
+    /// # use nom::error::VerboseError;
+    /// # use nom_locate::LocatedSpan;
+    /// # fn main() -> Result<(), VerboseError<LocatedSpan<&'static str>>> {
+    /// let partial_string = Partial::from(String::from("Hello, world!"));
+    /// let partial_len = partial_string.map(|s| s.len());
+    /// // We assert here that the contained partial value has no errors.
+    /// let full_len = partial_len.verify()?;
+    ///
+    /// assert_eq!(full_len, 13);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn map<U, F>(self, f: F) -> Partial<'a, U>
     where
         F: FnOnce(T) -> U,
@@ -72,6 +98,24 @@ impl<'a, T> Partial<'a, T> {
         }
     }
 
+    /// Transforms the `Partial<T>` into a `Result<T, VerboseError<Span>>`, asserting that the
+    /// contained value exists and has no errors.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use nix_parser::parser::Partial;
+    /// # use nom::error::VerboseError;
+    /// # use nom_locate::LocatedSpan;
+    /// # fn main() -> Result<(), VerboseError<LocatedSpan<&'static str>>> {
+    /// let partial = Partial::new(Some(123));
+    /// assert_eq!(Ok(123), partial.verify());
+    ///
+    /// let partial: Partial<u32> = Partial::new(None);
+    /// assert!(partial.verify().is_err());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn verify(self) -> Result<T, VerboseError<Span<'a>>> {
         match self.value {
             Some(_) if self.has_errors() => Err(self.errors),
@@ -81,6 +125,7 @@ impl<'a, T> Partial<'a, T> {
     }
 }
 
+/// Extend the contents of a `Partial<Vec<T>>` from an iterator of `Partial<T>`.
 impl<'a, T> Extend<Partial<'a, T>> for Partial<'a, Vec<T>> {
     fn extend<I>(&mut self, iter: I)
     where
@@ -110,6 +155,7 @@ impl<'a, T> From<Option<T>> for Partial<'a, T> {
     }
 }
 
+/// Collect an iterator of `Partial<T>` into a `Partial<Vec<T>>`.
 impl<'a, T> FromIterator<Partial<'a, T>> for Partial<'a, Vec<T>> {
     fn from_iter<I>(iter: I) -> Self
     where

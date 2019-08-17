@@ -93,13 +93,25 @@ mod tests {
         );
 
         let string = Span::new("    # foo\n    /*\n  bar\n*/\n    # stop here\nbaz");
-        let (rest, _) = space_until_final_comment(string).expect("spaces until doc comment failed");
+        let (rest, _) = space_until_final_comment(string).expect("spaces till last comment failed");
         assert_eq!(
             rest,
             Span {
                 offset: 30,
                 line: 5,
                 fragment: "# stop here\nbaz",
+                extra: (),
+            }
+        );
+
+        let string = Span::new(" \n\r\tbaz");
+        let (rest, _) = space_until_final_comment(string).expect("spaces without comments failed");
+        assert_eq!(
+            rest,
+            Span {
+                offset: 4,
+                line: 2,
+                fragment: "baz",
                 extra: (),
             }
         );

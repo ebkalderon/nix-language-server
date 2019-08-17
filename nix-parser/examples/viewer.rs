@@ -10,12 +10,7 @@ fn main() {
         .read_to_string(&mut expr)
         .expect("Failed to read expression from stdin");
 
-    let is_partial = env::args()
-        .find(|arg| arg == "--partial")
-        .map(|_| true)
-        .unwrap_or(false);
-
-    if is_partial {
+    if env::args().find(|arg| arg == "--partial").is_some() {
         partial(&expr);
     } else {
         full(&expr);

@@ -50,7 +50,7 @@ pub enum Expr {
     /// `-12`
     /// `!15.0`
     Unary(ExprUnary),
-    /// `1 + 1`, `true && false`, `"foo" ++ hello + "bar"`, `"foo ${hello} bar"`
+    /// `1 + 1`, `true && false`, `"foo" + hello + "bar"`, `"foo ${hello} bar"`
     Binary(ExprBinary),
 
     /// `let { foo = "bar"; }`

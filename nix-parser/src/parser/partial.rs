@@ -1,9 +1,10 @@
 use std::iter::FromIterator;
 
 use nom::bytes::complete::{tag, take_until};
+use nom::character::complete::anychar;
 use nom::combinator::{all_consuming, map, recognize};
 use nom::error::VerboseError;
-use nom::multi::{many0, many1};
+use nom::multi::{many0, many1, many_till};
 use nom::sequence::pair;
 
 use super::{IResult, Span};
@@ -192,6 +193,23 @@ where
             Ok((input, Partial::with_errors(None, e)))
         }
         Err(err) => Err(err),
+    }
+}
+
+pub fn partial_till<'a, P, F, O1, O2>(sep: P, f: F) -> impl Fn(Span<'a>) -> IResult<Partial<O2>>
+where
+    P: Fn(Span<'a>) -> IResult<O1>,
+    F: Fn(Span<'a>) -> IResult<O2>,
+{
+    move |input| {
+        let (remaining, input) = recognize(many_till(anychar, &sep))(input)?;
+        match f(input) {
+            Ok((_, value)) => Ok((remaining, Partial::new(Some(value)))),
+            Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
+                Ok((remaining, Partial::with_errors(None, e)))
+            }
+            Err(err) => Err(err),
+        }
     }
 }
 

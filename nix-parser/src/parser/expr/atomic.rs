@@ -13,10 +13,9 @@ use crate::parser::partial::{
 use crate::parser::{tokens, IResult, Span};
 use crate::ToByteSpan;
 
-pub fn paren(input: Span) -> IResult<ExprParen> {
-    let expr = verify_full(expr);
+pub fn paren(input: Span) -> IResult<Partial<ExprParen>> {
     let paren = delimited(pair(char('('), tokens::space), expr, cut(char(')')));
-    map(paren, |e| ExprParen::new(Box::new(e), input.to_byte_span()))(input)
+    map_partial(paren, |e| ExprParen::new(Box::new(e), input.to_byte_span()))(input)
 }
 
 pub fn set(input: Span) -> IResult<Partial<ExprSet>> {

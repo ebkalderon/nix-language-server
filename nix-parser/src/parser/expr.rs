@@ -14,7 +14,7 @@ pub fn expr(input: Span) -> IResult<Partial<Expr>> {
 }
 
 fn atomic(input: Span) -> IResult<Partial<Expr>> {
-    let paren = map(map(atomic::paren, Expr::Paren), Partial::from);
+    let paren = map_partial(atomic::paren, Expr::Paren);
     let set = map_partial(atomic::set, Expr::Set);
     let literal = map(map(tokens::literal, Expr::Literal), Partial::from);
     let attr = map(map(tokens::ident_path, Expr::Attr), Partial::from);

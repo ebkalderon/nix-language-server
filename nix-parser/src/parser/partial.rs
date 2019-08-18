@@ -132,7 +132,7 @@ impl<'a, T> Extend<Partial<'a, T>> for Partial<'a, Vec<T>> {
     where
         I: IntoIterator<Item = Partial<'a, T>>,
     {
-        let mut iter = iter.into_iter();
+        let iter = iter.into_iter();
 
         if let (Some(values), (_, Some(bound))) = (self.value.as_mut(), iter.size_hint()) {
             let additional = bound.saturating_sub(values.len());
@@ -169,7 +169,7 @@ impl<'a, T> FromIterator<Partial<'a, T>> for Partial<'a, Vec<T>> {
     where
         I: IntoIterator<Item = Partial<'a, T>>,
     {
-        let mut iter = iter.into_iter();
+        let iter = iter.into_iter();
 
         let (_, capacity) = iter.size_hint();
         let mut values = Vec::with_capacity(capacity.unwrap_or(0));

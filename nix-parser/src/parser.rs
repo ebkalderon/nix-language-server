@@ -57,8 +57,6 @@ pub fn parse_expr_partial(expr: &str) -> Result<Partial<Expr>, String> {
         .map_err(|e| format!("{:?}", e))
 }
 
-/// FIXME: Need to either use `take_until` or perhaps `nom_locate::position()` to fix the span of
-/// the source file comment.
 pub fn parse_source_file(source: &str) -> Result<SourceFile, String> {
     let text = Span::new(source);
     let comment = preceded(tokens::space_until_final_comment, opt(tokens::comment));
@@ -69,8 +67,6 @@ pub fn parse_source_file(source: &str) -> Result<SourceFile, String> {
         .map_err(|e| format!("{:?}", e))
 }
 
-/// FIXME: Need to either use `take_until` or perhaps `nom_locate::position()` to fix the span of
-/// the source file comment.
 pub fn parse_source_file_partial(source: &str) -> Result<Partial<SourceFile>, String> {
     let text = Span::new(source);
     let comment = preceded(tokens::space_until_final_comment, opt(tokens::comment));

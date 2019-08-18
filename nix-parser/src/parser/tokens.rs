@@ -10,6 +10,7 @@ use nom::character::{is_alphabetic, is_alphanumeric};
 use nom::combinator::{cut, map, recognize, verify};
 use nom::multi::{many0, separated_nonempty_list};
 use nom::sequence::{delimited, pair, preceded, terminated};
+use nom::Slice;
 
 use super::{IResult, Span};
 use crate::ast::tokens::{Comment, Ident, IdentPath};
@@ -20,15 +21,17 @@ mod literal;
 pub fn comment(input: Span) -> IResult<Comment> {
     let span = map(not_line_ending, |s: Span| s.fragment);
     let rows = separated_nonempty_list(pair(line_ending, space0), preceded(char('#'), span));
-    let text = map(rows, |r| r.join("\n"));
-    let line = map(text, |text| Comment::from((text, input)));
+    let line = map(rows, |r| r.join("\n"));
 
     let span = delimited(tag("/*"), take_until("*/"), cut(tag("*/")));
     let rows = map(span, |s: Span| s.fragment.lines().collect::<Vec<_>>());
-    let text = map(rows, |r| r.join("\n"));
-    let block = map(text, |text| Comment::from((text, input)));
+    let block = map(rows, |r| r.join("\n"));
 
-    alt((line, block))(input)
+    let (remainder, comment) = alt((line, block))(input)?;
+    let comment_len = remainder.offset - input.offset;
+    let span = input.slice(..comment_len);
+
+    Ok((remainder, Comment::from((comment, span))))
 }
 
 pub fn space(input: Span) -> IResult<()> {

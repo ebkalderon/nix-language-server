@@ -1,5 +1,6 @@
 use std::iter::FromIterator;
 
+use codespan::ByteSpan;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_until};
 use nom::character::complete::anychar;
@@ -7,8 +8,10 @@ use nom::combinator::{all_consuming, map, recognize};
 use nom::error::{ErrorKind, VerboseError, VerboseErrorKind};
 use nom::multi::{many0, many1, many_till};
 use nom::sequence::{pair, terminated};
+use nom::Slice;
 
 use super::{IResult, Span};
+use crate::ToByteSpan;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partial<'a, T> {
@@ -235,6 +238,23 @@ where
     move |input| {
         let (input, partial) = partial(input)?;
         Ok((input, partial.map(&f)))
+    }
+}
+
+pub fn map_partial_spanned<'a, O1, O2, P, F>(
+    input: Span<'a>,
+    partial: P,
+    f: F,
+) -> impl Fn(Span<'a>) -> IResult<Partial<O2>>
+where
+    P: Fn(Span<'a>) -> IResult<Partial<O1>>,
+    F: Fn(ByteSpan, O1) -> O2,
+{
+    move |input| {
+        let (remainder, partial) = partial(input)?;
+        let partial_len = remainder.offset - input.offset;
+        let span = input.slice(..partial_len).to_byte_span();
+        Ok((remainder, partial.map(|p| f(span, p))))
     }
 }
 

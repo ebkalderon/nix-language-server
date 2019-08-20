@@ -35,14 +35,6 @@ impl FromStr for Expr {
     }
 }
 
-impl FromStr for SourceFile {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        parse_source_file(s)
-    }
-}
-
 pub fn parse_expr(expr: &str) -> Result<Expr, String> {
     let text = Span::new(expr);
     all_consuming(preceded(tokens::space, verify_full(expr::expr)))(text)
@@ -55,6 +47,14 @@ pub fn parse_expr_partial(expr: &str) -> Result<Partial<Expr>, String> {
     all_consuming(preceded(tokens::space, expr::expr))(text)
         .map(|(_, expr)| expr)
         .map_err(|e| format!("{:?}", e))
+}
+
+impl FromStr for SourceFile {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        parse_source_file(s)
+    }
 }
 
 pub fn parse_source_file(source: &str) -> Result<SourceFile, String> {

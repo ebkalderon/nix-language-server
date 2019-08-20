@@ -48,11 +48,11 @@ fn inherit_expr(input: Span) -> IResult<Partial<BindInheritExpr>> {
     let key_inherit = pair(tokens::keyword_inherit, tokens::space);
 
     let open_paren = pair(char('('), tokens::space);
-    let close_paren = pair(cut(char(')')), tokens::space);
-    let expr = map_partial(delimited(open_paren, expr, close_paren), Box::new);
+    let close_paren = pair(char(')'), tokens::space);
+    let expr = expect_terminated(preceded(open_paren, expr), close_paren);
 
     let name = terminated(tokens::identifier, tokens::space);
-    let bind = preceded(key_inherit, pair(expr, many1(name)));
+    let bind = preceded(key_inherit, pair(map_partial(expr, Box::new), many1(name)));
     map(bind, |(expr, names)| {
         expr.map(|expr| BindInheritExpr::new(expr, names, input.to_byte_span()))
     })(input)
@@ -70,27 +70,27 @@ mod tests {
     #[test]
     fn simple_binds() {
         let string = Span::new("foo.bar = true;");
-        let (_, uncommented) = all_consuming(simple)(string).unwrap();
+        let (_, uncommented) = all_consuming(bind)(string).unwrap();
         assert_eq!(
             uncommented,
-            Partial::from(BindSimple::new(
+            Partial::from(Bind::Simple(BindSimple::new(
                 None,
                 IdentPath::from(vec!["foo", "bar"]),
                 Box::new(Expr::Literal(Literal::from(true))),
                 Span::new("").to_byte_span(),
-            ))
+            )))
         );
 
         let string = Span::new("# hello world \n #this is a   doc comment   \n  foo.bar = true;");
-        let (_, commented) = all_consuming(simple)(string).unwrap();
+        let (_, commented) = all_consuming(bind)(string).unwrap();
         assert_eq!(
             commented,
-            Partial::from(BindSimple::new(
+            Partial::from(Bind::Simple(BindSimple::new(
                 Some(Comment::from(" hello world \nthis is a   doc comment   ")),
                 IdentPath::from(vec!["foo", "bar"]),
                 Box::new(Expr::Literal(Literal::from(true))),
                 Span::new("").to_byte_span(),
-            ))
+            )))
         );
     }
 }

@@ -6,7 +6,7 @@ use nom::character::complete::anychar;
 use nom::combinator::{all_consuming, map, recognize};
 use nom::error::{ErrorKind, VerboseError, VerboseErrorKind};
 use nom::multi::{many0, many1, many_till};
-use nom::sequence::pair;
+use nom::sequence::{pair, terminated};
 
 use super::{IResult, Span};
 
@@ -251,6 +251,25 @@ where
             }
             Err(err) => Err(err),
         }
+    }
+}
+
+pub fn expect_terminated<'a, O1, O2, F, G>(
+    f: F,
+    term: G,
+) -> impl Fn(Span<'a>) -> IResult<Partial<O1>>
+where
+    F: Fn(Span<'a>) -> IResult<Partial<O1>>,
+    G: Fn(Span<'a>) -> IResult<O2>,
+{
+    move |input| match terminated(&f, &term)(input) {
+        Ok((remaining, partial)) => Ok((remaining, partial)),
+        Err(nom::Err::Error(e)) => {
+            let (remaining, mut partial) = f(input)?;
+            partial.extend_errors(e);
+            Ok((remaining, partial))
+        }
+        Err(e) => Err(e),
     }
 }
 

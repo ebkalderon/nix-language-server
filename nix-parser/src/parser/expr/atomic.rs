@@ -10,23 +10,13 @@ use nom::sequence::{delimited, pair, preceded, terminated};
 
 use super::{bind, expr};
 use crate::ast::{ExprParen, ExprSet};
-use crate::parser::partial::{map_partial, partial_or, Partial};
+use crate::parser::partial::{expect_terminated, map_partial, partial_or, Partial};
 use crate::parser::{tokens, IResult, Span};
 use crate::ToByteSpan;
 
 pub fn paren(input: Span) -> IResult<Partial<ExprParen>> {
-    let paren = delimited(pair(char('('), tokens::space), expr, char(')'));
-    let valid = map_partial(paren, |e| ExprParen::new(Box::new(e), input.to_byte_span()));
-
-    let invalid = map(preceded(pair(char('('), tokens::space), expr), |mut expr| {
-        let err = VerboseError {
-            errors: vec![(input, VerboseErrorKind::Char(')'))],
-        };
-        expr.extend_errors(err);
-        expr.map(|expr| ExprParen::new(Box::new(expr), input.to_byte_span()))
-    });
-
-    alt((valid, invalid))(input)
+    let paren = expect_terminated(preceded(pair(char('('), tokens::space), expr), char(')'));
+    map_partial(paren, |e| ExprParen::new(Box::new(e), input.to_byte_span()))(input)
 }
 
 pub fn set(input: Span) -> IResult<Partial<ExprSet>> {

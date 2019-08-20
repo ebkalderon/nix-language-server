@@ -1,18 +1,14 @@
 use std::iter::FromIterator;
 
-use nom::branch::alt;
-use nom::bytes::complete::take;
 use nom::character::complete::char;
-use nom::combinator::{cut, map, map_parser, recognize};
-use nom::error::{ErrorKind, VerboseError, VerboseErrorKind};
-use nom::multi::{many0, many_till};
-use nom::sequence::{delimited, pair, preceded, terminated};
+use nom::combinator::map;
+use nom::multi::many_till;
+use nom::sequence::{pair, preceded};
 
 use super::{bind, expr};
 use crate::ast::{ExprParen, ExprSet};
 use crate::parser::partial::{expect_terminated, map_partial_spanned, Partial};
 use crate::parser::{tokens, IResult, Span};
-use crate::ToByteSpan;
 
 pub fn paren(input: Span) -> IResult<Partial<ExprParen>> {
     let paren = expect_terminated(preceded(pair(char('('), tokens::space), expr), char(')'));

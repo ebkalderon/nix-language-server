@@ -1,13 +1,11 @@
 use std::iter::FromIterator;
 
 use codespan::ByteSpan;
-use nom::branch::alt;
-use nom::bytes::complete::{tag, take_until};
 use nom::character::complete::anychar;
-use nom::combinator::{all_consuming, map, recognize};
+use nom::combinator::recognize;
 use nom::error::{ErrorKind, VerboseError, VerboseErrorKind};
-use nom::multi::{many0, many1, many_till};
-use nom::sequence::{pair, terminated};
+use nom::multi::many_till;
+use nom::sequence::terminated;
 use nom::Slice;
 
 use super::{IResult, Span};

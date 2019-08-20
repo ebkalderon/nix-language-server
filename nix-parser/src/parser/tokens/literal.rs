@@ -7,7 +7,6 @@ use nom::combinator::map;
 
 use crate::ast::tokens::Literal;
 use crate::parser::{map_spanned, IResult, Span};
-use crate::ToByteSpan;
 
 mod number;
 mod path;

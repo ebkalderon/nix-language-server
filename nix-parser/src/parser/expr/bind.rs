@@ -1,17 +1,14 @@
 use nom::branch::alt;
-use nom::character::complete::{anychar, char, multispace0};
-use nom::combinator::{cut, map, opt, recognize};
+use nom::character::complete::{char, multispace0};
+use nom::combinator::{map, opt};
 use nom::error::ErrorKind;
-use nom::multi::{many1, many_till};
-use nom::sequence::{delimited, pair, preceded, terminated, tuple};
+use nom::multi::many1;
+use nom::sequence::{pair, preceded, terminated, tuple};
 
 use super::expr;
 use crate::ast::{Bind, BindInherit, BindInheritExpr, BindSimple};
-use crate::parser::partial::{
-    expect_terminated, map_err_partial, map_partial, map_partial_spanned, Partial,
-};
+use crate::parser::partial::{expect_terminated, map_err_partial, map_partial, Partial};
 use crate::parser::{map_spanned, tokens, IResult, Span};
-use crate::ToByteSpan;
 
 pub fn bind(input: Span) -> IResult<Partial<Bind>> {
     let inherit = map_partial(inherit, Bind::Inherit);

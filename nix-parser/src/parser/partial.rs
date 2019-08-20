@@ -252,7 +252,7 @@ where
 
 /// Combinator which combines the functionality of `map_partial()` and `map_spanned()`.
 ///
-/// This is like `map_partial()` except it also includes a `ByteSpan` for AST nodes.
+/// This is like `map_partial()` except it also includes a `ByteSpan` based on the consumed input.
 pub fn map_partial_spanned<'a, O1, O2, P, F>(
     input: Span<'a>,
     partial: P,

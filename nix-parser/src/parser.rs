@@ -78,6 +78,8 @@ pub fn parse_source_file_partial(source: &str) -> Result<Partial<SourceFile>, St
         .map_err(|e| format!("{:?}", e))
 }
 
+/// Combinator which behaves like `nom::combinator::map()`, except it also includes a `ByteSpan`
+/// based on the consumed input.
 fn map_spanned<'a, O1, O2, P, F>(
     input: Span<'a>,
     parser: P,

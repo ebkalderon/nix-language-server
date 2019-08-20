@@ -1,9 +1,10 @@
 use std::iter::FromIterator;
 
+use nom::branch::alt;
 use nom::bytes::complete::{tag, take_until};
 use nom::character::complete::anychar;
 use nom::combinator::{all_consuming, map, recognize};
-use nom::error::VerboseError;
+use nom::error::{ErrorKind, VerboseError, VerboseErrorKind};
 use nom::multi::{many0, many1, many_till};
 use nom::sequence::pair;
 
@@ -250,18 +251,26 @@ where
     }
 }
 
-pub fn many0_partial<'a, O, F>(sep: &'a str, f: F) -> impl Fn(Span<'a>) -> IResult<Partial<Vec<O>>>
+pub fn partial_or<'a, O, F>(
+    partial: F,
+    skip_to: &'a str,
+    error: ErrorKind,
+) -> impl Fn(Span<'a>) -> IResult<Partial<O>>
 where
-    F: Fn(Span<'a>) -> IResult<O>,
+    F: Fn(Span<'a>) -> IResult<Partial<O>>,
 {
-    move |input| map(many0(partial_until(sep, &f)), Partial::from_iter)(input)
-}
-
-pub fn many1_partial<'a, O, F>(sep: &'a str, f: F) -> impl Fn(Span<'a>) -> IResult<Partial<Vec<O>>>
-where
-    F: Fn(Span<'a>) -> IResult<O>,
-{
-    move |input| map(many1(partial_until(sep, &f)), Partial::from_iter)(input)
+    move |input| match partial(input) {
+        Ok((remaining, value)) => Ok((remaining, value)),
+        Err(nom::Err::Failure(e)) | Err(nom::Err::Error(e)) => {
+            let (remaining, failed) = recognize(many_till(anychar, tag(skip_to)))(input)?;
+            let mut partial = Partial::with_errors(None, e);
+            partial.extend_errors(VerboseError {
+                errors: vec![(failed, VerboseErrorKind::Nom(error))],
+            });
+            Ok((remaining, partial))
+        }
+        Err(e) => Err(e),
+    }
 }
 
 pub fn verify_full<'a, O, F>(f: F) -> impl Fn(Span<'a>) -> IResult<O>

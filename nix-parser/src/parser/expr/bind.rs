@@ -7,8 +7,10 @@ use nom::sequence::{delimited, pair, preceded, terminated, tuple};
 
 use super::expr;
 use crate::ast::{Bind, BindInherit, BindInheritExpr, BindSimple};
-use crate::parser::partial::{expect_terminated, map_err_partial, map_partial, Partial};
-use crate::parser::{tokens, IResult, Span};
+use crate::parser::partial::{
+    expect_terminated, map_err_partial, map_partial, map_partial_spanned, Partial,
+};
+use crate::parser::{map_spanned, tokens, IResult, Span};
 use crate::ToByteSpan;
 
 pub fn bind(input: Span) -> IResult<Partial<Bind>> {
@@ -24,12 +26,13 @@ fn simple(input: Span) -> IResult<Partial<BindSimple>> {
 
     let lhs = map(terminated(tokens::ident_path, tokens::space), Partial::from);
     let rhs = map_partial(preceded(tokens::space, expr), Box::new);
-    let bind = tuple((comment, expect_terminated(lhs, char('=')), rhs));
+    let simple = pair(expect_terminated(lhs, char('=')), rhs);
+    let bind = map(pair(comment, simple), |(comment, (name, expr))| {
+        name.flat_map(|name| expr.map(|expr| (comment, name, expr)))
+    });
 
-    map(bind, |(comment, name, expr)| {
-        name.flat_map(|name| {
-            expr.map(|expr| BindSimple::new(comment, name, expr, input.to_byte_span()))
-        })
+    map_partial_spanned(input, bind, |span, (c, n, e)| {
+        BindSimple::new(c, n, e, span)
     })(input)
 }
 
@@ -38,8 +41,8 @@ fn inherit(input: Span) -> IResult<Partial<BindInherit>> {
     let key_inherit = pair(tokens::keyword_inherit, tokens::space);
     let name = terminated(tokens::identifier, tokens::space);
     let bind = preceded(comment, preceded(key_inherit, many1(name)));
-    map(bind, |names| {
-        Partial::from(BindInherit::new(names, input.to_byte_span()))
+    map_spanned(input, bind, |span, names| {
+        Partial::from(BindInherit::new(names, span))
     })(input)
 }
 
@@ -53,8 +56,8 @@ fn inherit_expr(input: Span) -> IResult<Partial<BindInheritExpr>> {
 
     let name = terminated(tokens::identifier, tokens::space);
     let bind = preceded(key_inherit, pair(map_partial(expr, Box::new), many1(name)));
-    map(bind, |(expr, names)| {
-        expr.map(|expr| BindInheritExpr::new(expr, names, input.to_byte_span()))
+    map_spanned(input, bind, |span, (expr, names)| {
+        expr.map(|expr| BindInheritExpr::new(expr, names, span))
     })(input)
 }
 

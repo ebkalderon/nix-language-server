@@ -13,14 +13,12 @@ mod number;
 mod path;
 
 pub fn literal(input: Span) -> IResult<Literal> {
-    let boolean = map_spanned(input, boolean, |span, b| Literal::from((b, span)));
-    let float = map_spanned(input, float, |span, f| Literal::from((f, span)));
-    let integer = map_spanned(input, integer, |span, i| Literal::from((i, span)));
-    let null = map_spanned(input, null, |span, n| Literal::from((n, span)));
-    let path = map_spanned(input, path, |span, p| Literal::from((p, span)));
-    let temp = map_spanned(input, path_template, |span, p| {
-        Literal::path_template(p, span)
-    });
+    let boolean = map_spanned(boolean, |span, b| Literal::from((b, span)));
+    let float = map_spanned(float, |span, f| Literal::from((f, span)));
+    let integer = map_spanned(integer, |span, i| Literal::from((i, span)));
+    let null = map_spanned(null, |span, n| Literal::from((n, span)));
+    let path = map_spanned(path, |span, p| Literal::from((p, span)));
+    let temp = map_spanned(path_template, |span, p| Literal::path_template(p, span));
     alt((boolean, float, integer, null, path, temp))(input)
 }
 

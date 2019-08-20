@@ -254,7 +254,6 @@ where
 ///
 /// This is like `map_partial()` except it also includes a `ByteSpan` based on the consumed input.
 pub fn map_partial_spanned<'a, O1, O2, P, F>(
-    input: Span<'a>,
     partial: P,
     f: F,
 ) -> impl Fn(Span<'a>) -> IResult<Partial<O2>>

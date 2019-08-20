@@ -80,11 +80,7 @@ pub fn parse_source_file_partial(source: &str) -> Result<Partial<SourceFile>, St
 
 /// Combinator which behaves like `nom::combinator::map()`, except it also includes a `ByteSpan`
 /// based on the consumed input.
-fn map_spanned<'a, O1, O2, P, F>(
-    input: Span<'a>,
-    parser: P,
-    f: F,
-) -> impl Fn(Span<'a>) -> IResult<O2>
+fn map_spanned<'a, O1, O2, P, F>(parser: P, f: F) -> impl Fn(Span<'a>) -> IResult<O2>
 where
     P: Fn(Span<'a>) -> IResult<O1>,
     F: Fn(ByteSpan, O1) -> O2,

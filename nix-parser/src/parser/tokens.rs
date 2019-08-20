@@ -10,7 +10,6 @@ use nom::character::{is_alphabetic, is_alphanumeric};
 use nom::combinator::{cut, map, recognize, verify};
 use nom::multi::{many0, separated_nonempty_list};
 use nom::sequence::{delimited, pair, preceded, terminated};
-use nom::Slice;
 
 use super::{map_spanned, IResult, Span};
 use crate::ast::tokens::{Comment, Ident, IdentPath};
@@ -28,7 +27,7 @@ pub fn comment(input: Span) -> IResult<Comment> {
     let block = map(rows, |r| r.join("\n"));
 
     let comment = alt((line, block));
-    map_spanned(input, comment, |span, c| Comment::from((c, span)))(input)
+    map_spanned(comment, |span, c| Comment::from((c, span)))(input)
 }
 
 pub fn space(input: Span) -> IResult<()> {
@@ -59,7 +58,7 @@ pub fn identifier(input: Span) -> IResult<Ident> {
 
 pub fn ident_path(input: Span) -> IResult<IdentPath> {
     let path = separated_nonempty_list(char('.'), identifier);
-    map_spanned(input, path, |span, idents| IdentPath::from((idents, span)))(input)
+    map_spanned(path, |span, idents| IdentPath::from((idents, span)))(input)
 }
 
 #[cfg(test)]

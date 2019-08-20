@@ -31,7 +31,7 @@ fn simple(input: Span) -> IResult<Partial<BindSimple>> {
         name.flat_map(|name| expr.map(|expr| (name, expr)))
     });
 
-    let (remainder, (span, bind)) = map_spanned(input, bind, |span, bind| (span, bind))(input)?;
+    let (remainder, (span, bind)) = map_spanned(bind, |span, bind| (span, bind))(input)?;
     let simple = bind.map(|(name, expr)| BindSimple::new(comment, name, expr, span));
 
     Ok((remainder, simple))
@@ -42,7 +42,7 @@ fn inherit(input: Span) -> IResult<Partial<BindInherit>> {
     let key_inherit = pair(tokens::keyword_inherit, tokens::space);
     let name = terminated(tokens::identifier, tokens::space);
     let bind = preceded(comment, preceded(key_inherit, many1(name)));
-    map_spanned(input, bind, |span, names| {
+    map_spanned(bind, |span, names| {
         Partial::from(BindInherit::new(names, span))
     })(input)
 }
@@ -57,7 +57,7 @@ fn inherit_expr(input: Span) -> IResult<Partial<BindInheritExpr>> {
 
     let name = terminated(tokens::identifier, tokens::space);
     let bind = preceded(key_inherit, pair(map_partial(expr, Box::new), many1(name)));
-    map_spanned(input, bind, |span, (expr, names)| {
+    map_spanned(bind, |span, (expr, names)| {
         expr.map(|expr| BindInheritExpr::new(expr, names, span))
     })(input)
 }

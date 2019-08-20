@@ -22,18 +22,19 @@ pub fn bind(input: Span) -> IResult<Partial<Bind>> {
 }
 
 fn simple(input: Span) -> IResult<Partial<BindSimple>> {
-    let comment = opt(terminated(tokens::comment, multispace0));
+    let (input, comment) = opt(terminated(tokens::comment, multispace0))(input)?;
 
     let lhs = map(terminated(tokens::ident_path, tokens::space), Partial::from);
     let rhs = map_partial(preceded(tokens::space, expr), Box::new);
     let simple = pair(expect_terminated(lhs, char('=')), rhs);
-    let bind = map(pair(comment, simple), |(comment, (name, expr))| {
-        name.flat_map(|name| expr.map(|expr| (comment, name, expr)))
+    let bind = map(simple, |(name, expr)| {
+        name.flat_map(|name| expr.map(|expr| (name, expr)))
     });
 
-    map_partial_spanned(input, bind, |span, (c, n, e)| {
-        BindSimple::new(c, n, e, span)
-    })(input)
+    let (remainder, (span, bind)) = map_spanned(input, bind, |span, bind| (span, bind))(input)?;
+    let simple = bind.map(|(name, expr)| BindSimple::new(comment, name, expr, span));
+
+    Ok((remainder, simple))
 }
 
 fn inherit(input: Span) -> IResult<Partial<BindInherit>> {
@@ -48,7 +49,7 @@ fn inherit(input: Span) -> IResult<Partial<BindInherit>> {
 
 fn inherit_expr(input: Span) -> IResult<Partial<BindInheritExpr>> {
     let comment = opt(terminated(tokens::comment, multispace0));
-    let key_inherit = pair(tokens::keyword_inherit, tokens::space);
+    let key_inherit = tuple((comment, tokens::keyword_inherit, tokens::space));
 
     let open_paren = pair(char('('), tokens::space);
     let close_paren = pair(char(')'), tokens::space);

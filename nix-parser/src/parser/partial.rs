@@ -211,6 +211,10 @@ impl<'a, T> FromIterator<Partial<'a, T>> for Partial<'a, Vec<T>> {
     }
 }
 
+/// Combinator which runs the given partial parser and then expects on a terminator.
+///
+/// If the terminator is missing, an unclosed delimiter error will be appended to the `Partial`,
+/// and parsing will be allowed to continue as through the terminator existed.
 pub fn expect_terminated<'a, O1, O2, F, G>(
     f: F,
     term: G,
@@ -230,6 +234,11 @@ where
     }
 }
 
+/// Combinator which behaves like `nom::combinator::map()`, except it is a shorthand for:
+///
+/// ```rust,nocompile
+/// map(partial, |partial| partial.map(&f))
+/// ```
 pub fn map_partial<'a, O1, O2, P, F>(partial: P, f: F) -> impl Fn(Span<'a>) -> IResult<Partial<O2>>
 where
     P: Fn(Span<'a>) -> IResult<Partial<O1>>,
@@ -241,6 +250,9 @@ where
     }
 }
 
+/// Combinator which combines the functionality of `map_partial()` and `map_spanned()`.
+///
+/// This is like `map_partial()` except it also includes a `ByteSpan` for AST nodes.
 pub fn map_partial_spanned<'a, O1, O2, P, F>(
     input: Span<'a>,
     partial: P,
@@ -258,6 +270,14 @@ where
     }
 }
 
+/// Combinator for handling fallback cases for partial parsers.
+///
+/// If the given partial parser succeeds, parsing continues like normal. If it fails, this
+/// combinator skips up to and including the location described by `skip_to` and appends `error` to
+/// the partial value.
+///
+/// This combinator is useful for handling fallback cases where `partial` was given a totally
+/// invalid expression which it cannot recover from.
 pub fn map_err_partial<'a, O1, O2, F, G>(
     partial: F,
     skip_to: G,
@@ -281,6 +301,7 @@ where
     }
 }
 
+/// Combinator which asserts that a given partial parser produces a value and contains no errors.
 pub fn verify_full<'a, O, F>(f: F) -> impl Fn(Span<'a>) -> IResult<O>
 where
     F: Fn(Span<'a>) -> IResult<Partial<O>>,

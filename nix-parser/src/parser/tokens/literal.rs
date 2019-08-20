@@ -6,20 +6,20 @@ use nom::bytes::complete::{tag, take};
 use nom::combinator::map;
 
 use crate::ast::tokens::Literal;
-use crate::parser::{IResult, Span};
+use crate::parser::{map_spanned, IResult, Span};
 use crate::ToByteSpan;
 
 mod number;
 mod path;
 
 pub fn literal(input: Span) -> IResult<Literal> {
-    let boolean = map(boolean, |b| Literal::from((b, input)));
-    let float = map(float, |f| Literal::from((f, input)));
-    let integer = map(integer, |i| Literal::from((i, input)));
-    let null = map(null, |n| Literal::from((n, input)));
-    let path = map(path, |p| Literal::from((p, input)));
-    let temp = map(path_template, |t| {
-        Literal::PathTemplate(t, input.to_byte_span())
+    let boolean = map_spanned(input, boolean, |span, b| Literal::from((b, span)));
+    let float = map_spanned(input, float, |span, f| Literal::from((f, span)));
+    let integer = map_spanned(input, integer, |span, i| Literal::from((i, span)));
+    let null = map_spanned(input, null, |span, n| Literal::from((n, span)));
+    let path = map_spanned(input, path, |span, p| Literal::from((p, span)));
+    let temp = map_spanned(input, path_template, |span, p| {
+        Literal::path_template(p, span)
     });
     alt((boolean, float, integer, null, path, temp))(input)
 }

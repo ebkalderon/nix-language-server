@@ -150,6 +150,16 @@ pub enum Literal {
     Uri(Uri, ByteSpan),
 }
 
+impl Literal {
+    pub fn path_template<T, U>(string: T, span: U) -> Self
+    where
+        T: Into<String>,
+        U: ToByteSpan,
+    {
+        Literal::PathTemplate(string.into(), span.to_byte_span())
+    }
+}
+
 impl Display for Literal {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {

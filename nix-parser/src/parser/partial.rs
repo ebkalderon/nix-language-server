@@ -84,6 +84,20 @@ impl<'a, T> Partial<'a, T> {
         }
     }
 
+    pub fn flat_map<U, F>(mut self, f: F) -> Partial<'a, U>
+    where
+        F: FnOnce(T) -> Partial<'a, U>,
+    {
+        if let Some(value) = self.value {
+            let mut partial = f(value);
+            self.errors.errors.extend(partial.errors.errors);
+            partial.errors = self.errors;
+            partial
+        } else {
+            Partial::with_errors(None, self.errors)
+        }
+    }
+
     pub fn map_err<F>(self, f: F) -> Partial<'a, T>
     where
         F: FnOnce(VerboseError<Span<'a>>) -> VerboseError<Span<'a>>,

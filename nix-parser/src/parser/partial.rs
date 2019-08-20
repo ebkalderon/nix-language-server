@@ -205,55 +205,6 @@ impl<'a, T> FromIterator<Partial<'a, T>> for Partial<'a, Vec<T>> {
     }
 }
 
-/// FIXME: Poorly tested, not sure if behaves as expected. Looking to turn this into a partial
-/// parser that comsumes until `EOF`, and `partial_until()` is simply a wrapper which restricts the
-/// input until a certain character is detected or given parser combinator succeeds.
-pub fn partial<'a, F, O>(f: F) -> impl Fn(Span<'a>) -> IResult<Partial<O>>
-where
-    F: Fn(Span<'a>) -> IResult<O>,
-{
-    move |input| match f(input) {
-        Ok((input, value)) => Ok((input, Partial::new(Some(value)))),
-        Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
-            Ok((input, Partial::with_errors(None, e)))
-        }
-        Err(err) => Err(err),
-    }
-}
-
-pub fn partial_till<'a, P, F, O1, O2>(sep: P, f: F) -> impl Fn(Span<'a>) -> IResult<Partial<O2>>
-where
-    P: Fn(Span<'a>) -> IResult<O1>,
-    F: Fn(Span<'a>) -> IResult<O2>,
-{
-    move |input| {
-        let (remaining, input) = recognize(many_till(anychar, &sep))(input)?;
-        match f(input) {
-            Ok((_, value)) => Ok((remaining, Partial::new(Some(value)))),
-            Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
-                Ok((remaining, Partial::with_errors(None, e)))
-            }
-            Err(err) => Err(err),
-        }
-    }
-}
-
-pub fn partial_until<'a, F, O>(sep: &'a str, f: F) -> impl Fn(Span<'a>) -> IResult<Partial<O>>
-where
-    F: Fn(Span<'a>) -> IResult<O>,
-{
-    move |input| {
-        let (remaining, input) = recognize(pair(take_until(sep), tag(sep)))(input)?;
-        match f(input) {
-            Ok((_, value)) => Ok((remaining, Partial::new(Some(value)))),
-            Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => {
-                Ok((remaining, Partial::with_errors(None, e)))
-            }
-            Err(err) => Err(err),
-        }
-    }
-}
-
 pub fn expect_terminated<'a, O1, O2, F, G>(
     f: F,
     term: G,
@@ -284,7 +235,7 @@ where
     }
 }
 
-pub fn partial_or<'a, O1, O2, F, G>(
+pub fn map_err_partial<'a, O1, O2, F, G>(
     partial: F,
     skip_to: G,
     error: ErrorKind,

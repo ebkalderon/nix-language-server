@@ -10,7 +10,7 @@ use nom::sequence::{delimited, pair, preceded, terminated};
 
 use super::{bind, expr};
 use crate::ast::{ExprParen, ExprSet};
-use crate::parser::partial::{expect_terminated, map_partial, partial_or, Partial};
+use crate::parser::partial::{expect_terminated, map_partial, Partial};
 use crate::parser::{tokens, IResult, Span};
 use crate::ToByteSpan;
 

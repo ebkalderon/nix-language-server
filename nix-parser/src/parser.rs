@@ -6,6 +6,7 @@ use codespan::{ByteIndex, ByteSpan};
 use nom::combinator::{all_consuming, map, opt};
 use nom::error::VerboseError;
 use nom::sequence::{pair, preceded};
+use nom::Slice;
 use nom_locate::LocatedSpan;
 
 use self::partial::{map_partial, verify_full};
@@ -75,4 +76,21 @@ pub fn parse_source_file_partial(source: &str) -> Result<Partial<SourceFile>, St
     all_consuming(map_partial(file, |(c, e)| SourceFile::new(c, e)))(text)
         .map(|(_, source)| source)
         .map_err(|e| format!("{:?}", e))
+}
+
+fn map_spanned<'a, O1, O2, P, F>(
+    input: Span<'a>,
+    parser: P,
+    f: F,
+) -> impl Fn(Span<'a>) -> IResult<O2>
+where
+    P: Fn(Span<'a>) -> IResult<O1>,
+    F: Fn(ByteSpan, O1) -> O2,
+{
+    move |input| {
+        let (remainder, value) = parser(input)?;
+        let value_len = remainder.offset - input.offset;
+        let span = input.slice(..value_len).to_byte_span();
+        Ok((remainder, f(span, value)))
+    }
 }

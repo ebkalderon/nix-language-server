@@ -223,12 +223,12 @@ where
 {
     move |input| match terminated(&f, &term)(input) {
         Ok((remaining, partial)) => Ok((remaining, partial)),
-        Err(nom::Err::Error(e)) => {
+        Err(nom::Err::Error(err)) => {
             let (remaining, mut partial) = f(input)?;
-            partial.extend_errors(e);
+            partial.extend_errors(err);
             Ok((remaining, partial))
         }
-        Err(e) => Err(e),
+        Err(err) => Err(err),
     }
 }
 

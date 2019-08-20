@@ -251,18 +251,19 @@ where
     }
 }
 
-pub fn partial_or<'a, O, F>(
+pub fn partial_or<'a, O1, O2, F, G>(
     partial: F,
-    skip_to: &'a str,
+    skip_to: G,
     error: ErrorKind,
-) -> impl Fn(Span<'a>) -> IResult<Partial<O>>
+) -> impl Fn(Span<'a>) -> IResult<Partial<O1>>
 where
-    F: Fn(Span<'a>) -> IResult<Partial<O>>,
+    F: Fn(Span<'a>) -> IResult<Partial<O1>>,
+    G: Fn(Span<'a>) -> IResult<O2>,
 {
     move |input| match partial(input) {
         Ok((remaining, value)) => Ok((remaining, value)),
         Err(nom::Err::Failure(e)) | Err(nom::Err::Error(e)) => {
-            let (remaining, failed) = recognize(many_till(anychar, tag(skip_to)))(input)?;
+            let (remaining, failed) = recognize(many_till(anychar, &skip_to))(input)?;
             let mut partial = Partial::with_errors(None, e);
             partial.extend_errors(VerboseError {
                 errors: vec![(failed, VerboseErrorKind::Nom(error))],

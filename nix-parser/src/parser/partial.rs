@@ -84,6 +84,9 @@ impl<'a, T> Partial<'a, T> {
         }
     }
 
+    /// Calls `f` if there exists a contained value, otherwise returns the stored errors instead.
+    ///
+    /// Any errors produced by `f` are appended to the errors already inside `self`.
     pub fn flat_map<U, F>(mut self, f: F) -> Partial<'a, U>
     where
         F: FnOnce(T) -> Partial<'a, U>,

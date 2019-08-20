@@ -12,7 +12,7 @@ use nom::multi::{many0, separated_nonempty_list};
 use nom::sequence::{delimited, pair, preceded, terminated};
 use nom::Slice;
 
-use super::{IResult, Span};
+use super::{map_spanned, IResult, Span};
 use crate::ast::tokens::{Comment, Ident, IdentPath};
 
 mod keywords;
@@ -27,11 +27,8 @@ pub fn comment(input: Span) -> IResult<Comment> {
     let rows = map(span, |s: Span| s.fragment.lines().collect::<Vec<_>>());
     let block = map(rows, |r| r.join("\n"));
 
-    let (remainder, comment) = alt((line, block))(input)?;
-    let comment_len = remainder.offset - input.offset;
-    let span = input.slice(..comment_len);
-
-    Ok((remainder, Comment::from((comment, span))))
+    let comment = alt((line, block));
+    map_spanned(input, comment, |span, c| Comment::from((c, span)))(input)
 }
 
 pub fn space(input: Span) -> IResult<()> {
@@ -61,8 +58,8 @@ pub fn identifier(input: Span) -> IResult<Ident> {
 }
 
 pub fn ident_path(input: Span) -> IResult<IdentPath> {
-    let ident_path = separated_nonempty_list(char('.'), identifier);
-    map(ident_path, |idents| IdentPath::from((idents, input)))(input)
+    let path = separated_nonempty_list(char('.'), identifier);
+    map_spanned(input, path, |span, idents| IdentPath::from((idents, span)))(input)
 }
 
 #[cfg(test)]

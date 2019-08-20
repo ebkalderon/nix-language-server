@@ -26,8 +26,7 @@ pub fn set(input: Span) -> IResult<Partial<ExprSet>> {
 }
 
 pub fn list(input: Span) -> IResult<Partial<ExprList>> {
-    let elem = preceded(tokens::space, expr);
-    let elems = preceded(char('['), many_till(elem, char(']')));
-    let list = map(elems, |(p, _)| Partial::from_iter(p));
+    let elems = map(preceded(tokens::space, many0(expr)), Partial::from_iter);
+    let list = preceded(char('['), expect_terminated(elems, char(']')));
     map_partial_spanned(list, |span, exprs| ExprList::new(exprs, span))(input)
 }

@@ -234,7 +234,7 @@ where
 
 /// Combinator which behaves like `nom::combinator::map()`, except it is a shorthand for:
 ///
-/// ```rust,nocompile
+/// ```rust,ignore
 /// map(partial, |partial| partial.map(&f))
 /// ```
 pub fn map_partial<'a, O1, O2, P, F>(partial: P, f: F) -> impl Fn(Span<'a>) -> IResult<Partial<O2>>

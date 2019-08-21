@@ -19,7 +19,14 @@
 /// ```rust,edition2018
 /// # #![recursion_limit = "128"]
 /// # use nix_parser::nix;
-/// let expr = nix!(./foo/bar);
+/// let expr = nix!({
+///     inherit foo;
+///     root = ./.;
+///     config.value = {
+///         first = "hello";
+///         second = -15;
+///     };
+/// });
 /// ```
 #[macro_export]
 macro_rules! nix {

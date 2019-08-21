@@ -67,13 +67,112 @@ macro_rules! nix_token {
         Ident::from(stringify!($ident))
     };
 
-    ($($ipath:ident).+) => {
-        IdentPath::from(vec![$(stringify!($ipath)),+])
+    ($($path:ident).+) => {
+        IdentPath::from(vec![$(stringify!($path)),+])
     };
 
     ($literal:expr) => {
         Literal::from($literal)
     };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! nix_list {
+    (@elems (- $expr:tt) $next:tt $($rest:tt)*) => {
+        let first = $crate::nix_list!(@elems (-$expr));
+        let rest = $crate::nix_list!(@elems ($next) $($rest)*);
+        first.chain(rest)
+    };
+
+    (@elems (! $expr:tt) $next:tt $($rest:tt)*) => {
+        let first = $crate::nix_list!(@elems (!$expr));
+        let rest = $crate::nix_list!(@elems ($next) $($rest)*);
+        first.chain(rest)
+    };
+
+    (@elems ($expr:tt) $next:tt $($rest:tt)*) => {{
+        let first = $crate::nix_list!(@elems ($expr));
+        let rest = $crate::nix_list!(@elems ($next) $($rest)*);
+        first.chain(rest)
+    }};
+
+    (@elems (- $expr:tt)) => {
+        ::std::iter::once($crate::unary!(-$expr))
+    };
+
+    (@elems (! $expr:tt)) => {
+        ::std::iter::once($crate::unary!(!$expr))
+    };
+
+    (@elems ($expr:tt)) => {
+        ::std::iter::once($crate::unary!($expr))
+    };
+
+    (@elems ($($prev:tt)*) $next:tt $($rest:tt)*) => {
+        $crate::nix_list!(@elems ($($prev)* $next) $($rest)*)
+    };
+
+    ([$first:tt $($rest:tt)*]) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        ExprList::new($crate::nix_list!(@elems ($first) $($rest)*).collect(), Default::default())
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! nix_bind {
+    (inherit $($names:ident)+) => {{
+        let names = vec![$($crate::nix_token!($names)),+];
+        Bind::Inherit(BindInherit::new(names, Default::default()))
+    }};
+
+    (inherit ($($expr:tt)+) $($names:ident)+) => {{
+        let expr = Box::new($crate::nix!($($expr)+));
+        let names = vec![$($crate::nix_token!($names)),+];
+        Bind::InheritExpr(BindInheritExpr::new(expr, names, Default::default()))
+    }};
+
+    ($($name:ident).+ = $($expr:tt)+) => {{
+        let attr = IdentPath::from(vec![$(stringify!($name)),+]);
+        let expr = Box::new($crate::nix!($($expr)+));
+        Bind::Simple(BindSimple::new(None, attr, expr, Default::default()))
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! nix_set {
+    ({ }) => {
+        ExprSet::new(Vec::new(), Default::default())
+    };
+
+    ({ $($binds:tt)+ }) => {
+        ExprSet::new($crate::nix_set!(@binds $($binds)*).collect(), Default::default())
+    };
+
+    (@binds ($($bind:tt)+) ; $($rest:tt)+) => {
+        ::std::iter::once($crate::nix_bind!($($bind)+)).chain($crate::nix_set!(@binds $($rest)+))
+    };
+
+    (@binds ($($bind:tt)+) ;) => {
+        ::std::iter::once($crate::nix_bind!($($bind)+))
+    };
+
+    (@binds ($($prev:tt)*) $next:tt $($rest:tt)*) => {
+        $crate::nix_set!(@binds ($($prev)* $next) $($rest)*)
+    };
+
+    (@binds $first:tt $($rest:tt)*) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        $crate::nix_set!(@binds ($first) $($rest)*)
+    }};
 }
 
 /// Returns an AST constructed by `nix!()` and also the source expression as a static string.
@@ -98,6 +197,7 @@ macro_rules! nix_expr_and_str {
             $crate::nix_expr!($($expr)+),
             stringify!($($expr)+)
                 .replace(" . ", ".")
+                .replace(" ;", ";")
                 .replace("- ", "-")
                 .replace("! ", "!")
                 .replace("/ /", "//")
@@ -111,8 +211,32 @@ macro_rules! nix_expr_and_str {
 #[macro_export]
 macro_rules! nix_expr {
     ($($expr:tt)+) => {
+        $crate::unary!($($expr)+)
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! unary {
+    (@rule - $($expr:tt)+) => {
+        Expr::Unary(ExprUnary::new(UnaryOp::Neg, Box::new($crate::atomic!($($expr)+)), Default::default()))
+    };
+
+    (@rule ! $($expr:tt)+) => {
+        Expr::Unary(ExprUnary::new(UnaryOp::Not, Box::new($crate::atomic!($($expr)+)), Default::default()))
+    };
+
+    (@rule $($expr:tt)+) => {
         $crate::atomic!($($expr)+)
     };
+
+    ($($expr:tt)+) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        $crate::unary!(@rule $($expr)+)
+    }};
 }
 
 #[doc(hidden)]
@@ -120,6 +244,14 @@ macro_rules! nix_expr {
 macro_rules! atomic {
     (($($expr:tt)+)) => {
         Expr::Paren(ExprParen::new(Box::new($crate::nix_expr!($($expr)+)), Default::default()))
+    };
+
+    ({$($binds:tt)*}) => {
+        Expr::Set($crate::nix_set!({$($binds)*}))
+    };
+
+    ([$($expr:tt)*]) => {
+        Expr::List($crate::nix_list!([$($expr)*]))
     };
 
     (<$($template:tt)+>) => {
@@ -151,10 +283,14 @@ macro_rules! atomic {
     };
 
     ($($attr:ident).+) => {
-        Expr::Attr(IdentPath::from(vec![$(stringify!($ipath)),+]))
+        Expr::Attr(IdentPath::from(vec![$(stringify!($attr)),+]))
     };
 
     ($literal:expr) => {
         Expr::Literal($crate::nix_token!($literal))
-    }
+    };
+
+    ($($err:tt)*) => {
+        compile_error!("expression completely failed to parse");
+    };
 }

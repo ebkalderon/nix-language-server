@@ -2,7 +2,7 @@ use std::iter::FromIterator;
 
 use nom::branch::alt;
 use nom::character::complete::{anychar, char};
-use nom::combinator::{map, opt, peek};
+use nom::combinator::{cut, map, opt, peek};
 use nom::error::ErrorKind;
 use nom::error::VerboseError;
 use nom::multi::{many0, many_till};
@@ -27,7 +27,7 @@ pub fn set(input: Span) -> IResult<Partial<ExprSet>> {
 
 pub fn list(input: Span) -> IResult<Partial<ExprList>> {
     let elem = terminated(unary, tokens::space);
-    let elems = map(preceded(tokens::space, many0(elem)), Partial::from_iter);
-    let list = preceded(char('['), expect_terminated(elems, char(']')));
+    let elems = map(many_till(elem, char(']')), |(p, _)| Partial::from_iter(p));
+    let list = preceded(pair(char('['), tokens::space), elems);
     map_partial_spanned(list, |span, exprs| ExprList::new(exprs, span))(input)
 }

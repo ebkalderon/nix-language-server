@@ -5,7 +5,8 @@
 /// # Limitations
 ///
 /// Due to limitations of `macro_rules` in Rust, certain complex expressions might need extra
-/// parentheses to reduce ambiguity and aid parsing.
+/// parentheses to reduce ambiguity and aid parsing. Some expressions are impossible to parse
+/// without tweaking due to Rust's tokenization rules.
 ///
 /// Also, if the compiler complains about hitting a certain recursion limit, try adding the
 /// following module attribute to the root file of your crate:

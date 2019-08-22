@@ -298,6 +298,54 @@ where
     }
 }
 
+/// Combinator which applies the partial parser `f` until the parser `g` produces a result,
+/// returning a `Partial<Vec<T>>`.
+///
+/// If the terminator is missing, an unclosed delimiter error will be appended to the `Partial`,
+/// and parsing will be allowed to continue as through the terminator existed.
+pub fn many_till_partial<'a, O1, O2, F, G>(
+    f: F,
+    g: G,
+) -> impl Fn(Span<'a>) -> IResult<Partial<Vec<O1>>>
+where
+    F: Fn(Span<'a>) -> IResult<Partial<O1>>,
+    G: Fn(Span<'a>) -> IResult<O2>,
+{
+    move |input| {
+        let mut partials = Vec::new();
+        let mut error = VerboseError { errors: Vec::new() };
+        let mut input = input.clone();
+
+        loop {
+            match g(input) {
+                Ok((_, _)) => {
+                    let mut partial: Partial<_> = partials.into_iter().collect();
+                    partial.extend_errors(error);
+                    return Ok((input, partial));
+                }
+                Err(nom::Err::Error(err_g)) => match f(input) {
+                    Err(nom::Err::Failure(err_f)) | Err(nom::Err::Error(err_f)) => {
+                        if let Ok((remainder, _)) = anychar::<_, VerboseError<_>>(input) {
+                            error.errors.extend(err_f.errors);
+                            input = remainder;
+                        } else {
+                            let mut partial: Partial<_> = partials.into_iter().collect();
+                            let eof = input.slice(input.fragment.len()..input.fragment.len());
+                            return Ok((eof, partial));
+                        }
+                    }
+                    Err(err) => return Err(err),
+                    Ok((remainder, elem)) => {
+                        partials.push(elem);
+                        input = remainder;
+                    }
+                },
+                Err(err) => return Err(err),
+            }
+        }
+    }
+}
+
 /// Combinator which asserts that a given partial parser produces a value and contains no errors.
 pub fn verify_full<'a, O, F>(f: F) -> impl Fn(Span<'a>) -> IResult<O>
 where

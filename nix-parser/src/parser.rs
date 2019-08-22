@@ -9,7 +9,7 @@ use nom::sequence::{pair, preceded};
 use nom::Slice;
 use nom_locate::LocatedSpan;
 
-use self::partial::{map_partial, verify_full};
+use self::partial::map_partial;
 use crate::ast::{Expr, SourceFile};
 use crate::ToByteSpan;
 
@@ -37,10 +37,7 @@ impl FromStr for Expr {
 }
 
 pub fn parse_expr(expr: &str) -> Result<Expr, String> {
-    let text = Span::new(expr);
-    all_consuming(preceded(tokens::space, verify_full(expr::expr)))(text)
-        .map(|(_, expr)| expr)
-        .map_err(|e| format!("{:?}", e))
+    parse_expr_partial(expr).and_then(|partial| partial.verify().map_err(|e| format!("{:?}", e)))
 }
 
 pub fn parse_expr_partial(expr: &str) -> Result<Partial<Expr>, String> {

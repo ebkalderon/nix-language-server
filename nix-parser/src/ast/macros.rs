@@ -1,6 +1,6 @@
 //! Utility macros for constructing an AST from an expression.
 
-/// Construct an AST `Expr` from a Nix expression.
+/// Constructs an `Expr` from a Nix expression.
 ///
 /// # Limitations
 ///
@@ -21,10 +21,10 @@
 /// # use nix_parser::nix;
 /// let expr = nix!({
 ///     inherit foo;
-///     root = ./.;
+///     root = ./foo/bar;
 ///     config.value = {
 ///         first = "hello";
-///         second = -15;
+///         second = [1 2 -3];
 ///     };
 /// });
 /// ```
@@ -86,16 +86,40 @@ macro_rules! nix_token {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! nix_list {
-    (@elems (- $expr:tt) $next:tt $($rest:tt)*) => {
-        let first = $crate::nix_list!(@elems (-$expr));
+    (@elems (/ $($path:ident)/+) $next:tt $($rest:tt)*) => {{
+        let first = $crate::nix_list!(@elems (/ $($path)/+));
         let rest = $crate::nix_list!(@elems ($next) $($rest)*);
         first.chain(rest)
+    }};
+
+    (@elems ($prefix:tt / $($path:tt)/+), $next:tt $($rest:tt)*) => {{
+        let first = $crate::nix_list!(@elems ($prefix / $($path)/+));
+        let rest = $crate::nix_list!(@elems ($next) $($rest)*);
+        first.chain(rest)
+    }};
+
+    (@elems (- $expr:tt) $next:tt $($rest:tt)*) => {{
+        let first = $crate::nix_list!(@elems (- $expr));
+        let rest = $crate::nix_list!(@elems ($next) $($rest)*);
+        first.chain(rest)
+    }};
+
+    (@elems (! $expr:tt) $next:tt $($rest:tt)*) => {{
+        let first = $crate::nix_list!(@elems (! $expr));
+        let rest = $crate::nix_list!(@elems ($next) $($rest)*);
+        first.chain(rest)
+    }};
+
+    (@elems ($($prev:tt)*) / $next:tt $($rest:tt)*) => {
+        $crate::nix_list!(@elems ($($prev)* / $next) $($rest)*)
     };
 
-    (@elems (! $expr:tt) $next:tt $($rest:tt)*) => {
-        let first = $crate::nix_list!(@elems (!$expr));
-        let rest = $crate::nix_list!(@elems ($next) $($rest)*);
-        first.chain(rest)
+    (@elems ($($prev:tt)*) - $next:tt $($rest:tt)*) => {
+        $crate::nix_list!(@elems ($($prev)* - $next) $($rest)*)
+    };
+
+    (@elems ($($prev:tt)*) ! $next:tt $($rest:tt)*) => {
+        $crate::nix_list!(@elems ($($prev)* ! $next) $($rest)*)
     };
 
     (@elems ($expr:tt) $next:tt $($rest:tt)*) => {{
@@ -104,21 +128,21 @@ macro_rules! nix_list {
         first.chain(rest)
     }};
 
-    (@elems (- $expr:tt)) => {
-        ::std::iter::once($crate::unary!(-$expr))
-    };
-
-    (@elems (! $expr:tt)) => {
-        ::std::iter::once($crate::unary!(!$expr))
-    };
-
-    (@elems ($expr:tt)) => {
-        ::std::iter::once($crate::unary!($expr))
+    (@elems ($($expr:tt)+)) => {
+        ::std::iter::once($crate::unary!($($expr)+))
     };
 
     (@elems ($($prev:tt)*) $next:tt $($rest:tt)*) => {
         $crate::nix_list!(@elems ($($prev)* $next) $($rest)*)
     };
+
+    ([ ]) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        ExprList::new(Vec::new(), Default::default())
+    }};
 
     ([$first:tt $($rest:tt)*]) => {{
         #[allow(unused_imports)]
@@ -298,6 +322,6 @@ macro_rules! atomic {
     };
 
     ($($err:tt)*) => {
-        compile_error!("expression completely failed to parse");
+        compile_error!(stringify!($($err)*));
     };
 }

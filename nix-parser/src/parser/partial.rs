@@ -323,13 +323,13 @@ where
                     partial.extend_errors(error);
                     return Ok((input, partial));
                 }
-                Err(nom::Err::Error(err_g)) => match f(input) {
-                    Err(nom::Err::Failure(err_f)) | Err(nom::Err::Error(err_f)) => {
+                Err(nom::Err::Error(_)) => match f(input) {
+                    Err(nom::Err::Failure(err)) | Err(nom::Err::Error(err)) => {
                         if let Ok((remainder, _)) = anychar::<_, VerboseError<_>>(input) {
-                            error.errors.extend(err_f.errors);
+                            error.errors.extend(err.errors);
                             input = remainder;
                         } else {
-                            let mut partial: Partial<_> = partials.into_iter().collect();
+                            let partial: Partial<_> = partials.into_iter().collect();
                             let eof = input.slice(input.fragment.len()..input.fragment.len());
                             return Ok((eof, partial));
                         }

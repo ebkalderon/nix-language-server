@@ -3,7 +3,7 @@ pub use self::partial::Partial;
 use std::str::FromStr;
 
 use codespan::{ByteIndex, ByteSpan};
-use nom::combinator::{all_consuming, map, opt, recognize};
+use nom::combinator::{all_consuming, map, opt};
 use nom::error::VerboseError;
 use nom::sequence::{pair, preceded};
 use nom::Slice;

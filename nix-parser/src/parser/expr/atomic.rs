@@ -1,11 +1,4 @@
-use std::iter::FromIterator;
-
-use nom::branch::alt;
-use nom::character::complete::{anychar, char};
-use nom::combinator::{cut, map, opt, peek};
-use nom::error::ErrorKind;
-use nom::error::VerboseError;
-use nom::multi::{many0, many_till};
+use nom::character::complete::char;
 use nom::sequence::{pair, preceded, terminated};
 
 use super::{bind, expr, unary};

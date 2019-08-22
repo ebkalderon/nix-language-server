@@ -64,7 +64,7 @@ mod tests {
     use nom::combinator::all_consuming;
 
     use super::*;
-    use crate::ast::tokens::{Comment, Ident, IdentPath, Literal};
+    use crate::ast::tokens::{Comment, IdentPath, Literal};
     use crate::ast::Expr;
     use crate::ToByteSpan;
 

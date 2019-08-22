@@ -59,21 +59,16 @@ impl FromStr for SourceFile {
 }
 
 pub fn parse_source_file(source: &str) -> Result<SourceFile, String> {
-    let text = Span::new(source);
-    let comment = preceded(tokens::space_until_final_comment, opt(tokens::comment));
-    let expr = map(preceded(tokens::space, verify_full(expr::expr)), Box::new);
-    let file = pair(comment, expr);
-    all_consuming(map(file, |(comment, expr)| SourceFile::new(comment, expr)))(text)
-        .map(|(_, source)| source)
-        .map_err(|e| format!("{:?}", e))
+    parse_source_file_partial(source)
+        .and_then(|partial| partial.verify().map_err(|e| format!("{:?}", e)))
 }
 
 pub fn parse_source_file_partial(source: &str) -> Result<Partial<SourceFile>, String> {
     let text = Span::new(source);
     let comment = preceded(tokens::space_until_final_comment, opt(tokens::comment));
     let expr = map_partial(preceded(tokens::space, expr::expr), Box::new);
-    let file = map(pair(comment, expr), |(c, expr)| expr.map(|e| (c, e)));
-    all_consuming(map_partial(file, |(c, e)| SourceFile::new(c, e)))(text)
+    let file = map(pair(comment, expr), |(c, expr)| expr.map(|expr| (c, expr)));
+    all_consuming(map_partial(file, |(c, expr)| SourceFile::new(c, expr)))(text)
         .map(|(_, source)| source)
         .map_err(|e| format!("{:?}", e))
 }

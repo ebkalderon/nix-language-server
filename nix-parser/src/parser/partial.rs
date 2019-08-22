@@ -299,7 +299,7 @@ where
 }
 
 /// Combinator which applies the partial parser `f` until the parser `g` produces a result,
-/// returning a `Partial<Vec<T>>`.
+/// returning a `Partial<Vec<_>>` of the results of `f`.
 ///
 /// If the terminator is missing, an unclosed delimiter error will be appended to the `Partial`,
 /// and parsing will be allowed to continue as through the terminator existed.

@@ -20,7 +20,7 @@ pub fn paren(input: Span) -> IResult<Partial<ExprParen>> {
 
 pub fn set(input: Span) -> IResult<Partial<ExprSet>> {
     let bind = preceded(tokens::space_until_final_comment, bind::bind);
-    let binds = many_till_partial(bind, peek(pair(tokens::space, char('}'))));
+    let binds = many_till_partial(bind, pair(tokens::space, char('}')));
     let set = expect_terminated(preceded(char('{'), binds), pair(tokens::space, char('}')));
     map_partial_spanned(set, |span, binds| ExprSet::new(binds, span))(input)
 }

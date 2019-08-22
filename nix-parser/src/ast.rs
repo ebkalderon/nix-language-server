@@ -75,6 +75,9 @@ pub enum Expr {
     FnDecl(ExprFnDecl),
     /// `foo one`
     FnApp(ExprFnApp),
+
+    /// Trap for halting the parser in place.
+    Trap(ByteSpan),
 }
 
 impl Display for Expr {
@@ -101,6 +104,8 @@ impl Display for Expr {
             Expr::LetIn(ref e) => write!(fmt, "{}", e),
             Expr::FnDecl(ref e) => write!(fmt, "{}", e),
             Expr::FnApp(ref e) => write!(fmt, "{}", e),
+
+            Expr::Trap(_) => write!(fmt, "trap"),
         }
     }
 }

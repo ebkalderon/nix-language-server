@@ -67,6 +67,7 @@ mod tests {
     use nom::combinator::all_consuming;
 
     use super::*;
+    use crate::nix_token;
 
     #[test]
     fn comments() {
@@ -116,5 +117,19 @@ mod tests {
                 extra: (),
             }
         );
+    }
+
+    #[test]
+    fn identifiers() {
+        let string = Span::new("fooBAR123-_'");
+        let (_, single) = all_consuming(identifier)(string).expect("single identifier failed");
+        assert_eq!(single, Ident::from("fooBAR123-_'"));
+
+        let string = Span::new("let");
+        all_consuming(identifier)(string).expect_err("should reject keywords");
+
+        let string = Span::new("foo.bar.baz");
+        let (_, path) = all_consuming(ident_path)(string).expect("identifier path failed");
+        assert_eq!(path, nix_token!(foo.bar.baz));
     }
 }

@@ -64,23 +64,15 @@ mod tests {
     use nom::combinator::all_consuming;
 
     use super::*;
-    use crate::ast::tokens::{Comment, IdentPath, Literal};
+    use crate::ast::tokens::{Comment, Ident, IdentPath, Literal};
     use crate::ast::Expr;
-    use crate::ToByteSpan;
+    use crate::{nix, nix_bind, nix_token, ToByteSpan};
 
     #[test]
-    fn simple_binds() {
+    fn simple() {
         let string = Span::new("foo.bar = true;");
         let (_, uncommented) = all_consuming(bind)(string).unwrap();
-        assert_eq!(
-            uncommented,
-            Partial::from(Bind::Simple(BindSimple::new(
-                None,
-                IdentPath::from(vec!["foo", "bar"]),
-                Box::new(Expr::Literal(Literal::from(true))),
-                Span::new("").to_byte_span(),
-            )))
-        );
+        assert_eq!(uncommented, Partial::from(nix_bind!(foo.bar = true)));
 
         let string = Span::new("# hello world \n #this is a   doc comment   \n  foo.bar = true;");
         let (_, commented) = all_consuming(bind)(string).unwrap();
@@ -88,10 +80,21 @@ mod tests {
             commented,
             Partial::from(Bind::Simple(BindSimple::new(
                 Some(Comment::from(" hello world \nthis is a   doc comment   ")),
-                IdentPath::from(vec!["foo", "bar"]),
-                Box::new(Expr::Literal(Literal::from(true))),
+                nix_token!(foo.bar),
+                Box::new(nix!(true)),
                 Span::new("").to_byte_span(),
             )))
         );
+    }
+
+    #[test]
+    fn inherit() {
+        let string = Span::new("inherit foo bar;");
+        let (_, without_expr) = all_consuming(bind)(string).unwrap();
+        assert_eq!(without_expr, Partial::from(nix_bind!(inherit foo bar)));
+
+        let string = Span::new("inherit (42) foo bar;");
+        let (_, with_expr) = all_consuming(bind)(string).unwrap();
+        assert_eq!(with_expr, Partial::from(nix_bind!(inherit (42) foo bar)));
     }
 }

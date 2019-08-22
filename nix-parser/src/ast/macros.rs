@@ -228,6 +228,8 @@ macro_rules! nix_expr_and_str {
         (
             $crate::nix_expr!($($expr)+),
             stringify!($($expr)+)
+                .replace("< ", "<")
+                .replace(" >", ">")
                 .replace(" . ", ".")
                 .replace(" ;", ";")
                 .replace("- ", "-")

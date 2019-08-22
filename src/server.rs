@@ -21,7 +21,10 @@ pub trait LanguageServer {
     #[rpc(name = "initialized", raw_params)]
     fn initialized(&self, params: Params);
 
-    // Diagnostics
+    #[rpc(name = "shutdown")]
+    fn shutdown(&self) -> FutureResult<(), RpcError>;
+
+    // Text synchronization
 
     #[rpc(name = "textDocument/didOpen", raw_params)]
     fn did_open(&self, params: Params);
@@ -32,7 +35,11 @@ pub trait LanguageServer {
     #[rpc(name = "textDocument/didChange", raw_params)]
     fn did_change(&self, params: Params);
 
-    /// Initiate a graceful shutdown.
-    #[rpc(name = "shutdown")]
-    fn shutdown(&self) -> FutureResult<(), RpcError>;
+    // Language features
+
+    #[rpc(name = "textDocument/hover", raw_params)]
+    fn hover(&self, params: Params) -> FutureResult<Option<Hover>, RpcError>;
+
+    #[rpc(name = "textDocument/documentHighlight", raw_params)]
+    fn highlight(&self, params: Params) -> FutureResult<Option<Vec<DocumentHighlight>>, RpcError>;
 }

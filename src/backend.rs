@@ -72,6 +72,10 @@ impl LanguageServer for Nix {
         );
     }
 
+    fn shutdown(&self) -> FutureResult<(), RpcError> {
+        future::ok(())
+    }
+
     fn did_open(&self, _: Params) {
         print!("Content-Length: 72\r\n\r\n{{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{{}}}}");
     }
@@ -80,7 +84,23 @@ impl LanguageServer for Nix {
 
     fn did_change(&self, _: Params) {}
 
-    fn shutdown(&self) -> FutureResult<(), RpcError> {
-        future::ok(())
+    fn hover(&self, params: Params) -> FutureResult<Option<Hover>, RpcError> {
+        match params.parse::<TextDocumentPositionParams>() {
+            Ok(params) => {
+                debug!("{:?}", params);
+                future::ok(None)
+            }
+            Err(err) => future::err(RpcError::invalid_params_with_details("invalid params", err)),
+        }
+    }
+
+    fn highlight(&self, params: Params) -> FutureResult<Option<Vec<DocumentHighlight>>, RpcError> {
+        match params.parse::<TextDocumentPositionParams>() {
+            Ok(params) => {
+                debug!("{:?}", params);
+                future::ok(None)
+            }
+            Err(err) => future::err(RpcError::invalid_params_with_details("invalid params", err)),
+        }
     }
 }

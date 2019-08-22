@@ -6,9 +6,9 @@ use nom::combinator::{map, opt, peek};
 use nom::error::ErrorKind;
 use nom::error::VerboseError;
 use nom::multi::{many0, many_till};
-use nom::sequence::{pair, preceded};
+use nom::sequence::{pair, preceded, terminated};
 
-use super::{bind, expr};
+use super::{bind, expr, unary};
 use crate::ast::{ExprList, ExprParen, ExprSet};
 use crate::parser::partial::{expect_terminated, map_err_partial, map_partial_spanned, Partial};
 use crate::parser::{tokens, IResult, Span};
@@ -26,7 +26,8 @@ pub fn set(input: Span) -> IResult<Partial<ExprSet>> {
 }
 
 pub fn list(input: Span) -> IResult<Partial<ExprList>> {
-    let elems = map(preceded(tokens::space, many0(expr)), Partial::from_iter);
+    let elem = terminated(unary, tokens::space);
+    let elems = map(preceded(tokens::space, many0(elem)), Partial::from_iter);
     let list = preceded(char('['), expect_terminated(elems, char(']')));
     map_partial_spanned(list, |span, exprs| ExprList::new(exprs, span))(input)
 }

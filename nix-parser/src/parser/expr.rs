@@ -1,16 +1,27 @@
 use nom::branch::alt;
-use nom::combinator::map;
-use nom::sequence::terminated;
+use nom::character::complete::char;
+use nom::combinator::{map, opt};
+use nom::sequence::{pair, terminated};
 
 use super::partial::{map_partial, Partial};
-use super::{tokens, IResult, Span};
-use crate::ast::Expr;
+use super::{map_spanned, tokens, IResult, Span};
+use crate::ast::{Expr, ExprUnary, UnaryOp};
 
 mod atomic;
 mod bind;
 
 pub fn expr(input: Span) -> IResult<Partial<Expr>> {
-    terminated(atomic, tokens::space)(input)
+    terminated(unary, tokens::space)(input)
+}
+
+fn unary(input: Span) -> IResult<Partial<Expr>> {
+    let neg = map(char('-'), |_| UnaryOp::Neg);
+    let not = map(char('!'), |_| UnaryOp::Not);
+    let expr = pair(opt(alt((neg, not))), atomic);
+    map_spanned(expr, |span, (unary, expr)| match unary {
+        Some(op) => expr.map(|expr| Expr::Unary(ExprUnary::new(op, Box::new(expr), span))),
+        None => expr,
+    })(input)
 }
 
 fn atomic(input: Span) -> IResult<Partial<Expr>> {

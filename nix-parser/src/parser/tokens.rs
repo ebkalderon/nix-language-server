@@ -81,7 +81,7 @@ mod tests {
     }
 
     #[test]
-    fn comsuming_spaces() {
+    fn spaces() {
         let string = Span::new(" \n\r\t# line comment\n/* block comment */stop here");
         let (rest, _) = space(string).expect("all spaces failed");
         assert_eq!(

@@ -8,9 +8,9 @@ use nom::sequence::{pair, preceded, terminated, tuple};
 use super::expr;
 use crate::ast::{Bind, BindInherit, BindInheritExpr, BindSimple};
 use crate::parser::partial::{expect_terminated, map_err_partial, map_partial, Partial};
-use crate::parser::{map_spanned, tokens, IResult, Span};
+use crate::parser::{map_spanned, tokens, IResult, LocatedSpan};
 
-pub fn bind(input: Span) -> IResult<Partial<Bind>> {
+pub fn bind(input: LocatedSpan) -> IResult<Partial<Bind>> {
     let inherit = map_partial(inherit, Bind::Inherit);
     let inherit_expr = map_partial(inherit_expr, Bind::InheritExpr);
     let simple = map_partial(simple, Bind::Simple);
@@ -18,7 +18,7 @@ pub fn bind(input: Span) -> IResult<Partial<Bind>> {
     map_err_partial(bind, char(';'), ErrorKind::IsA)(input)
 }
 
-fn simple(input: Span) -> IResult<Partial<BindSimple>> {
+fn simple(input: LocatedSpan) -> IResult<Partial<BindSimple>> {
     let (input, comment) = opt(terminated(tokens::comment, multispace0))(input)?;
 
     let lhs = map(terminated(tokens::ident_path, tokens::space), Partial::from);
@@ -34,7 +34,7 @@ fn simple(input: Span) -> IResult<Partial<BindSimple>> {
     Ok((remainder, simple))
 }
 
-fn inherit(input: Span) -> IResult<Partial<BindInherit>> {
+fn inherit(input: LocatedSpan) -> IResult<Partial<BindInherit>> {
     let comment = opt(terminated(tokens::comment, multispace0));
     let key_inherit = pair(tokens::keyword_inherit, tokens::space);
     let name = terminated(tokens::identifier, tokens::space);
@@ -44,7 +44,7 @@ fn inherit(input: Span) -> IResult<Partial<BindInherit>> {
     })(input)
 }
 
-fn inherit_expr(input: Span) -> IResult<Partial<BindInheritExpr>> {
+fn inherit_expr(input: LocatedSpan) -> IResult<Partial<BindInheritExpr>> {
     let comment = opt(terminated(tokens::comment, multispace0));
     let key_inherit = tuple((comment, tokens::keyword_inherit, tokens::space));
 
@@ -61,19 +61,21 @@ fn inherit_expr(input: Span) -> IResult<Partial<BindInheritExpr>> {
 
 #[cfg(test)]
 mod tests {
+    use codespan::Span;
     use nom::combinator::all_consuming;
 
     use super::*;
     use crate::ast::tokens::{Comment, Ident, IdentPath};
-    use crate::{nix, nix_bind, nix_token, ToByteSpan};
+    use crate::{nix, nix_bind, nix_token, ToSpan};
 
     #[test]
     fn simple() {
-        let string = Span::new("foo.bar = true;");
+        let string = LocatedSpan::new("foo.bar = true;");
         let (_, uncommented) = all_consuming(bind)(string).unwrap();
         assert_eq!(uncommented, Partial::from(nix_bind!(foo.bar = true)));
 
-        let string = Span::new("# hello world \n #this is a   doc comment   \n  foo.bar = true;");
+        let string =
+            LocatedSpan::new("# hello world \n #this is a   doc comment   \n  foo.bar = true;");
         let (_, commented) = all_consuming(bind)(string).unwrap();
         assert_eq!(
             commented,
@@ -81,18 +83,18 @@ mod tests {
                 Some(Comment::from(" hello world \nthis is a   doc comment   ")),
                 nix_token!(foo.bar),
                 Box::new(nix!(true)),
-                Span::new("").to_byte_span(),
+                LocatedSpan::new("").to_span(),
             )))
         );
     }
 
     #[test]
     fn inherit() {
-        let string = Span::new("inherit foo bar;");
+        let string = LocatedSpan::new("inherit foo bar;");
         let (_, without_expr) = all_consuming(bind)(string).unwrap();
         assert_eq!(without_expr, Partial::from(nix_bind!(inherit foo bar)));
 
-        let string = Span::new("inherit (42) foo bar;");
+        let string = LocatedSpan::new("inherit (42) foo bar;");
         let (_, with_expr) = all_consuming(bind)(string).unwrap();
         assert_eq!(with_expr, Partial::from(nix_bind!(inherit (42) foo bar)));
     }

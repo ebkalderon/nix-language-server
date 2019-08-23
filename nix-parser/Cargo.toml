@@ -6,8 +6,9 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [dependencies]
-codespan = "0.3.0"
+codespan = "0.4.0"
+codespan-reporting = "0.4.0"
 float-cmp = "0.5.2"
 http = "0.1.18"
-nom = "5.0.0"
+nom = "5.0.1"
 nom_locate = "1.0.0"

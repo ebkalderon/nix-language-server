@@ -1,16 +1,16 @@
 #![forbid(unsafe_code)]
 
-use codespan::ByteSpan;
+use codespan::Span;
 
 pub mod ast;
 pub mod parser;
 
-pub trait ToByteSpan {
-    fn to_byte_span(&self) -> ByteSpan;
+pub trait ToSpan {
+    fn to_span(&self) -> Span;
 }
 
-impl ToByteSpan for ByteSpan {
-    fn to_byte_span(&self) -> ByteSpan {
+impl ToSpan for Span {
+    fn to_span(&self) -> Span {
         *self
     }
 }

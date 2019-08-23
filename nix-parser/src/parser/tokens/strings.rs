@@ -1,3 +1,4 @@
+use codespan::Span;
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -11,8 +12,8 @@ use nom::{
 
 use crate::{
     ast::{tokens::Literal, BinaryOp, Expr, ExprBinary},
-    parser::{expr::expr, partial::Partial, tokens::space, IResult, Span},
-    ToByteSpan,
+    parser::{expr::expr, partial::Partial, tokens::space, IResult, LocatedSpan},
+    ToSpan,
 };
 
 const SINGLE_QUOTE_DELIM: &str = "''";
@@ -22,32 +23,32 @@ const SINGLE_QUOTE_ESCAPE_CHAR: &str = r#"''\"#;
 const INTERPOLATION_START: &str = "${";
 const INTERPOLATION_END: char = '}';
 
-fn single_quote_delim(input: Span) -> IResult<()> {
+fn single_quote_delim(input: LocatedSpan) -> IResult<()> {
     map(tag(SINGLE_QUOTE_DELIM), |_| ())(input)
 }
 
-fn single_quote_escape_quote(input: Span) -> IResult<()> {
+fn single_quote_escape_quote(input: LocatedSpan) -> IResult<()> {
     map(tag(SINGLE_QUOTE_ESCAPE_QUOTE), |_| ())(input)
 }
 
-fn single_quote_escape_dollar(input: Span) -> IResult<()> {
+fn single_quote_escape_dollar(input: LocatedSpan) -> IResult<()> {
     map(tag(SINGLE_QUOTE_ESCAPE_DOLLAR), |_| ())(input)
 }
 
-fn single_quote_escape_char(input: Span) -> IResult<()> {
+fn single_quote_escape_char(input: LocatedSpan) -> IResult<()> {
     map(tag(SINGLE_QUOTE_ESCAPE_CHAR), |_| ())(input)
 }
 
-fn interpolation_start(input: Span) -> IResult<()> {
+fn interpolation_start(input: LocatedSpan) -> IResult<()> {
     map(tag(INTERPOLATION_START), |_| ())(input)
 }
 
-fn interpolation_end(input: Span) -> IResult<()> {
+fn interpolation_end(input: LocatedSpan) -> IResult<()> {
     map(char(INTERPOLATION_END), |_| ())(input)
 }
 
 /// multi-line string parser
-pub fn single_quote_string(input: Span) -> IResult<Partial<Expr>> {
+pub fn single_quote_string(input: LocatedSpan) -> IResult<Partial<Expr>> {
     // single-quote-string
     let original_input = input;
     let (mut input, _) = tag(SINGLE_QUOTE_DELIM)(input)?; // backtrack
@@ -194,9 +195,7 @@ pub fn single_quote_string(input: Span) -> IResult<Partial<Expr>> {
         let mut literals = literals.into_iter().map(|(s, start, end)| {
             Expr::Literal(Literal::String(
                 s,
-                original_input
-                    .slice(start.offset..end.offset)
-                    .to_byte_span(),
+                original_input.slice(start.offset..end.offset).to_span(),
             ))
         });
         let first: Partial<_> = literals
@@ -212,13 +211,13 @@ pub fn single_quote_string(input: Span) -> IResult<Partial<Expr>> {
                             BinaryOp::Add,
                             Box::new(first),
                             Box::new(interpolation),
-                            Default::default(),
+                            Span::initial(),
                         ));
                         Expr::Binary(ExprBinary::new(
                             BinaryOp::Add,
                             Box::new(first),
                             Box::new(literal),
-                            Default::default(),
+                            Span::initial(),
                         ))
                     })
                 },
@@ -245,14 +244,14 @@ mod tests {
     use crate::ast::{tokens::Ident, Bind, BindSimple, ExprSet};
     #[test]
     fn it_works() {
-        let input = Span::new(
+        let input = LocatedSpan::new(
             r#"''
 hello
 world
 ''"#,
         );
         let (_, val) = all_consuming(single_quote_string)(input).unwrap();
-        let span = Span::new("").to_byte_span();
+        let span = LocatedSpan::new("").to_span();
         assert_eq!(
             val,
             Partial::from(Expr::Literal(Literal::String(
@@ -261,7 +260,7 @@ world
             )))
         );
 
-        let input = Span::new(
+        let input = LocatedSpan::new(
             r#"''
   hello
   world

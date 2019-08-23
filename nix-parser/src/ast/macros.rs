@@ -36,6 +36,8 @@ macro_rules! nix {
         use $crate::ast::*;
         #[allow(unused_imports)]
         use $crate::ast::tokens::*;
+        #[allow(unused_imports)]
+        use ::codespan::Span;
         $crate::nix_expr!($($expr)+)
     }};
 }
@@ -44,27 +46,27 @@ macro_rules! nix {
 #[macro_export]
 macro_rules! nix_token {
     (<$($template:tt)+>) => {
-        Literal::Template(["<", $($template),+, ">"].into_iter().collect(), Default::default())
+        Literal::Template(["<", $($template),+, ">"].into_iter().collect(), Span::initial())
     };
 
     (/ $($path:tt)/+) => {
-        Literal::Path(["/", $(stringify!($path)),+].into_iter().collect(), Default::default())
+        Literal::Path(["/", $(stringify!($path)),+].into_iter().collect(), Span::initial())
     };
 
     ($prefix:tt / $($path:tt)/+) => {
-        Literal::Path([stringify!($prefix), $(stringify!($path)),+].into_iter().collect(), Default::default())
+        Literal::Path([stringify!($prefix), $(stringify!($path)),+].into_iter().collect(), Span::initial())
     };
 
     (false) => {
-        Literal::Boolean(false, Default::default())
+        Literal::Boolean(false, Span::initial())
     };
 
     (true) => {
-        Literal::Boolean(true, Default::default())
+        Literal::Boolean(true, Span::initial())
     };
 
     (null) => {
-        Literal::Null(Default::default())
+        Literal::Null(Span::initial())
     };
 
     (_) => {
@@ -142,7 +144,9 @@ macro_rules! nix_list {
         use $crate::ast::tokens::*;
         #[allow(unused_imports)]
         use $crate::ast::*;
-        ExprList::new(Vec::new(), Default::default())
+        #[allow(unused_imports)]
+        use ::codespan::Span;
+        ExprList::new(Vec::new(), Span::initial())
     }};
 
     ([$first:tt $($rest:tt)*]) => {{
@@ -150,7 +154,9 @@ macro_rules! nix_list {
         use $crate::ast::tokens::*;
         #[allow(unused_imports)]
         use $crate::ast::*;
-        ExprList::new($crate::nix_list!(@elems ($first) $($rest)*).collect(), Default::default())
+        #[allow(unused_imports)]
+        use ::codespan::Span;
+        ExprList::new($crate::nix_list!(@elems ($first) $($rest)*).collect(), Span::initial())
     }};
 }
 
@@ -159,19 +165,19 @@ macro_rules! nix_list {
 macro_rules! nix_bind {
     (inherit $($names:ident)+) => {{
         let names = vec![$($crate::nix_token!($names)),+];
-        Bind::Inherit(BindInherit::new(names, Default::default()))
+        Bind::Inherit(BindInherit::new(names, Span::initial()))
     }};
 
     (inherit ($($expr:tt)+) $($names:ident)+) => {{
         let expr = Box::new($crate::nix!($($expr)+));
         let names = vec![$($crate::nix_token!($names)),+];
-        Bind::InheritExpr(BindInheritExpr::new(expr, names, Default::default()))
+        Bind::InheritExpr(BindInheritExpr::new(expr, names, Span::initial()))
     }};
 
     ($($name:ident).+ = $($expr:tt)+) => {{
         let attr = IdentPath::from(vec![$(stringify!($name)),+]);
         let expr = Box::new($crate::nix!($($expr)+));
-        Bind::Simple(BindSimple::new(None, attr, expr, Default::default()))
+        Bind::Simple(BindSimple::new(None, attr, expr, Span::initial()))
     }};
 }
 
@@ -179,11 +185,11 @@ macro_rules! nix_bind {
 #[macro_export]
 macro_rules! nix_set {
     ({ }) => {
-        ExprSet::new(Vec::new(), Default::default())
+        ExprSet::new(Vec::new(), Span::initial())
     };
 
     ({ $($binds:tt)+ }) => {
-        ExprSet::new($crate::nix_set!(@binds $($binds)*).collect(), Default::default())
+        ExprSet::new($crate::nix_set!(@binds $($binds)*).collect(), Span::initial())
     };
 
     (@binds ($($bind:tt)+) ; $($rest:tt)+) => {
@@ -203,6 +209,8 @@ macro_rules! nix_set {
         use $crate::ast::*;
         #[allow(unused_imports)]
         use $crate::ast::tokens::*;
+        #[allow(unused_imports)]
+        use ::codespan::Span;
         $crate::nix_set!(@binds ($first) $($rest)*)
     }};
 }
@@ -214,11 +222,12 @@ macro_rules! nix_set {
 /// # Example
 ///
 /// ```rust,edition2018
+/// # use codespan::Span;
 /// # use nix_parser::nix_expr_and_str;
 /// # use nix_parser::ast::{tokens::Literal, Expr};
 /// #
 /// let (expr, s) = nix_expr_and_str!(~/foo/bar);
-/// assert_eq!(expr, Expr::Literal(Literal::Path("~/foo/bar".into(), Default::default())));
+/// assert_eq!(expr, Expr::Literal(Literal::Path("~/foo/bar".into(), Span::initial())));
 /// assert_eq!(s, "~/foo/bar");
 /// ```
 #[doc(hidden)]
@@ -253,11 +262,11 @@ macro_rules! nix_expr {
 #[macro_export]
 macro_rules! unary {
     (@rule - $($expr:tt)+) => {
-        Expr::Unary(ExprUnary::new(UnaryOp::Neg, Box::new($crate::atomic!($($expr)+)), Default::default()))
+        Expr::Unary(ExprUnary::new(UnaryOp::Neg, Box::new($crate::atomic!($($expr)+)), Span::initial()))
     };
 
     (@rule ! $($expr:tt)+) => {
-        Expr::Unary(ExprUnary::new(UnaryOp::Not, Box::new($crate::atomic!($($expr)+)), Default::default()))
+        Expr::Unary(ExprUnary::new(UnaryOp::Not, Box::new($crate::atomic!($($expr)+)), Span::initial()))
     };
 
     (@rule $($expr:tt)+) => {
@@ -269,6 +278,8 @@ macro_rules! unary {
         use $crate::ast::*;
         #[allow(unused_imports)]
         use $crate::ast::tokens::*;
+        #[allow(unused_imports)]
+        use ::codespan::Span;
         $crate::unary!(@rule $($expr)+)
     }};
 }
@@ -277,7 +288,7 @@ macro_rules! unary {
 #[macro_export]
 macro_rules! atomic {
     (($($expr:tt)+)) => {
-        Expr::Paren(ExprParen::new(Box::new($crate::nix_expr!($($expr)+)), Default::default()))
+        Expr::Paren(ExprParen::new(Box::new($crate::nix_expr!($($expr)+)), Span::initial()))
     };
 
     ({$($binds:tt)*}) => {

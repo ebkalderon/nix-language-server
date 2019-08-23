@@ -1,6 +1,6 @@
 use std::iter::FromIterator;
 
-use codespan::ByteSpan;
+use codespan::Span;
 use nom::character::complete::anychar;
 use nom::combinator::recognize;
 use nom::error::{ErrorKind, VerboseError, VerboseErrorKind};
@@ -8,13 +8,13 @@ use nom::multi::many_till;
 use nom::sequence::terminated;
 use nom::Slice;
 
-use super::{IResult, Span};
-use crate::ToByteSpan;
+use super::{IResult, LocatedSpan};
+use crate::ToSpan;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partial<'a, T> {
     value: Option<T>,
-    errors: VerboseError<Span<'a>>,
+    errors: VerboseError<LocatedSpan<'a>>,
 }
 
 impl<'a, T> Partial<'a, T> {
@@ -27,7 +27,7 @@ impl<'a, T> Partial<'a, T> {
     }
 
     /// Constructs a new `Partial<T>` with the given initial value and a stack of errors.
-    pub fn with_errors(value: Option<T>, errors: VerboseError<Span<'a>>) -> Self {
+    pub fn with_errors(value: Option<T>, errors: VerboseError<LocatedSpan<'a>>) -> Self {
         Partial { value, errors }
     }
 
@@ -37,7 +37,7 @@ impl<'a, T> Partial<'a, T> {
     }
 
     /// Returns the errors associated with the partial value, if any.
-    pub fn errors(&self) -> Option<VerboseError<Span<'a>>> {
+    pub fn errors(&self) -> Option<VerboseError<LocatedSpan<'a>>> {
         if self.has_errors() {
             Some(self.errors.clone())
         } else {
@@ -46,7 +46,7 @@ impl<'a, T> Partial<'a, T> {
     }
 
     /// Appends the given error to the error stack contained in this partial value.
-    pub fn extend_errors(&mut self, error: VerboseError<Span<'a>>) {
+    pub fn extend_errors(&mut self, error: VerboseError<LocatedSpan<'a>>) {
         self.errors.errors.extend(error.errors);
     }
 
@@ -104,7 +104,7 @@ impl<'a, T> Partial<'a, T> {
 
     pub fn map_err<F>(self, f: F) -> Partial<'a, T>
     where
-        F: FnOnce(VerboseError<Span<'a>>) -> VerboseError<Span<'a>>,
+        F: FnOnce(VerboseError<LocatedSpan<'a>>) -> VerboseError<LocatedSpan<'a>>,
     {
         let errors = if self.has_errors() {
             f(self.errors)
@@ -118,8 +118,8 @@ impl<'a, T> Partial<'a, T> {
         }
     }
 
-    /// Transforms the `Partial<T>` into a `Result<T, VerboseError<Span>>`, asserting that the
-    /// contained value exists and has no errors.
+    /// Transforms the `Partial<T>` into a `Result<T, VerboseError<LocatedSpan>>`, asserting that
+    /// the contained value exists and has no errors.
     ///
     /// # Examples
     ///
@@ -136,7 +136,7 @@ impl<'a, T> Partial<'a, T> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn verify(self) -> Result<T, VerboseError<Span<'a>>> {
+    pub fn verify(self) -> Result<T, VerboseError<LocatedSpan<'a>>> {
         match self.value {
             Some(_) if self.has_errors() => Err(self.errors),
             Some(value) => Ok(value),
@@ -216,10 +216,10 @@ impl<'a, T> FromIterator<Partial<'a, T>> for Partial<'a, Vec<T>> {
 pub fn expect_terminated<'a, O1, O2, F, G>(
     f: F,
     term: G,
-) -> impl Fn(Span<'a>) -> IResult<Partial<O1>>
+) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>
 where
-    F: Fn(Span<'a>) -> IResult<Partial<O1>>,
-    G: Fn(Span<'a>) -> IResult<O2>,
+    F: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
+    G: Fn(LocatedSpan<'a>) -> IResult<O2>,
 {
     move |input| match terminated(&f, &term)(input) {
         Ok((remaining, partial)) => Ok((remaining, partial)),
@@ -237,9 +237,12 @@ where
 /// ```rust,ignore
 /// map(partial, |partial| partial.map(&f))
 /// ```
-pub fn map_partial<'a, O1, O2, P, F>(partial: P, f: F) -> impl Fn(Span<'a>) -> IResult<Partial<O2>>
+pub fn map_partial<'a, O1, O2, P, F>(
+    partial: P,
+    f: F,
+) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<O2>>
 where
-    P: Fn(Span<'a>) -> IResult<Partial<O1>>,
+    P: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
     F: Fn(O1) -> O2,
 {
     move |input| {
@@ -250,19 +253,19 @@ where
 
 /// Combinator which combines the functionality of `map_partial()` and `map_spanned()`.
 ///
-/// This is like `map_partial()` except it also includes a `ByteSpan` based on the consumed input.
+/// This is like `map_partial()` except it also includes a `Span` based on the consumed input.
 pub fn map_partial_spanned<'a, O1, O2, P, F>(
     partial: P,
     f: F,
-) -> impl Fn(Span<'a>) -> IResult<Partial<O2>>
+) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<O2>>
 where
-    P: Fn(Span<'a>) -> IResult<Partial<O1>>,
-    F: Fn(ByteSpan, O1) -> O2,
+    P: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
+    F: Fn(Span, O1) -> O2,
 {
     move |input| {
         let (remainder, partial) = partial(input)?;
         let partial_len = remainder.offset - input.offset;
-        let span = input.slice(..partial_len).to_byte_span();
+        let span = input.slice(..partial_len).to_span();
         Ok((remainder, partial.map(|p| f(span, p))))
     }
 }
@@ -279,10 +282,10 @@ pub fn map_err_partial<'a, O1, O2, F, G>(
     partial: F,
     skip_to: G,
     error: ErrorKind,
-) -> impl Fn(Span<'a>) -> IResult<Partial<O1>>
+) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>
 where
-    F: Fn(Span<'a>) -> IResult<Partial<O1>>,
-    G: Fn(Span<'a>) -> IResult<O2>,
+    F: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
+    G: Fn(LocatedSpan<'a>) -> IResult<O2>,
 {
     move |input| match partial(input) {
         Ok((remaining, value)) => Ok((remaining, value)),
@@ -306,10 +309,10 @@ where
 pub fn many_till_partial<'a, O1, O2, F, G>(
     f: F,
     g: G,
-) -> impl Fn(Span<'a>) -> IResult<Partial<Vec<O1>>>
+) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<Vec<O1>>>
 where
-    F: Fn(Span<'a>) -> IResult<Partial<O1>>,
-    G: Fn(Span<'a>) -> IResult<O2>,
+    F: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
+    G: Fn(LocatedSpan<'a>) -> IResult<O2>,
 {
     move |input| {
         let mut partials = Vec::new();
@@ -347,9 +350,9 @@ where
 }
 
 /// Combinator which asserts that a given partial parser produces a value and contains no errors.
-pub fn verify_full<'a, O, F>(f: F) -> impl Fn(Span<'a>) -> IResult<O>
+pub fn verify_full<'a, O, F>(f: F) -> impl Fn(LocatedSpan<'a>) -> IResult<O>
 where
-    F: Fn(Span<'a>) -> IResult<Partial<O>>,
+    F: Fn(LocatedSpan<'a>) -> IResult<Partial<O>>,
 {
     move |input| {
         let (input, partial) = f(input)?;

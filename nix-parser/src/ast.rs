@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use codespan::ByteSpan;
+use codespan::Span;
 
 use self::tokens::{Comment, Ident, IdentPath, Literal};
 
@@ -77,7 +77,7 @@ pub enum Expr {
     FnApp(ExprFnApp),
 
     /// Trap for halting the parser in place.
-    Trap(ByteSpan),
+    Trap(Span),
 }
 
 impl Display for Expr {
@@ -113,11 +113,11 @@ impl Display for Expr {
 #[derive(Clone, Debug)]
 pub struct ExprParen {
     expr: Box<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprParen {
-    pub fn new(expr: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(expr: Box<Expr>, span: Span) -> Self {
         ExprParen { expr, span }
     }
 }
@@ -137,11 +137,11 @@ impl PartialEq for ExprParen {
 #[derive(Clone, Debug)]
 pub struct ExprList {
     elems: Vec<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprList {
-    pub fn new(elems: Vec<Expr>, span: ByteSpan) -> Self {
+    pub fn new(elems: Vec<Expr>, span: Span) -> Self {
         ExprList { elems, span }
     }
 }
@@ -162,11 +162,11 @@ impl PartialEq for ExprList {
 #[derive(Clone, Debug)]
 pub struct ExprSet {
     binds: Vec<Bind>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprSet {
-    pub fn new(binds: Vec<Bind>, span: ByteSpan) -> Self {
+    pub fn new(binds: Vec<Bind>, span: Span) -> Self {
         ExprSet { binds, span }
     }
 }
@@ -205,11 +205,11 @@ impl Display for UnaryOp {
 pub struct ExprUnary {
     op: UnaryOp,
     expr: Box<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprUnary {
-    pub fn new(op: UnaryOp, expr: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(op: UnaryOp, expr: Box<Expr>, span: Span) -> Self {
         ExprUnary { op, expr, span }
     }
 }
@@ -290,11 +290,11 @@ pub struct ExprBinary {
     op: BinaryOp,
     lhs: Box<Expr>,
     rhs: Box<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprBinary {
-    pub fn new(op: BinaryOp, lhs: Box<Expr>, rhs: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(op: BinaryOp, lhs: Box<Expr>, rhs: Box<Expr>, span: Span) -> Self {
         ExprBinary { op, lhs, rhs, span }
     }
 }
@@ -333,11 +333,11 @@ pub struct BindSimple {
     comment: Option<Comment>,
     name: IdentPath,
     expr: Box<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl BindSimple {
-    pub fn new(comment: Option<Comment>, name: IdentPath, expr: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(comment: Option<Comment>, name: IdentPath, expr: Box<Expr>, span: Span) -> Self {
         BindSimple {
             comment,
             name,
@@ -366,11 +366,11 @@ impl PartialEq for BindSimple {
 #[derive(Clone, Debug)]
 pub struct BindInherit {
     names: Vec<Ident>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl BindInherit {
-    pub fn new(names: Vec<Ident>, span: ByteSpan) -> Self {
+    pub fn new(names: Vec<Ident>, span: Span) -> Self {
         BindInherit { names, span }
     }
 }
@@ -392,11 +392,11 @@ impl PartialEq for BindInherit {
 pub struct BindInheritExpr {
     expr: Box<Expr>,
     names: Vec<Ident>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl BindInheritExpr {
-    pub fn new(expr: Box<Expr>, names: Vec<Ident>, span: ByteSpan) -> Self {
+    pub fn new(expr: Box<Expr>, names: Vec<Ident>, span: Span) -> Self {
         BindInheritExpr { expr, names, span }
     }
 }
@@ -417,11 +417,11 @@ impl PartialEq for BindInheritExpr {
 #[derive(Clone, Debug)]
 pub struct ExprLet {
     binds: Vec<Bind>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprLet {
-    pub fn new(binds: Vec<Bind>, span: ByteSpan) -> Self {
+    pub fn new(binds: Vec<Bind>, span: Span) -> Self {
         ExprLet { binds, span }
     }
 }
@@ -442,11 +442,11 @@ impl PartialEq for ExprLet {
 #[derive(Clone, Debug)]
 pub struct ExprRec {
     binds: Vec<Bind>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprRec {
-    pub fn new(binds: Vec<Bind>, span: ByteSpan) -> Self {
+    pub fn new(binds: Vec<Bind>, span: Span) -> Self {
         ExprRec { binds, span }
     }
 }
@@ -467,7 +467,7 @@ impl PartialEq for ExprRec {
 #[derive(Clone, Debug)]
 pub enum AttrKey {
     Ident(Ident),
-    String(String, ByteSpan),
+    String(String, Span),
     Expr(Box<Expr>),
 }
 
@@ -497,16 +497,11 @@ pub struct ExprProj {
     expr: Box<Expr>,
     attr: AttrKey,
     fallback: Option<Box<Expr>>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprProj {
-    pub fn new(
-        expr: Box<Expr>,
-        attr: AttrKey,
-        fallback: Option<Box<Expr>>,
-        span: ByteSpan,
-    ) -> Self {
+    pub fn new(expr: Box<Expr>, attr: AttrKey, fallback: Option<Box<Expr>>, span: Span) -> Self {
         ExprProj {
             expr,
             attr,
@@ -537,11 +532,11 @@ pub struct ExprIf {
     cond: Box<Expr>,
     body: Box<Expr>,
     fallback: Box<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprIf {
-    pub fn new(cond: Box<Expr>, body: Box<Expr>, fallback: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(cond: Box<Expr>, body: Box<Expr>, fallback: Box<Expr>, span: Span) -> Self {
         ExprIf {
             cond,
             body,
@@ -571,11 +566,11 @@ impl PartialEq for ExprIf {
 pub struct ExprOr {
     expr: Box<Expr>,
     fallback: Box<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprOr {
-    pub fn new(expr: Box<Expr>, fallback: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(expr: Box<Expr>, fallback: Box<Expr>, span: Span) -> Self {
         ExprOr {
             expr,
             fallback,
@@ -600,11 +595,11 @@ impl PartialEq for ExprOr {
 pub struct ExprAssert {
     cond: Box<Expr>,
     expr: Box<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprAssert {
-    pub fn new(cond: Box<Expr>, expr: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(cond: Box<Expr>, expr: Box<Expr>, span: Span) -> Self {
         ExprAssert { cond, expr, span }
     }
 }
@@ -625,11 +620,11 @@ impl PartialEq for ExprAssert {
 pub struct ExprWith {
     with: Box<Expr>,
     expr: Box<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprWith {
-    pub fn new(with: Box<Expr>, expr: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(with: Box<Expr>, expr: Box<Expr>, span: Span) -> Self {
         ExprWith { with, expr, span }
     }
 }
@@ -650,11 +645,11 @@ impl PartialEq for ExprWith {
 pub struct ExprLetIn {
     binds: Vec<Bind>,
     body: Box<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprLetIn {
-    pub fn new(binds: Vec<Bind>, body: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(binds: Vec<Bind>, body: Box<Expr>, span: Span) -> Self {
         ExprLetIn { binds, body, span }
     }
 }
@@ -675,8 +670,8 @@ impl PartialEq for ExprLetIn {
 #[derive(Clone, Debug)]
 pub enum Formal {
     Simple(Ident),
-    Default(Ident, Box<Expr>, ByteSpan),
-    Ellipsis(ByteSpan),
+    Default(Ident, Box<Expr>, Span),
+    Ellipsis(Span),
 }
 
 impl Display for Formal {
@@ -722,11 +717,11 @@ impl Display for ExprFnDecl {
 pub struct SimpleFnDecl {
     name: Ident,
     body: Box<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl SimpleFnDecl {
-    pub fn new(name: Ident, body: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(name: Ident, body: Box<Expr>, span: Span) -> Self {
         SimpleFnDecl { name, body, span }
     }
 }
@@ -747,11 +742,11 @@ impl PartialEq for SimpleFnDecl {
 pub struct FormalsFnDecl {
     formals: Vec<Formal>,
     body: Box<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl FormalsFnDecl {
-    pub fn new(formals: Vec<Formal>, body: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(formals: Vec<Formal>, body: Box<Expr>, span: Span) -> Self {
         FormalsFnDecl {
             formals,
             body,
@@ -779,7 +774,7 @@ pub struct FormalsExtraFnDecl {
     is_prefix: bool,
     formals: Vec<Formal>,
     body: Box<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl FormalsExtraFnDecl {
@@ -788,7 +783,7 @@ impl FormalsExtraFnDecl {
         is_prefix: bool,
         formals: Vec<Formal>,
         body: Box<Expr>,
-        span: ByteSpan,
+        span: Span,
     ) -> Self {
         FormalsExtraFnDecl {
             extra,
@@ -824,11 +819,11 @@ impl PartialEq for FormalsExtraFnDecl {
 pub struct ExprFnApp {
     function: Box<Expr>,
     argument: Box<Expr>,
-    span: ByteSpan,
+    span: Span,
 }
 
 impl ExprFnApp {
-    pub fn new(function: Box<Expr>, argument: Box<Expr>, span: ByteSpan) -> Self {
+    pub fn new(function: Box<Expr>, argument: Box<Expr>, span: Span) -> Self {
         ExprFnApp {
             function,
             argument,

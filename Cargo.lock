@@ -137,6 +137,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "codespan"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "unicode-segmentation 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "codespan-reporting"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "codespan 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termcolor 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unicode-width 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "crossbeam-deque"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -529,7 +547,7 @@ dependencies = [
  "jsonrpc-derive 13.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types 0.59.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "nom 5.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nom 5.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rexpect 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.94 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -542,10 +560,11 @@ dependencies = [
 name = "nix-parser"
 version = "0.1.0"
 dependencies = [
- "codespan 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "codespan 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "codespan-reporting 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "float-cmp 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "nom 5.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nom 5.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "nom_locate 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -556,7 +575,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "nom"
-version = "5.0.0"
+version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "lexical-core 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -571,7 +590,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bytecount 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "memchr 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "nom 5.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nom 5.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1516,6 +1535,8 @@ dependencies = [
 "checksum clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5067f5bb2d80ef5d68b4c87db81601f0b75bca627bc2ef76b141d7b846a3c6d9"
 "checksum cloudabi 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 "checksum codespan 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "03ed0fdf823b4a01c3b6a3e086b4d0a2def8d3cb75b110ec5c988fe2790860a9"
+"checksum codespan 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "19e706ff6deb23a02b474861a9a784c945de07be68ca28cf812e079526489dae"
+"checksum codespan-reporting 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c956d6729b373db1b4a2d5c34292f7f348d8e787d8001b21c1f697037b0ab6fa"
 "checksum crossbeam-deque 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b18cd2e169ad86297e6bc0ad9aa679aee9daa4f19e8163860faf7c164e4f5a71"
 "checksum crossbeam-epoch 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "04c9e3102cc2d69cd681412141b390abd55a362afc1540965dad0ad4d34280b4"
 "checksum crossbeam-queue 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7c979cd6cfe72335896575c6b5688da489e420d36a27a0b9eb0c73db574b4a4b"
@@ -1560,7 +1581,7 @@ dependencies = [
 "checksum net2 0.2.33 (registry+https://github.com/rust-lang/crates.io-index)" = "42550d9fb7b6684a6d404d9fa7250c2eb2646df731d1c06afc06dcee9e1bcf88"
 "checksum nix 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a2c5afeb0198ec7be8569d666644b574345aad2e95a53baf3a532da3e0f3fb32"
 "checksum nodrop 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)" = "2f9667ddcc6cc8a43afc9b7917599d7216aa09c463919ea32c59ed6cac8bc945"
-"checksum nom 5.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e9761d859320e381010a4f7f8ed425f2c924de33ad121ace447367c713ad561b"
+"checksum nom 5.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c618b63422da4401283884e6668d39f819a106ef51f5f59b81add00075da35ca"
 "checksum nom_locate 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f932834fd8e391fc7710e2ba17e8f9f8645d846b55aa63207e17e110a1e1ce35"
 "checksum num-derive 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "eafd0b45c5537c3ba526f79d3e75120036502bebacbb3f3220914067ce39dbf2"
 "checksum num-traits 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "6ba9a427cfca2be13aa6f6403b0b7e7368fe982bfa16fccc450ce74c46cd9b32"

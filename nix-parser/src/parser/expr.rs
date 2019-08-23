@@ -4,17 +4,17 @@ use nom::combinator::{map, opt};
 use nom::sequence::{pair, terminated};
 
 use super::partial::{map_partial, Partial};
-use super::{map_spanned, tokens, IResult, Span};
+use super::{map_spanned, tokens, IResult, LocatedSpan};
 use crate::ast::{Expr, ExprUnary, UnaryOp};
 
 mod atomic;
 mod bind;
 
-pub fn expr(input: Span) -> IResult<Partial<Expr>> {
+pub fn expr(input: LocatedSpan) -> IResult<Partial<Expr>> {
     terminated(unary, tokens::space)(input)
 }
 
-fn unary(input: Span) -> IResult<Partial<Expr>> {
+fn unary(input: LocatedSpan) -> IResult<Partial<Expr>> {
     let neg = map(char('-'), |_| UnaryOp::Neg);
     let not = map(char('!'), |_| UnaryOp::Not);
     let expr = pair(opt(alt((neg, not))), atomic);
@@ -24,7 +24,7 @@ fn unary(input: Span) -> IResult<Partial<Expr>> {
     })(input)
 }
 
-fn atomic(input: Span) -> IResult<Partial<Expr>> {
+fn atomic(input: LocatedSpan) -> IResult<Partial<Expr>> {
     let paren = map_partial(atomic::paren, Expr::Paren);
     let set = map_partial(atomic::set, Expr::Set);
     let list = map_partial(atomic::list, Expr::List);

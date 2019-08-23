@@ -6,12 +6,12 @@ use nom::bytes::complete::{tag, take};
 use nom::combinator::map;
 
 use crate::ast::tokens::Literal;
-use crate::parser::{map_spanned, IResult, Span};
+use crate::parser::{map_spanned, IResult, LocatedSpan};
 
 mod number;
 mod path;
 
-pub fn literal(input: Span) -> IResult<Literal> {
+pub fn literal(input: LocatedSpan) -> IResult<Literal> {
     let boolean = map_spanned(boolean, |span, b| Literal::from((b, span)));
     let float = map_spanned(float, |span, f| Literal::from((f, span)));
     let integer = map_spanned(integer, |span, i| Literal::from((i, span)));
@@ -21,17 +21,17 @@ pub fn literal(input: Span) -> IResult<Literal> {
     alt((boolean, float, integer, null, path, temp))(input)
 }
 
-pub fn boolean(input: Span) -> IResult<bool> {
+pub fn boolean(input: LocatedSpan) -> IResult<bool> {
     let true_val = map(tag("true"), |_| true);
     let false_val = map(tag("false"), |_| false);
     alt((true_val, false_val))(input)
 }
 
-pub fn null(input: Span) -> IResult<()> {
+pub fn null(input: LocatedSpan) -> IResult<()> {
     map(tag("null"), |_| ())(input)
 }
 
-fn take_n(n: usize) -> impl Fn(Span) -> IResult<Span> {
+fn take_n(n: usize) -> impl Fn(LocatedSpan) -> IResult<LocatedSpan> {
     move |input| take(n)(input)
 }
 
@@ -43,18 +43,18 @@ mod tests {
 
     #[test]
     fn boolean_literal() {
-        let string = Span::new("true");
+        let string = LocatedSpan::new("true");
         let (_, true_val) = all_consuming(boolean)(string).unwrap();
         assert_eq!(true_val, true);
 
-        let string = Span::new("false");
+        let string = LocatedSpan::new("false");
         let (_, false_val) = all_consuming(boolean)(string).unwrap();
         assert_eq!(false_val, false);
     }
 
     #[test]
     fn null_literal() {
-        let string = Span::new("null");
+        let string = LocatedSpan::new("null");
         let (_, null) = all_consuming(null)(string).unwrap();
         assert_eq!(null, ());
     }

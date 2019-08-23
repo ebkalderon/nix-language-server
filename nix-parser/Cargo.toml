@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 codespan = "0.3.0"
-http = "0.1.18"
 float-cmp = "0.5.2"
+http = "0.1.18"
 nom = "5.0.0"
 nom_locate = "1.0.0"

@@ -61,7 +61,6 @@ fn inherit_expr(input: LocatedSpan) -> IResult<Partial<BindInheritExpr>> {
 
 #[cfg(test)]
 mod tests {
-    use codespan::Span;
     use nom::combinator::all_consuming;
 
     use super::*;

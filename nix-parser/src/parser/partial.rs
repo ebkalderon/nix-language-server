@@ -284,13 +284,9 @@ where
     move |input| match partial(input) {
         Ok((remaining, value)) => Ok((remaining, value)),
         Err(nom::Err::Failure(e)) | Err(nom::Err::Error(e)) => {
-            match recognize(many_till(anychar, &skip_to))(input) {
-                Ok((remaining, failed)) => Ok((remaining, Partial::with_errors(None, e))),
-                Err(_) => Ok((input, Partial::with_errors(None, e))),
-            }
-            // let (remaining, failed) = recognize(many_till(anychar, &skip_to))(input)?;
-            // let partial = Partial::with_errors(None, e);
-            // Ok((remaining, partial))
+            let (remaining, failed) = recognize(many_till(anychar, &skip_to))(input)?;
+            let partial = Partial::with_errors(None, e);
+            Ok((remaining, partial))
         }
         Err(e) => Err(e),
     }

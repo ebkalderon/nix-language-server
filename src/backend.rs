@@ -11,7 +11,6 @@ use lsp_types::*;
 use nix_parser::ast::SourceFile;
 
 use crate::server::LanguageServer;
-use crate::Error;
 
 #[derive(Debug)]
 struct State {
@@ -79,7 +78,6 @@ impl LanguageServer for Nix {
                 let diags = get_diagnostics(&state, id, &source);
                 let s = serde_json::to_string(&diags).unwrap();
                 let msg = format!("{{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{}}}", s);
-                info!("{}", msg);
                 print!("Content-Length: {}\r\n\r\n{}", msg.len(), msg);
             }
         }
@@ -98,7 +96,6 @@ impl LanguageServer for Nix {
                 let diags = get_diagnostics(&state, id, &source);
                 let s = serde_json::to_string(&diags).unwrap();
                 let msg = format!("{{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{}}}", s);
-                info!("{}", msg);
                 print!("Content-Length: {}\r\n\r\n{}", msg.len(), msg);
             }
         }

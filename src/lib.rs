@@ -1,9 +1,6 @@
 #![forbid(unsafe_code)]
 
-use std::process;
-
-use env_logger;
-use log::{error, info};
+use log::info;
 use structopt::StructOpt;
 
 use crate::backend::Nix;

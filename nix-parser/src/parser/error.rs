@@ -98,7 +98,7 @@ impl<'a> ParseError<LocatedSpan<'a>> for Errors {
     fn from_error_kind(input: LocatedSpan<'a>, kind: ErrorKind) -> Self {
         let mut errors = Errors::new();
         errors.push(Error::Message(
-            input.to_span(),
+            input.slice(0..0).to_span(),
             format!("nom error: {:?}", kind),
         ));
         errors

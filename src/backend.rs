@@ -37,7 +37,6 @@ impl Nix {
 impl LanguageServer for Nix {
     fn initialize(&self, params: Params) -> RpcResult<InitializeResult> {
         let params: InitializeParams = params.parse()?;
-        debug!("initialize with: {:?}", params);
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
@@ -45,7 +44,7 @@ impl LanguageServer for Nix {
                 )),
                 completion_provider: Some(CompletionOptions {
                     resolve_provider: Some(true),
-                    trigger_characters: Some(vec![".".into()]),
+                    trigger_characters: Some(vec![".".to_string()]),
                 }),
                 signature_help_provider: Some(SignatureHelpOptions {
                     trigger_characters: None,

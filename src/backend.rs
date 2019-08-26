@@ -14,8 +14,8 @@ use crate::Error;
 
 #[derive(Debug)]
 struct State {
-    pub sources: HashMap<Url, FileId>,
-    pub files: Files,
+    sources: HashMap<Url, FileId>,
+    files: Files,
 }
 
 #[derive(Debug)]
@@ -74,16 +74,7 @@ impl LanguageServer for Nix {
             Err(err) => error!("{}", err),
             Ok(params) => {
                 let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
-                let source = if let Some(id) = state.sources.get(&params.text_document.uri) {
-                    state.files.source(*id)
-                } else {
-                    let id = state.files.add(
-                        params.text_document.uri.to_string(),
-                        params.text_document.text,
-                    );
-                    state.sources.insert(params.text_document.uri.clone(), id);
-                    state.files.source(id)
-                };
+                let source = get_or_insert_source(&mut state, &params.text_document);
                 match source.parse::<SourceFile>() {
                     Ok(file) => info!("parsed source file: {:?}", file),
                     Err(err) => error!("failed to parse source file: {:?}", err),
@@ -92,12 +83,27 @@ impl LanguageServer for Nix {
         }
     }
 
-    fn did_save(&self, _: Params) {
-        info!("did_save");
+    fn did_save(&self, params: Params) {
+        info!("did_save: {:?}", params);
     }
 
-    fn did_change(&self, _: Params) {
-        info!("did_change");
+    fn did_change(&self, params: Params) {
+        match params.parse::<DidChangeTextDocumentParams>() {
+            Err(err) => error!("{}", err),
+            Ok(params) => {
+                let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+                info!("did_change: {:?}", params);
+                let source = reload_source(
+                    &mut state,
+                    &params.text_document,
+                    &params.content_changes[0].text,
+                );
+                match source.parse::<SourceFile>() {
+                    Ok(file) => info!("parsed source file: {:?}", file),
+                    Err(err) => error!("failed to parse source file: {:?}", err),
+                }
+            }
+        }
     }
 
     fn hover(&self, params: Params) -> FutureResult<Option<Hover>, RpcError> {
@@ -118,5 +124,32 @@ impl LanguageServer for Nix {
                 future::ok(None)
             }
         }
+    }
+}
+
+fn reload_source<'a>(
+    state: &'a mut State,
+    document: &VersionedTextDocumentIdentifier,
+    text: &'a str,
+) -> &'a str {
+    if let Some(id) = state.sources.get(&document.uri) {
+        state.files.update(*id, text);
+        state.files.source(*id)
+    } else {
+        let id = state.files.add(document.uri.to_string(), text);
+        state.sources.insert(document.uri.clone(), id);
+        state.files.source(id)
+    }
+}
+
+fn get_or_insert_source<'a>(state: &'a mut State, document: &TextDocumentItem) -> &'a str {
+    if let Some(id) = state.sources.get(&document.uri) {
+        state.files.source(*id)
+    } else {
+        let id = state
+            .files
+            .add(document.uri.to_string(), document.text.clone());
+        state.sources.insert(document.uri.clone(), id);
+        state.files.source(id)
     }
 }

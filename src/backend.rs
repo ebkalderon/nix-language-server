@@ -1,3 +1,5 @@
+//! HACK: All of this.
+
 use std::collections::HashMap;
 use std::sync::Mutex;
 

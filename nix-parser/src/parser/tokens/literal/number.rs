@@ -1,14 +1,14 @@
 use std::str::FromStr;
 
 use nom::character::complete::{char, digit0, digit1, one_of};
-use nom::combinator::{map_res, opt, recognize};
+use nom::combinator::{cut, map_res, opt, recognize};
 use nom::sequence::{pair, tuple};
 
 use crate::parser::{IResult, LocatedSpan};
 
 pub fn float(input: LocatedSpan) -> IResult<f64> {
-    let frac = pair(char('.'), digit1);
-    let exp = tuple((one_of("eE"), opt(one_of("+-")), digit1));
+    let frac = pair(char('.'), cut(digit1));
+    let exp = tuple((one_of("eE"), opt(one_of("+-")), cut(digit1)));
     let number = tuple((opt(char('-')), digit0, frac, opt(exp)));
     let float = recognize(number);
     map_res(float, |s: LocatedSpan| f64::from_str(s.fragment))(input)

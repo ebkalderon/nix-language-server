@@ -15,7 +15,7 @@ pub fn bind(input: LocatedSpan) -> IResult<Partial<Bind>> {
     let inherit_expr = map_partial(inherit_expr, Bind::InheritExpr);
     let simple = map_partial(simple, Bind::Simple);
     let bind = expect_terminated(alt((inherit, inherit_expr, simple)), char(';'));
-    map_err_partial(bind, char(';'), ErrorKind::IsA)(input)
+    map_err_partial(bind, char(';'))(input)
 }
 
 fn simple(input: LocatedSpan) -> IResult<Partial<BindSimple>> {

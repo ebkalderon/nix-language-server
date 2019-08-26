@@ -2,7 +2,7 @@ use std::iter::FromIterator;
 
 use codespan::Span;
 use nom::character::complete::anychar;
-use nom::combinator::recognize;
+use nom::combinator::{cut, recognize};
 use nom::error::{ErrorKind, VerboseError, VerboseErrorKind};
 use nom::multi::many_till;
 use nom::sequence::terminated;
@@ -222,7 +222,7 @@ where
     F: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
     G: Fn(LocatedSpan<'a>) -> IResult<O2>,
 {
-    move |input| match terminated(&f, &term)(input) {
+    move |input| match terminated(&f, cut(&term))(input) {
         Ok((remaining, partial)) => Ok((remaining, partial)),
         Err(nom::Err::Error(err)) => {
             let (remaining, mut partial) = f(input)?;
@@ -282,7 +282,6 @@ where
 pub fn map_err_partial<'a, O1, O2, F, G>(
     partial: F,
     skip_to: G,
-    error: ErrorKind,
 ) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>
 where
     F: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
@@ -292,13 +291,7 @@ where
         Ok((remaining, value)) => Ok((remaining, value)),
         Err(nom::Err::Failure(e)) | Err(nom::Err::Error(e)) => {
             let (remaining, failed) = recognize(many_till(anychar, &skip_to))(input)?;
-            let mut partial = Partial::with_errors(None, e);
-            let mut errors = Errors::new();
-            errors.push(Error::Message(
-                failed.to_span(),
-                format!("nom error: {:?}", error),
-            ));
-            partial.extend_errors(errors);
+            let partial = Partial::with_errors(None, e);
             Ok((remaining, partial))
         }
         Err(e) => Err(e),

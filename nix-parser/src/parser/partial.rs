@@ -3,7 +3,6 @@ use std::iter::FromIterator;
 use codespan::Span;
 use nom::character::complete::anychar;
 use nom::combinator::{cut, recognize};
-use nom::error::{ErrorKind, VerboseError, VerboseErrorKind};
 use nom::multi::many_till;
 use nom::sequence::terminated;
 use nom::Slice;

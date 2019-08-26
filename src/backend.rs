@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use codespan::{FileId, Files};
+use codespan_lsp::{make_lsp_diagnostic, range_to_byte_span};
 use futures::future::{self, FutureResult};
 use jsonrpc_core::types::params::Params;
 use jsonrpc_core::{Error as RpcError, Result as RpcResult};
@@ -74,34 +75,31 @@ impl LanguageServer for Nix {
             Err(err) => error!("{}", err),
             Ok(params) => {
                 let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
-                let source = get_or_insert_source(&mut state, &params.text_document);
-                match source.parse::<SourceFile>() {
-                    Ok(file) => info!("parsed source file: {:?}", file),
-                    Err(err) => error!("failed to parse source file: {:?}", err),
-                }
+                let (source, id) = get_or_insert_source(&mut state, &params.text_document);
+                let diags = get_diagnostics(&state, id, &source);
+                let s = serde_json::to_string(&diags).unwrap();
+                let msg = format!("{{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{}}}", s);
+                info!("{}", msg);
+                print!("Content-Length: {}\r\n\r\n{}", msg.len(), msg);
             }
         }
     }
 
-    fn did_save(&self, params: Params) {
-        info!("did_save: {:?}", params);
-    }
+    fn did_save(&self, _: Params) {}
 
     fn did_change(&self, params: Params) {
         match params.parse::<DidChangeTextDocumentParams>() {
             Err(err) => error!("{}", err),
             Ok(params) => {
                 let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
-                info!("did_change: {:?}", params);
-                let source = reload_source(
-                    &mut state,
-                    &params.text_document,
-                    &params.content_changes[0].text,
-                );
-                match source.parse::<SourceFile>() {
-                    Ok(file) => info!("parsed source file: {:?}", file),
-                    Err(err) => error!("failed to parse source file: {:?}", err),
-                }
+                let (source, id) =
+                    reload_source(&mut state, &params.text_document, params.content_changes);
+                info!("updated source is: \"{}\"", source);
+                let diags = get_diagnostics(&state, id, &source);
+                let s = serde_json::to_string(&diags).unwrap();
+                let msg = format!("{{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{}}}", s);
+                info!("{}", msg);
+                print!("Content-Length: {}\r\n\r\n{}", msg.len(), msg);
             }
         }
     }
@@ -127,29 +125,63 @@ impl LanguageServer for Nix {
     }
 }
 
-fn reload_source<'a>(
-    state: &'a mut State,
-    document: &VersionedTextDocumentIdentifier,
-    text: &'a str,
-) -> &'a str {
+fn get_or_insert_source(state: &mut State, document: &TextDocumentItem) -> (String, FileId) {
     if let Some(id) = state.sources.get(&document.uri) {
-        state.files.update(*id, text);
-        state.files.source(*id)
-    } else {
-        let id = state.files.add(document.uri.to_string(), text);
-        state.sources.insert(document.uri.clone(), id);
-        state.files.source(id)
-    }
-}
-
-fn get_or_insert_source<'a>(state: &'a mut State, document: &TextDocumentItem) -> &'a str {
-    if let Some(id) = state.sources.get(&document.uri) {
-        state.files.source(*id)
+        (state.files.source(*id).to_owned(), *id)
     } else {
         let id = state
             .files
             .add(document.uri.to_string(), document.text.clone());
         state.sources.insert(document.uri.clone(), id);
-        state.files.source(id)
+        (state.files.source(id).to_owned(), id)
+    }
+}
+
+fn reload_source<'a>(
+    state: &mut State,
+    document: &VersionedTextDocumentIdentifier,
+    changes: Vec<TextDocumentContentChangeEvent>,
+) -> (String, FileId) {
+    if let Some(id) = state.sources.get(&document.uri) {
+        let mut source = state.files.source(*id).to_owned();
+        for change in changes {
+            if let (None, None) = (change.range, change.range_length) {
+                source = change.text;
+            } else if let Some(range) = change.range {
+                let span = range_to_byte_span(&state.files, *id, &range).unwrap();
+                let range = (span.start().to_usize())..(span.end().to_usize());
+                source.replace_range(range, &change.text);
+            }
+        }
+        state.files.update(*id, source);
+        (state.files.source(*id).to_owned(), *id)
+    } else {
+        panic!("attempted to reload source that does not exist");
+    }
+}
+
+fn get_diagnostics(state: &State, id: FileId, source: &str) -> PublishDiagnosticsParams {
+    let uri = state
+        .sources
+        .iter()
+        .filter(|(_, v)| **v == id)
+        .next()
+        .map(|(k, _)| k.clone())
+        .unwrap();
+
+    match source.parse::<SourceFile>() {
+        Ok(_) => PublishDiagnosticsParams::new(uri, Vec::new()),
+        Err(err) => {
+            let diagnostics = err.to_diagnostics(id);
+
+            let mut new_diags = Vec::new();
+            for diag in diagnostics {
+                let diag =
+                    make_lsp_diagnostic(&state.files, None, diag, |_| Ok(uri.clone())).unwrap();
+                new_diags.push(diag);
+            }
+
+            PublishDiagnosticsParams::new(uri, new_diags)
+        }
     }
 }

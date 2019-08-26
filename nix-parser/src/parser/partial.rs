@@ -63,10 +63,9 @@ impl<T> Partial<T> {
     /// # Examples
     ///
     /// ```rust
-    /// # use nix_parser::parser::Partial;
-    /// # use nom::error::VerboseError;
+    /// # use nix_parser::parser::{error::Errors, Partial};
     /// # use nom_locate::LocatedSpan;
-    /// # fn main() -> Result<(), VerboseError<LocatedSpan<&'static str>>> {
+    /// # fn main() -> Result<(), Errors> {
     /// let partial_string = Partial::from(String::from("Hello, world!"));
     /// let partial_len = partial_string.map(|s| s.len());
     /// // We assert here that the contained partial value has no errors.
@@ -125,17 +124,13 @@ impl<T> Partial<T> {
     /// # Examples
     ///
     /// ```rust
-    /// # use nix_parser::parser::Partial;
-    /// # use nom::error::VerboseError;
+    /// # use nix_parser::parser::{error::Errors, Partial};
     /// # use nom_locate::LocatedSpan;
-    /// # fn main() -> Result<(), VerboseError<LocatedSpan<&'static str>>> {
     /// let partial = Partial::new(Some(123));
     /// assert_eq!(Ok(123), partial.verify());
     ///
     /// let partial: Partial<u32> = Partial::new(None);
     /// assert!(partial.verify().is_err());
-    /// # Ok(())
-    /// # }
     /// ```
     pub fn verify(self) -> Result<T, Errors> {
         match self.value {

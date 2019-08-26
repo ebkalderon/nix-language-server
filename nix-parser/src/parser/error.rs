@@ -8,6 +8,7 @@ use std::vec::IntoIter;
 use codespan::{FileId, Span};
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use nom::error::{ErrorKind, ParseError};
+use nom::Slice;
 
 use super::LocatedSpan;
 use crate::ToSpan;
@@ -112,6 +113,7 @@ impl<'a> ParseError<LocatedSpan<'a>> for Errors {
     }
 
     fn from_char(input: LocatedSpan<'a>, c: char) -> Self {
+        let span = input.slice(0..0).to_span();
         let expected = vec![format!("`{}`", c)];
         let found = input
             .fragment
@@ -121,7 +123,7 @@ impl<'a> ParseError<LocatedSpan<'a>> for Errors {
             .unwrap_or_else(|| "EOF".to_string());
 
         let mut errors = Errors::new();
-        errors.push(Error::expected_found(expected, found, input.to_span()));
+        errors.push(Error::expected_found(expected, found, span));
         errors
     }
 }

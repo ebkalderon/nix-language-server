@@ -28,12 +28,7 @@ pub fn run(_args: Args) {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let backend = Nix::new().unwrap_or_else(|err| {
-        error!("backend error: {}", err);
-        process::exit(1);
-    });
-
-    let service = LspService::new(backend);
+    let service = LspService::new(Nix::new());
     let handle = service.close_handle();
     let server = Server::new(stdin, stdout).serve(service);
 

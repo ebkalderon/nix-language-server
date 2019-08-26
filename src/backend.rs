@@ -1,21 +1,20 @@
+use std::collections::HashMap;
 use std::sync::Mutex;
 
-use codespan::Files;
+use codespan::{FileId, Files};
 use futures::future::{self, FutureResult};
 use jsonrpc_core::types::params::Params;
 use jsonrpc_core::{Error as RpcError, Result as RpcResult};
-use log::{debug, info};
+use log::{debug, error, info};
 use lsp_types::*;
+use nix_parser::ast::SourceFile;
 
-use self::repl::Repl;
 use crate::server::LanguageServer;
 use crate::Error;
 
-mod repl;
-
 #[derive(Debug)]
 struct State {
-    pub repl: Repl,
+    pub sources: HashMap<Url, FileId>,
     pub files: Files,
 }
 
@@ -25,13 +24,13 @@ pub struct Nix {
 }
 
 impl Nix {
-    pub fn new() -> Result<Self, Error> {
-        Ok(Nix {
+    pub fn new() -> Self {
+        Nix {
             state: Mutex::new(State {
-                repl: Repl::new()?,
+                sources: HashMap::new(),
                 files: Files::new(),
             }),
-        })
+        }
     }
 }
 
@@ -64,43 +63,60 @@ impl LanguageServer for Nix {
 
     fn initialized(&self, _: Params) {
         info!("initialized notification received");
-        let mut state = self.state.lock().unwrap_or_else(|r| r.into_inner());
-        info!("Completions: {:?}", state.repl.completions("__").unwrap());
-        info!(
-            "Diagnostics: {:?}",
-            state.repl.diagnostics("{ foo = bar; baz = 12 } ").unwrap()
-        );
     }
 
     fn shutdown(&self) -> FutureResult<(), RpcError> {
         future::ok(())
     }
 
-    fn did_open(&self, _: Params) {
-        print!("Content-Length: 72\r\n\r\n{{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{{}}}}");
+    fn did_open(&self, params: Params) {
+        match params.parse::<DidOpenTextDocumentParams>() {
+            Err(err) => error!("{}", err),
+            Ok(params) => {
+                let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+                let source = if let Some(id) = state.sources.get(&params.text_document.uri) {
+                    state.files.source(*id)
+                } else {
+                    let id = state.files.add(
+                        params.text_document.uri.to_string(),
+                        params.text_document.text,
+                    );
+                    state.sources.insert(params.text_document.uri.clone(), id);
+                    state.files.source(id)
+                };
+                match source.parse::<SourceFile>() {
+                    Ok(file) => info!("parsed source file: {:?}", file),
+                    Err(err) => error!("failed to parse source file: {:?}", err),
+                }
+            }
+        }
     }
 
-    fn did_save(&self, _: Params) {}
+    fn did_save(&self, _: Params) {
+        info!("did_save");
+    }
 
-    fn did_change(&self, _: Params) {}
+    fn did_change(&self, _: Params) {
+        info!("did_change");
+    }
 
     fn hover(&self, params: Params) -> FutureResult<Option<Hover>, RpcError> {
         match params.parse::<TextDocumentPositionParams>() {
+            Err(err) => future::err(RpcError::invalid_params_with_details("invalid params", err)),
             Ok(params) => {
                 debug!("{:?}", params);
                 future::ok(None)
             }
-            Err(err) => future::err(RpcError::invalid_params_with_details("invalid params", err)),
         }
     }
 
     fn highlight(&self, params: Params) -> FutureResult<Option<Vec<DocumentHighlight>>, RpcError> {
         match params.parse::<TextDocumentPositionParams>() {
+            Err(err) => future::err(RpcError::invalid_params_with_details("invalid params", err)),
             Ok(params) => {
                 debug!("{:?}", params);
                 future::ok(None)
             }
-            Err(err) => future::err(RpcError::invalid_params_with_details("invalid params", err)),
         }
     }
 }

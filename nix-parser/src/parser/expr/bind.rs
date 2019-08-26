@@ -1,7 +1,6 @@
 use nom::branch::alt;
 use nom::character::complete::{char, multispace0};
 use nom::combinator::{map, opt};
-use nom::error::ErrorKind;
 use nom::multi::many1;
 use nom::sequence::{pair, preceded, terminated, tuple};
 

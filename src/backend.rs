@@ -91,7 +91,6 @@ impl LanguageServer for Nix {
                 let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
                 let (source, id) =
                     reload_source(&mut state, &params.text_document, params.content_changes);
-                info!("updated source is: \"{}\"", source);
                 let diags = get_diagnostics(&state, id, &source);
                 let s = serde_json::to_string(&diags).unwrap();
                 let msg = format!("{{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{}}}", s);

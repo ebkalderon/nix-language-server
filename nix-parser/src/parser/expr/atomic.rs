@@ -1,3 +1,4 @@
+use nom::branch::alt;
 use nom::character::complete::char;
 use nom::combinator::cut;
 use nom::sequence::{pair, preceded, terminated};
@@ -14,14 +15,14 @@ pub fn paren(input: LocatedSpan) -> IResult<Partial<ExprParen>> {
 
 pub fn set(input: LocatedSpan) -> IResult<Partial<ExprSet>> {
     let bind = preceded(tokens::space_until_final_comment, bind::bind);
-    let binds = many_till_partial(bind, pair(tokens::space, char('}')));
+    let binds = many_till_partial(bind, pair(tokens::space, alt((char('}'), char(';')))));
     let set = expect_terminated(preceded(char('{'), binds), pair(tokens::space, char('}')));
     map_partial_spanned(set, |span, binds| ExprSet::new(binds, span))(input)
 }
 
 pub fn list(input: LocatedSpan) -> IResult<Partial<ExprList>> {
     let elem = terminated(unary, tokens::space);
-    let elems = many_till_partial(elem, char(']'));
+    let elems = many_till_partial(elem, alt((char(']'), char(';'))));
     let list = expect_terminated(preceded(pair(char('['), tokens::space), elems), char(']'));
     map_partial_spanned(list, |span, exprs| ExprList::new(exprs, span))(input)
 }

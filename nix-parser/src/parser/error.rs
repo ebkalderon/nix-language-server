@@ -6,7 +6,7 @@ use std::slice::Iter;
 use std::vec::IntoIter;
 
 use codespan::{FileId, Span};
-use codespan_reporting::diagnostic::Diagnostic;
+use codespan_reporting::diagnostic::{Diagnostic, Label};
 use nom::error::{ErrorKind, ParseError};
 
 use super::LocatedSpan;
@@ -96,20 +96,28 @@ impl<'a> IntoIterator for &'a Errors {
 impl<'a> ParseError<LocatedSpan<'a>> for Errors {
     fn from_error_kind(input: LocatedSpan<'a>, kind: ErrorKind) -> Self {
         let mut errors = Errors::new();
+        errors.push(Error::Message(
+            input.to_span(),
+            format!("nom error: {:?}", kind),
+        ));
         errors
     }
 
     fn append(input: LocatedSpan<'a>, kind: ErrorKind, mut other: Self) -> Self {
+        other.push(Error::Message(
+            input.to_span(),
+            format!("nom error: {:?}", kind),
+        ));
         other
     }
 
     fn from_char(input: LocatedSpan<'a>, c: char) -> Self {
-        let expected = vec![c.to_string()];
+        let expected = vec![format!("`{}`", c)];
         let found = input
             .fragment
             .chars()
             .next()
-            .map(|c| c.to_string())
+            .map(|c| format!("`{}`", c))
             .unwrap_or_else(|| "EOF".to_string());
 
         let mut errors = Errors::new();
@@ -122,6 +130,7 @@ impl<'a> ParseError<LocatedSpan<'a>> for Errors {
 pub enum Error {
     CloseDelimiter(CloseDelimiterError),
     ExpectedFound(ExpectedFoundError),
+    Message(Span, String),
 }
 
 impl Error {
@@ -139,6 +148,7 @@ impl Display for Error {
         match *self {
             Error::CloseDelimiter(ref e) => write!(fmt, "{}", e),
             Error::ExpectedFound(ref e) => write!(fmt, "{}", e),
+            Error::Message(_, ref e) => write!(fmt, "{}", e),
         }
     }
 }
@@ -162,6 +172,10 @@ impl ToDiagnostic for Error {
         match *self {
             Error::CloseDelimiter(ref e) => e.to_diagnostic(file),
             Error::ExpectedFound(ref e) => e.to_diagnostic(file),
+            Error::Message(ref span, ref msg) => {
+                let label = Label::new(file, *span, msg.clone());
+                Diagnostic::new_bug(msg.clone(), label)
+            }
         }
     }
 }

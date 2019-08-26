@@ -2,8 +2,11 @@ use std::io::Read;
 use std::process;
 use std::{env, io};
 
+use codespan::Files;
+use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
+use codespan_reporting::term::{emit, Config};
 use nix_parser::ast::SourceFile;
-use nix_parser::parser::parse_source_file_partial;
+use nix_parser::parser::{error::Errors, parse_source_file_partial};
 
 fn main() {
     let mut expr = String::new();
@@ -20,7 +23,7 @@ fn main() {
 
 fn full(expr: &str) {
     let expr: SourceFile = expr.parse().unwrap_or_else(|e| {
-        eprintln!("parse error: {:?}", e);
+        print_diagnostics(expr, e);
         process::exit(1);
     });
 
@@ -30,7 +33,7 @@ fn full(expr: &str) {
 
 fn partial(expr: &str) {
     let partial = parse_source_file_partial(&expr).unwrap_or_else(|e| {
-        eprintln!("parse error: {:?}", e);
+        print_diagnostics(expr, e);
         process::exit(1);
     });
 
@@ -45,5 +48,18 @@ fn partial(expr: &str) {
     } else {
         eprintln!("No expression value produced");
         process::exit(1);
+    }
+}
+
+fn print_diagnostics(expr: &str, errors: Errors) {
+    let mut files = Files::new();
+    let id = files.add("stdin", expr);
+    let diagnostics = errors.to_diagnostics(id);
+
+    let mut lock = StandardStream::stdout(ColorChoice::Auto);
+    let config = Config::default();
+
+    for diag in diagnostics {
+        emit(&mut lock, &config, &files, &diag).unwrap();
     }
 }

@@ -1,4 +1,5 @@
 use nom::character::complete::char;
+use nom::combinator::cut;
 use nom::sequence::{pair, preceded, terminated};
 
 use super::{bind, expr, unary};
@@ -14,7 +15,10 @@ pub fn paren(input: LocatedSpan) -> IResult<Partial<ExprParen>> {
 pub fn set(input: LocatedSpan) -> IResult<Partial<ExprSet>> {
     let bind = preceded(tokens::space_until_final_comment, bind::bind);
     let binds = many_till_partial(bind, pair(tokens::space, char('}')));
-    let set = expect_terminated(preceded(char('{'), binds), pair(tokens::space, char('}')));
+    let set = expect_terminated(
+        preceded(char('{'), binds),
+        pair(tokens::space, cut(char('}'))),
+    );
     map_partial_spanned(set, |span, binds| ExprSet::new(binds, span))(input)
 }
 

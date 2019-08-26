@@ -4,7 +4,6 @@ use nom::{
     bytes::complete::tag,
     character::complete::{anychar, char, line_ending},
     combinator::{map, peek, recognize},
-    error::{VerboseError, VerboseErrorKind},
     multi::many_till,
     sequence::preceded,
     Slice,
@@ -12,7 +11,13 @@ use nom::{
 
 use crate::{
     ast::{tokens::Literal, BinaryOp, Expr, ExprBinary},
-    parser::{expr::expr, partial::Partial, tokens::space, IResult, LocatedSpan},
+    parser::{
+        error::{Error, Errors},
+        expr::expr,
+        partial::Partial,
+        tokens::space,
+        IResult, LocatedSpan,
+    },
     ToSpan,
 };
 
@@ -61,7 +66,7 @@ pub fn single_quote_string(input: LocatedSpan) -> IResult<Partial<Expr>> {
     let mut no_delimiter = false;
     // combinators
     loop {
-        if let Ok((input_, _)) = line_ending::<_, VerboseError<_>>(input) {
+        if let Ok((input_, _)) = line_ending::<_, Errors>(input) {
             literals.push((collected, collected_start, input_));
             lines.push((literals, interpolations));
             // next line
@@ -95,12 +100,10 @@ pub fn single_quote_string(input: LocatedSpan) -> IResult<Partial<Expr>> {
             if let Ok((input_, _)) = interpolation_end(input_) {
                 input = input_;
             } else {
-                expr.extend_errors(VerboseError {
-                    errors: vec![(
-                        input_,
-                        VerboseErrorKind::Context("missing interpolation delimiter `''`"),
-                    )],
-                });
+                expr.extend_errors(Some(Error::Message(
+                    input_.to_span(),
+                    "missing interpolation delimiter `''`".to_owned(),
+                )));
                 input = input_;
             }
             collected = String::new();
@@ -112,7 +115,7 @@ pub fn single_quote_string(input: LocatedSpan) -> IResult<Partial<Expr>> {
             // next line
             input = input_;
             break;
-        } else if let Err(_) = anychar::<_, VerboseError<_>>(input) {
+        } else if let Err(_) = anychar::<_, Errors>(input) {
             no_delimiter = false; // soft-bail
 
             literals.push((collected, collected_start, input));
@@ -225,12 +228,10 @@ pub fn single_quote_string(input: LocatedSpan) -> IResult<Partial<Expr>> {
         })
     };
     if no_delimiter {
-        expr.extend_errors(VerboseError {
-            errors: vec![(
-                input,
-                VerboseErrorKind::Context("unexpected EOF, expecting end of multiline string"),
-            )],
-        });
+        expr.extend_errors(Some(Error::Message(
+            input.to_span(),
+            "unexpected EOF, expecting end of multiline string".to_owned(),
+        )));
     }
     Ok((input, expr))
 }

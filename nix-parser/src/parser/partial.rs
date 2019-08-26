@@ -8,36 +8,37 @@ use nom::multi::many_till;
 use nom::sequence::terminated;
 use nom::Slice;
 
+use super::error::{Error, Errors};
 use super::{IResult, LocatedSpan};
 use crate::ToSpan;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Partial<'a, T> {
+pub struct Partial<T> {
     value: Option<T>,
-    errors: VerboseError<LocatedSpan<'a>>,
+    errors: Errors,
 }
 
-impl<'a, T> Partial<'a, T> {
+impl<T> Partial<T> {
     /// Constructs a new `Partial<T>` with the given initial value.
     pub fn new(value: Option<T>) -> Self {
         Partial {
             value,
-            errors: VerboseError { errors: Vec::new() },
+            errors: Errors::new(),
         }
     }
 
     /// Constructs a new `Partial<T>` with the given initial value and a stack of errors.
-    pub fn with_errors(value: Option<T>, errors: VerboseError<LocatedSpan<'a>>) -> Self {
+    pub fn with_errors(value: Option<T>, errors: Errors) -> Self {
         Partial { value, errors }
     }
 
     /// Returns whether this partial value contains errors.
     pub fn has_errors(&self) -> bool {
-        !self.errors.errors.is_empty()
+        !self.errors.is_empty()
     }
 
     /// Returns the errors associated with the partial value, if any.
-    pub fn errors(&self) -> Option<VerboseError<LocatedSpan<'a>>> {
+    pub fn errors(&self) -> Option<Errors> {
         if self.has_errors() {
             Some(self.errors.clone())
         } else {
@@ -46,8 +47,8 @@ impl<'a, T> Partial<'a, T> {
     }
 
     /// Appends the given error to the error stack contained in this partial value.
-    pub fn extend_errors(&mut self, error: VerboseError<LocatedSpan<'a>>) {
-        self.errors.errors.extend(error.errors);
+    pub fn extend_errors<I: IntoIterator<Item = Error>>(&mut self, error: I) {
+        self.errors.extend(error);
     }
 
     /// Returns the contained partial value, if any.
@@ -75,7 +76,7 @@ impl<'a, T> Partial<'a, T> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn map<U, F>(self, f: F) -> Partial<'a, U>
+    pub fn map<U, F>(self, f: F) -> Partial<U>
     where
         F: FnOnce(T) -> U,
     {
@@ -88,13 +89,13 @@ impl<'a, T> Partial<'a, T> {
     /// Calls `f` if there exists a contained value, otherwise returns the stored errors instead.
     ///
     /// Any errors produced by `f` are appended to the errors already inside `self`.
-    pub fn flat_map<U, F>(mut self, f: F) -> Partial<'a, U>
+    pub fn flat_map<U, F>(mut self, f: F) -> Partial<U>
     where
-        F: FnOnce(T) -> Partial<'a, U>,
+        F: FnOnce(T) -> Partial<U>,
     {
         if let Some(value) = self.value {
             let mut partial = f(value);
-            self.errors.errors.extend(partial.errors.errors);
+            self.errors.extend(partial.errors);
             partial.errors = self.errors;
             partial
         } else {
@@ -102,9 +103,9 @@ impl<'a, T> Partial<'a, T> {
         }
     }
 
-    pub fn map_err<F>(self, f: F) -> Partial<'a, T>
+    pub fn map_err<F>(self, f: F) -> Partial<T>
     where
-        F: FnOnce(VerboseError<LocatedSpan<'a>>) -> VerboseError<LocatedSpan<'a>>,
+        F: FnOnce(Errors) -> Errors,
     {
         let errors = if self.has_errors() {
             f(self.errors)
@@ -136,7 +137,7 @@ impl<'a, T> Partial<'a, T> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn verify(self) -> Result<T, VerboseError<LocatedSpan<'a>>> {
+    pub fn verify(self) -> Result<T, Errors> {
         match self.value {
             Some(_) if self.has_errors() => Err(self.errors),
             Some(value) => Ok(value),
@@ -146,10 +147,10 @@ impl<'a, T> Partial<'a, T> {
 }
 
 /// Extend the contents of a `Partial<Vec<T>>` from an iterator of `Partial<T>`.
-impl<'a, T> Extend<Partial<'a, T>> for Partial<'a, Vec<T>> {
+impl<T> Extend<Partial<T>> for Partial<Vec<T>> {
     fn extend<I>(&mut self, iter: I)
     where
-        I: IntoIterator<Item = Partial<'a, T>>,
+        I: IntoIterator<Item = Partial<T>>,
     {
         let iter = iter.into_iter();
 
@@ -170,23 +171,23 @@ impl<'a, T> Extend<Partial<'a, T>> for Partial<'a, Vec<T>> {
     }
 }
 
-impl<'a, T> From<T> for Partial<'a, T> {
+impl<T> From<T> for Partial<T> {
     fn from(value: T) -> Self {
         Partial::new(Some(value))
     }
 }
 
-impl<'a, T> From<Option<T>> for Partial<'a, T> {
+impl<T> From<Option<T>> for Partial<T> {
     fn from(value: Option<T>) -> Self {
         Partial::new(value)
     }
 }
 
 /// Collect an iterator of `Partial<T>` into a `Partial<Vec<T>>`.
-impl<'a, T> FromIterator<Partial<'a, T>> for Partial<'a, Vec<T>> {
+impl<T> FromIterator<Partial<T>> for Partial<Vec<T>> {
     fn from_iter<I>(iter: I) -> Self
     where
-        I: IntoIterator<Item = Partial<'a, T>>,
+        I: IntoIterator<Item = Partial<T>>,
     {
         let iter = iter.into_iter();
 
@@ -292,9 +293,12 @@ where
         Err(nom::Err::Failure(e)) | Err(nom::Err::Error(e)) => {
             let (remaining, failed) = recognize(many_till(anychar, &skip_to))(input)?;
             let mut partial = Partial::with_errors(None, e);
-            partial.extend_errors(VerboseError {
-                errors: vec![(failed, VerboseErrorKind::Nom(error))],
-            });
+            let mut errors = Errors::new();
+            errors.push(Error::Message(
+                failed.to_span(),
+                format!("nom error: {:?}", error),
+            ));
+            partial.extend_errors(errors);
             Ok((remaining, partial))
         }
         Err(e) => Err(e),
@@ -316,20 +320,20 @@ where
 {
     move |input| {
         let mut partials = Vec::new();
-        let mut error = VerboseError { errors: Vec::new() };
+        let mut errors = Errors::new();
         let mut input = input.clone();
 
         loop {
             match g(input) {
                 Ok((_, _)) => {
                     let mut partial: Partial<_> = partials.into_iter().collect();
-                    partial.extend_errors(error);
+                    partial.extend_errors(errors);
                     return Ok((input, partial));
                 }
                 Err(nom::Err::Error(_)) => match f(input) {
                     Err(nom::Err::Failure(err)) | Err(nom::Err::Error(err)) => {
-                        if let Ok((remainder, _)) = anychar::<_, VerboseError<_>>(input) {
-                            error.errors.extend(err.errors);
+                        if let Ok((remainder, _)) = anychar::<_, Errors>(input) {
+                            errors.extend(err);
                             input = remainder;
                         } else {
                             let partial: Partial<_> = partials.into_iter().collect();

@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 bytes = "0.4.12"
-codespan = "0.3.0"
+codespan = "0.4.1"
 env_logger = "0.6.2"
 futures = "0.1.28"
 jsonrpc-core = "13.0"

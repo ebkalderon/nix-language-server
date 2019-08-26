@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use codespan::CodeMap;
+use codespan::Files;
 use futures::future::{self, FutureResult};
 use jsonrpc_core::types::params::Params;
 use jsonrpc_core::{Error as RpcError, Result as RpcResult};
@@ -16,7 +16,7 @@ mod repl;
 #[derive(Debug)]
 struct State {
     pub repl: Repl,
-    pub codemap: CodeMap,
+    pub files: Files,
 }
 
 #[derive(Debug)]
@@ -29,7 +29,7 @@ impl Nix {
         Ok(Nix {
             state: Mutex::new(State {
                 repl: Repl::new()?,
-                codemap: CodeMap::new(),
+                files: Files::new(),
             }),
         })
     }

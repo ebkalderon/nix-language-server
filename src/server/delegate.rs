@@ -75,7 +75,7 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
 
     fn did_open(&self, params: Params) {
         match params.parse::<DidOpenTextDocumentParams>() {
-            Ok(params) => self.server.did_open(self.printer.clone(), params),
+            Ok(params) => self.server.did_open(&self.printer, params),
             Err(err) => error!("invalid parameters for `textDocument/didOpen`: {:?}", err),
         }
     }
@@ -89,7 +89,7 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
 
     fn did_change(&self, params: Params) {
         match params.parse::<DidChangeTextDocumentParams>() {
-            Ok(params) => self.server.did_change(self.printer.clone(), params),
+            Ok(params) => self.server.did_change(&self.printer, params),
             Err(err) => error!("invalid parameters for `textDocument/didChange`: {:?}", err),
         }
     }
@@ -98,7 +98,7 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         match params.parse::<TextDocumentPositionParams>() {
             Ok(params) => self.server.hover(params),
             Err(err) => Box::new(future::err(Error::invalid_params_with_details(
-                "invalid params",
+                "invalid parameters",
                 err,
             ))),
         }
@@ -108,7 +108,7 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         match params.parse::<TextDocumentPositionParams>() {
             Ok(params) => self.server.highlight(params),
             Err(err) => Box::new(future::err(Error::invalid_params_with_details(
-                "invalid params",
+                "invalid parameters",
                 err,
             ))),
         }

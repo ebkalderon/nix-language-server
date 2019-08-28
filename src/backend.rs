@@ -68,7 +68,7 @@ impl LanguageServer for Nix {
         future::ok(())
     }
 
-    fn did_open(&self, printer: Printer, params: DidOpenTextDocumentParams) {
+    fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
         let (source, id) = get_or_insert_source(&mut state, &params.text_document);
         let (_, diags) = get_diagnostics(&state, id, &source);
@@ -77,7 +77,7 @@ impl LanguageServer for Nix {
 
     fn did_save(&self, _: DidSaveTextDocumentParams) {}
 
-    fn did_change(&self, printer: Printer, params: DidChangeTextDocumentParams) {
+    fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
         let (source, id) = reload_source(&mut state, &params.text_document, params.content_changes);
         let (_, diags) = get_diagnostics(&state, id, &source);

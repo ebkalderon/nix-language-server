@@ -17,11 +17,11 @@ pub trait LanguageServer: Send + Sync + 'static {
 
     fn shutdown(&self) -> FutureResult<(), Error>;
 
-    fn did_open(&self, printer: Printer, params: DidOpenTextDocumentParams);
+    fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams);
 
     fn did_save(&self, params: DidSaveTextDocumentParams);
 
-    fn did_change(&self, printer: Printer, params: DidChangeTextDocumentParams);
+    fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams);
 
     fn hover(&self, params: TextDocumentPositionParams) -> BoxFuture<Option<Hover>>;
 

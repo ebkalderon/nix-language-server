@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -9,7 +10,7 @@ use futures::sync::oneshot::{self, Canceled};
 use futures::{Async, Poll};
 use jsonrpc_core::IoHandler;
 use log::{error, info, trace};
-use lsp_types::{Diagnostic, PublishDiagnosticsParams, Url};
+use lsp_types::{Diagnostic, LogMessageParams, MessageType, PublishDiagnosticsParams, Url};
 use serde::Serialize;
 use tower::Service;
 
@@ -53,12 +54,22 @@ impl Stream for MessageStream {
 pub struct Printer(mpsc::Sender<String>);
 
 impl Printer {
-    pub fn publish_diagnostics(self, uri: Url, diagnostics: Vec<Diagnostic>) {
-        let params = PublishDiagnosticsParams::new(uri, diagnostics);
-        self.send_message("textDocument/publishDiagnostics", params);
+    pub fn log_message<M: Display>(&self, typ: MessageType, message: M) {
+        self.send_notification(
+            "window/logMessage",
+            LogMessageParams {
+                typ,
+                message: message.to_string(),
+            },
+        );
     }
 
-    fn send_message<S: Serialize>(self, method: &str, params: S) {
+    pub fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
+        let params = PublishDiagnosticsParams::new(uri, diagnostics);
+        self.send_notification("textDocument/publishDiagnostics", params);
+    }
+
+    fn send_notification<S: Serialize>(&self, method: &str, params: S) {
         match serde_json::to_string(&params) {
             Err(err) => error!("failed to serialize message for `{}`: {}", method, err),
             Ok(params) => {
@@ -68,6 +79,7 @@ impl Printer {
                 );
                 tokio::spawn(
                     self.0
+                        .clone()
                         .send(message)
                         .map(|_| ())
                         .map_err(|_| error!("failed to send message")),

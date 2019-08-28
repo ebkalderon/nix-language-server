@@ -10,7 +10,9 @@ use futures::sync::oneshot::{self, Canceled};
 use futures::{Async, Poll};
 use jsonrpc_core::IoHandler;
 use log::{error, info, trace};
-use lsp_types::{Diagnostic, LogMessageParams, MessageType, PublishDiagnosticsParams, Url};
+use lsp_types::{
+    Diagnostic, LogMessageParams, MessageType, PublishDiagnosticsParams, ShowMessageParams, Url,
+};
 use serde::Serialize;
 use tower::Service;
 
@@ -67,6 +69,16 @@ impl Printer {
     pub fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
         let params = PublishDiagnosticsParams::new(uri, diagnostics);
         self.send_notification("textDocument/publishDiagnostics", params);
+    }
+
+    pub fn show_message<M: Display>(&self, typ: MessageType, message: M) {
+        self.send_notification(
+            "window/showMessage",
+            ShowMessageParams {
+                typ,
+                message: message.to_string(),
+            },
+        );
     }
 
     fn send_notification<S: Serialize>(&self, method: &str, params: S) {

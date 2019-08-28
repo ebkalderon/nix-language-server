@@ -36,7 +36,7 @@ impl Nix {
 }
 
 impl LanguageServer for Nix {
-    fn initialize(&self, params: InitializeParams) -> RpcResult<InitializeResult> {
+    fn initialize(&self, _: InitializeParams) -> RpcResult<InitializeResult> {
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(

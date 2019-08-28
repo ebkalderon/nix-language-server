@@ -2,16 +2,22 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use futures::future::{self, Future, Shared, SharedError, SharedItem};
-use futures::sync::oneshot::{self, Canceled, Receiver};
+use futures::sink::Sink;
+use futures::stream::Stream;
+use futures::sync::mpsc;
+use futures::sync::oneshot::{self, Canceled};
 use futures::{Async, Poll};
 use jsonrpc_core::IoHandler;
-use log::{info, trace};
+use log::{error, info, trace};
+use lsp_types::{Diagnostic, PublishDiagnosticsParams, Url};
+use serde::Serialize;
 use tower::Service;
 
+use super::delegate::{Delegate, LanguageServerCore};
 use super::LanguageServer;
 
 #[derive(Clone, Debug)]
-pub struct ExitReceiver(Shared<Receiver<()>>);
+pub struct ExitReceiver(Shared<oneshot::Receiver<()>>);
 
 impl ExitReceiver {
     pub fn run_until_exit<F>(self, future: F) -> impl Future<Item = (), Error = ()> + Send + 'static
@@ -32,6 +38,46 @@ impl Future for ExitReceiver {
 }
 
 #[derive(Debug)]
+pub struct MessageStream(mpsc::Receiver<String>);
+
+impl Stream for MessageStream {
+    type Item = String;
+    type Error = ();
+
+    fn poll(&mut self) -> Poll<Option<String>, ()> {
+        self.0.poll()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Printer(mpsc::Sender<String>);
+
+impl Printer {
+    pub fn publish_diagnostics(self, uri: Url, diagnostics: Vec<Diagnostic>) {
+        let params = PublishDiagnosticsParams::new(uri, diagnostics);
+        self.send_message("textDocument/publishDiagnostics", params);
+    }
+
+    fn send_message<S: Serialize>(self, method: &str, params: S) {
+        match serde_json::to_string(&params) {
+            Err(err) => error!("failed to serialize message for `{}`: {}", method, err),
+            Ok(params) => {
+                let message = format!(
+                    r#"{{"jsonrpc":"2.0","method":"{}","params":{}}}"#,
+                    method, params
+                );
+                tokio::spawn(
+                    self.0
+                        .send(message)
+                        .map(|_| ())
+                        .map_err(|_| error!("failed to send message")),
+                );
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct LspService {
     handler: IoHandler,
     exit_rx: ExitReceiver,
@@ -39,24 +85,29 @@ pub struct LspService {
 }
 
 impl LspService {
-    pub fn new<T>(server: T) -> Self
+    pub fn new<T>(server: T) -> (Self, MessageStream)
     where
         T: LanguageServer,
     {
         Self::with_handler(server, IoHandler::new())
     }
 
-    pub fn with_handler<T, U>(server: T, handler: U) -> Self
+    pub fn with_handler<T, U>(server: T, handler: U) -> (Self, MessageStream)
     where
         T: LanguageServer,
         U: Into<IoHandler>,
     {
-        let (tx, rx) = oneshot::channel();
+        let (tx, rx) = mpsc::channel(1);
+        let print_tx = Printer(tx);
+        let print_rx = MessageStream(rx);
 
         let mut handler = handler.into();
-        handler.extend_with(server.to_delegate());
+        handler.extend_with(Delegate::new(server, print_tx).to_delegate());
 
+        let (tx, rx) = oneshot::channel();
         let exit_tx = Mutex::new(Some(tx));
+        let exit_rx = ExitReceiver(rx.shared());
+
         let stopped = Arc::new(AtomicBool::new(false));
         let stopped_arc = stopped.clone();
         handler.add_notification("exit", move |_| {
@@ -67,11 +118,13 @@ impl LspService {
             }
         });
 
-        LspService {
+        let service = LspService {
             handler,
-            exit_rx: ExitReceiver(rx.shared()),
+            exit_rx,
             stopped,
-        }
+        };
+
+        (service, print_rx)
     }
 
     pub fn close_handle(&self) -> ExitReceiver {

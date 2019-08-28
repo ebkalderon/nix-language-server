@@ -6,13 +6,12 @@ use std::sync::Mutex;
 use codespan::{FileId, Files};
 use codespan_lsp::{make_lsp_diagnostic, range_to_byte_span};
 use futures::future::{self, FutureResult};
-use jsonrpc_core::types::params::Params;
-use jsonrpc_core::{Error as RpcError, Result as RpcResult};
-use log::{debug, error, info};
+use jsonrpc_core::{BoxFuture, Error as RpcError, Result as RpcResult};
+use log::info;
 use lsp_types::*;
 use nix_parser::ast::SourceFile;
 
-use crate::server::LanguageServer;
+use crate::server::{LanguageServer, Printer};
 
 #[derive(Debug)]
 struct State {
@@ -37,8 +36,7 @@ impl Nix {
 }
 
 impl LanguageServer for Nix {
-    fn initialize(&self, params: Params) -> RpcResult<InitializeResult> {
-        let params: InitializeParams = params.parse()?;
+    fn initialize(&self, params: InitializeParams) -> RpcResult<InitializeResult> {
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
@@ -62,7 +60,7 @@ impl LanguageServer for Nix {
         })
     }
 
-    fn initialized(&self, _: Params) {
+    fn initialized(&self, _: InitializedParams) {
         info!("initialized notification received");
     }
 
@@ -70,55 +68,31 @@ impl LanguageServer for Nix {
         future::ok(())
     }
 
-    fn did_open(&self, params: Params) {
-        match params.parse::<DidOpenTextDocumentParams>() {
-            Err(err) => error!("{}", err),
-            Ok(params) => {
-                let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
-                let (source, id) = get_or_insert_source(&mut state, &params.text_document);
-                let diags = get_diagnostics(&state, id, &source);
-                let s = serde_json::to_string(&diags).unwrap();
-                let msg = format!("{{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{}}}", s);
-                print!("Content-Length: {}\r\n\r\n{}", msg.len(), msg);
-            }
-        }
+    fn did_open(&self, printer: Printer, params: DidOpenTextDocumentParams) {
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let (source, id) = get_or_insert_source(&mut state, &params.text_document);
+        let (_, diags) = get_diagnostics(&state, id, &source);
+        printer.publish_diagnostics(params.text_document.uri, diags);
     }
 
-    fn did_save(&self, _: Params) {}
+    fn did_save(&self, _: DidSaveTextDocumentParams) {}
 
-    fn did_change(&self, params: Params) {
-        match params.parse::<DidChangeTextDocumentParams>() {
-            Err(err) => error!("{}", err),
-            Ok(params) => {
-                let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
-                let (source, id) =
-                    reload_source(&mut state, &params.text_document, params.content_changes);
-                let diags = get_diagnostics(&state, id, &source);
-                let s = serde_json::to_string(&diags).unwrap();
-                let msg = format!("{{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\",\"params\":{}}}", s);
-                print!("Content-Length: {}\r\n\r\n{}", msg.len(), msg);
-            }
-        }
+    fn did_change(&self, printer: Printer, params: DidChangeTextDocumentParams) {
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let (source, id) = reload_source(&mut state, &params.text_document, params.content_changes);
+        let (_, diags) = get_diagnostics(&state, id, &source);
+        printer.publish_diagnostics(params.text_document.uri, diags);
     }
 
-    fn hover(&self, params: Params) -> FutureResult<Option<Hover>, RpcError> {
-        match params.parse::<TextDocumentPositionParams>() {
-            Err(err) => future::err(RpcError::invalid_params_with_details("invalid params", err)),
-            Ok(params) => {
-                debug!("{:?}", params);
-                future::ok(None)
-            }
-        }
+    fn hover(&self, params: TextDocumentPositionParams) -> BoxFuture<Option<Hover>> {
+        Box::new(future::ok(None))
     }
 
-    fn highlight(&self, params: Params) -> FutureResult<Option<Vec<DocumentHighlight>>, RpcError> {
-        match params.parse::<TextDocumentPositionParams>() {
-            Err(err) => future::err(RpcError::invalid_params_with_details("invalid params", err)),
-            Ok(params) => {
-                debug!("{:?}", params);
-                future::ok(None)
-            }
-        }
+    fn highlight(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> BoxFuture<Option<Vec<DocumentHighlight>>> {
+        Box::new(future::ok(None))
     }
 }
 
@@ -157,7 +131,7 @@ fn reload_source<'a>(
     }
 }
 
-fn get_diagnostics(state: &State, id: FileId, source: &str) -> PublishDiagnosticsParams {
+fn get_diagnostics(state: &State, id: FileId, source: &str) -> (Url, Vec<Diagnostic>) {
     let uri = state
         .sources
         .iter()
@@ -167,7 +141,7 @@ fn get_diagnostics(state: &State, id: FileId, source: &str) -> PublishDiagnostic
         .unwrap();
 
     match source.parse::<SourceFile>() {
-        Ok(_) => PublishDiagnosticsParams::new(uri, Vec::new()),
+        Ok(_) => (uri, Vec::new()),
         Err(err) => {
             let diagnostics = err.to_diagnostics(id);
 
@@ -178,7 +152,7 @@ fn get_diagnostics(state: &State, id: FileId, source: &str) -> PublishDiagnostic
                 new_diags.push(diag);
             }
 
-            PublishDiagnosticsParams::new(uri, new_diags)
+            (uri, new_diags)
         }
     }
 }

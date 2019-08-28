@@ -1,45 +1,32 @@
-pub use self::service::{ExitReceiver, LspService};
+pub use self::service::{ExitReceiver, LspService, MessageStream, Printer};
 pub use self::stdio::Server;
 
 use futures::future::FutureResult;
-use jsonrpc_core::types::params::Params;
-use jsonrpc_core::{Error as RpcError, Result};
-use jsonrpc_derive::rpc;
+use jsonrpc_core::{BoxFuture, Error, Result};
 use lsp_types::*;
 
 mod codec;
+mod delegate;
 mod service;
 mod stdio;
 
-#[rpc]
-pub trait LanguageServer {
-    // Initialization
+pub trait LanguageServer: Send + Sync + 'static {
+    fn initialize(&self, params: InitializeParams) -> Result<InitializeResult>;
 
-    #[rpc(name = "initialize", raw_params)]
-    fn initialize(&self, params: Params) -> Result<InitializeResult>;
+    fn initialized(&self, params: InitializedParams);
 
-    #[rpc(name = "initialized", raw_params)]
-    fn initialized(&self, params: Params);
+    fn shutdown(&self) -> FutureResult<(), Error>;
 
-    #[rpc(name = "shutdown")]
-    fn shutdown(&self) -> FutureResult<(), RpcError>;
+    fn did_open(&self, printer: Printer, params: DidOpenTextDocumentParams);
 
-    // Text synchronization
+    fn did_save(&self, params: DidSaveTextDocumentParams);
 
-    #[rpc(name = "textDocument/didOpen", raw_params)]
-    fn did_open(&self, params: Params);
+    fn did_change(&self, printer: Printer, params: DidChangeTextDocumentParams);
 
-    #[rpc(name = "textDocument/didSave", raw_params)]
-    fn did_save(&self, params: Params);
+    fn hover(&self, params: TextDocumentPositionParams) -> BoxFuture<Option<Hover>>;
 
-    #[rpc(name = "textDocument/didChange", raw_params)]
-    fn did_change(&self, params: Params);
-
-    // Language features
-
-    #[rpc(name = "textDocument/hover", raw_params)]
-    fn hover(&self, params: Params) -> FutureResult<Option<Hover>, RpcError>;
-
-    #[rpc(name = "textDocument/documentHighlight", raw_params)]
-    fn highlight(&self, params: Params) -> FutureResult<Option<Vec<DocumentHighlight>>, RpcError>;
+    fn highlight(
+        &self,
+        params: TextDocumentPositionParams,
+    ) -> BoxFuture<Option<Vec<DocumentHighlight>>>;
 }

@@ -25,9 +25,11 @@ pub fn run(_args: Args) {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let service = LspService::new(Nix::new());
+    let (service, messages) = LspService::new(Nix::new());
     let handle = service.close_handle();
-    let server = Server::new(stdin, stdout).serve(service);
+    let server = Server::new(stdin, stdout)
+        .interleave(messages)
+        .serve(service);
 
     tokio::run(handle.run_until_exit(server));
 }

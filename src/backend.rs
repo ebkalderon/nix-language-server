@@ -6,12 +6,11 @@ use std::sync::Mutex;
 use codespan::{FileId, Files};
 use codespan_lsp::{make_lsp_diagnostic, range_to_byte_span};
 use futures::future::{self, FutureResult};
-use jsonrpc_core::{BoxFuture, Error as RpcError, Result as RpcResult};
+use jsonrpc_core::{BoxFuture, Error, Result};
 use log::info;
-use lsp_types::*;
 use nix_parser::ast::SourceFile;
-
-use crate::server::{LanguageServer, Printer};
+use tower_lsp::lsp_types::*;
+use tower_lsp::{LanguageServer, Printer};
 
 #[derive(Debug)]
 struct State {
@@ -36,7 +35,11 @@ impl Nix {
 }
 
 impl LanguageServer for Nix {
-    fn initialize(&self, _: InitializeParams) -> RpcResult<InitializeResult> {
+    type ShutdownFuture = FutureResult<(), Error>;
+    type HoverFuture = BoxFuture<Option<Hover>>;
+    type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
+
+    fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
@@ -60,11 +63,11 @@ impl LanguageServer for Nix {
         })
     }
 
-    fn initialized(&self, _: InitializedParams) {
+    fn initialized(&self, _: &Printer, _: InitializedParams) {
         info!("initialized notification received");
     }
 
-    fn shutdown(&self) -> FutureResult<(), RpcError> {
+    fn shutdown(&self) -> Self::ShutdownFuture {
         future::ok(())
     }
 
@@ -75,7 +78,7 @@ impl LanguageServer for Nix {
         printer.publish_diagnostics(params.text_document.uri, diags);
     }
 
-    fn did_save(&self, _: DidSaveTextDocumentParams) {}
+    fn did_save(&self, _: &Printer, _: DidSaveTextDocumentParams) {}
 
     fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
@@ -84,14 +87,11 @@ impl LanguageServer for Nix {
         printer.publish_diagnostics(params.text_document.uri, diags);
     }
 
-    fn hover(&self, params: TextDocumentPositionParams) -> BoxFuture<Option<Hover>> {
+    fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
         Box::new(future::ok(None))
     }
 
-    fn highlight(
-        &self,
-        params: TextDocumentPositionParams,
-    ) -> BoxFuture<Option<Vec<DocumentHighlight>>> {
+    fn highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
         Box::new(future::ok(None))
     }
 }

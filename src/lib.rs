@@ -2,12 +2,11 @@
 
 use log::info;
 use structopt::StructOpt;
+use tower_lsp::{LspService, Server};
 
 use crate::backend::Nix;
-use crate::server::{LspService, Server};
 
 mod backend;
-mod server;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 

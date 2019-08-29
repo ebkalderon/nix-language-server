@@ -1,26 +1,28 @@
-use std::fmt::Display;
+//! Service abstraction for language servers.
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use futures::future::{self, Future, Shared, SharedError, SharedItem};
-use futures::sink::Sink;
-use futures::stream::Stream;
-use futures::sync::mpsc;
 use futures::sync::oneshot::{self, Canceled};
 use futures::{Async, Poll};
 use jsonrpc_core::IoHandler;
-use log::{error, info, trace};
-use lsp_types::*;
-use serde::Serialize;
+use log::{info, trace};
 use tower::Service;
 
-use super::delegate::{Delegate, LanguageServerCore};
+use super::delegate::{Delegate, LanguageServerCore, MessageStream};
 use super::LanguageServer;
 
+/// Future which never resolves until the [`exit`] notification is received.
+///
+/// [`exit`]: https://microsoft.github.io/language-server-protocol/specification#exit
 #[derive(Clone, Debug)]
 pub struct ExitReceiver(Shared<oneshot::Receiver<()>>);
 
 impl ExitReceiver {
+    /// Drives the future to completion, only canceling if the [`exit`] notification is received.
+    ///
+    /// [`exit`]: https://microsoft.github.io/language-server-protocol/specification#exit
     pub fn run_until_exit<F>(self, future: F) -> impl Future<Item = (), Error = ()> + Send + 'static
     where
         F: Future<Item = (), Error = ()> + Send + 'static,
@@ -38,67 +40,10 @@ impl Future for ExitReceiver {
     }
 }
 
-#[derive(Debug)]
-pub struct MessageStream(mpsc::Receiver<String>);
-
-impl Stream for MessageStream {
-    type Item = String;
-    type Error = ();
-
-    fn poll(&mut self) -> Poll<Option<String>, ()> {
-        self.0.poll()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Printer(mpsc::Sender<String>);
-
-impl Printer {
-    pub fn log_message<M: Display>(&self, typ: MessageType, message: M) {
-        self.send_notification(
-            "window/logMessage",
-            LogMessageParams {
-                typ,
-                message: message.to_string(),
-            },
-        );
-    }
-
-    pub fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
-        let params = PublishDiagnosticsParams::new(uri, diagnostics);
-        self.send_notification("textDocument/publishDiagnostics", params);
-    }
-
-    pub fn show_message<M: Display>(&self, typ: MessageType, message: M) {
-        self.send_notification(
-            "window/showMessage",
-            ShowMessageParams {
-                typ,
-                message: message.to_string(),
-            },
-        );
-    }
-
-    fn send_notification<S: Serialize>(&self, method: &str, params: S) {
-        match serde_json::to_string(&params) {
-            Err(err) => error!("failed to serialize message for `{}`: {}", method, err),
-            Ok(params) => {
-                let message = format!(
-                    r#"{{"jsonrpc":"2.0","method":"{}","params":{}}}"#,
-                    method, params
-                );
-                tokio::spawn(
-                    self.0
-                        .clone()
-                        .send(message)
-                        .map(|_| ())
-                        .map_err(|_| error!("failed to send message")),
-                );
-            }
-        }
-    }
-}
-
+/// Service abstraction for the Language Server Protocol.
+///
+/// This service takes JSON-RPC requests as input and produces a JSON-RPC responses as output. If
+/// the incoming request is a notification, then the corresponding response string will be empty.
 #[derive(Debug)]
 pub struct LspService {
     handler: IoHandler,
@@ -107,6 +52,8 @@ pub struct LspService {
 }
 
 impl LspService {
+    /// Creates a new `LspService` with the given server backend, also returning a stream of
+    /// notifications from the server back to the client.
     pub fn new<T>(server: T) -> (Self, MessageStream)
     where
         T: LanguageServer,
@@ -114,17 +61,16 @@ impl LspService {
         Self::with_handler(server, IoHandler::new())
     }
 
+    /// Creates a new `LspService` with the given server backend a custom `IoHandler`.
     pub fn with_handler<T, U>(server: T, handler: U) -> (Self, MessageStream)
     where
         T: LanguageServer,
         U: Into<IoHandler>,
     {
-        let (tx, rx) = mpsc::channel(1);
-        let print_tx = Printer(tx);
-        let print_rx = MessageStream(rx);
+        let (delegate, messages) = Delegate::new(server);
 
         let mut handler = handler.into();
-        handler.extend_with(Delegate::new(server, print_tx).to_delegate());
+        handler.extend_with(delegate.to_delegate());
 
         let (tx, rx) = oneshot::channel();
         let exit_tx = Mutex::new(Some(tx));
@@ -146,9 +92,12 @@ impl LspService {
             stopped,
         };
 
-        (service, print_rx)
+        (service, messages)
     }
 
+    /// Returns a close handle which signals when the [`exit`] notification has been received.
+    ///
+    /// [`exit`]: https://microsoft.github.io/language-server-protocol/specification#exit
     pub fn close_handle(&self) -> ExitReceiver {
         self.exit_rx.clone()
     }

@@ -1,13 +1,95 @@
-//! Type-safe wrapper around JSON-RPC interface.
+//! Type-safe wrapper for the JSON-RPC interface.
 
-use futures::future;
+use std::fmt::Display;
+
+use futures::sync::mpsc::{self, Receiver, Sender};
+use futures::{future, Future, Poll, Sink, Stream};
 use jsonrpc_core::types::params::Params;
 use jsonrpc_core::{BoxFuture, Error, Result};
 use jsonrpc_derive::rpc;
 use log::{error, trace};
 use lsp_types::*;
+use serde::Serialize;
 
-use super::{LanguageServer, Printer};
+use super::LanguageServer;
+
+/// Stream of notification messages produced by the language server.
+#[derive(Debug)]
+pub struct MessageStream(Receiver<String>);
+
+impl Stream for MessageStream {
+    type Item = String;
+    type Error = ();
+
+    fn poll(&mut self) -> Poll<Option<String>, ()> {
+        self.0.poll()
+    }
+}
+
+/// Sends notifications from the language server to the client.
+#[derive(Clone, Debug)]
+pub struct Printer(Sender<String>);
+
+impl Printer {
+    /// Notifies the client to log a particular message.
+    ///
+    /// This corresponds to the [`window/logMessage`] notification.
+    ///
+    /// [`window/logMessage`]: https://microsoft.github.io/language-server-protocol/specification#window_logMessage
+    pub fn log_message<M: Display>(&self, typ: MessageType, message: M) {
+        self.send_notification(
+            "window/logMessage",
+            LogMessageParams {
+                typ,
+                message: message.to_string(),
+            },
+        );
+    }
+
+    /// Submits validation diagnostics for an open file with the given URI.
+    ///
+    /// This corresponds to the [`textDocument/publishDiagnostics`] notification.
+    ///
+    /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_publishDiagnostics
+    pub fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
+        let params = PublishDiagnosticsParams::new(uri, diagnostics);
+        self.send_notification("textDocument/publishDiagnostics", params);
+    }
+
+    /// Notifies the client to display a particular message in the user interface.
+    ///
+    /// This corresponds to the [`window/showMessage`] notification.
+    ///
+    /// [`window/showMessage`]: https://microsoft.github.io/language-server-protocol/specification#window_showMessage
+    pub fn show_message<M: Display>(&self, typ: MessageType, message: M) {
+        self.send_notification(
+            "window/showMessage",
+            ShowMessageParams {
+                typ,
+                message: message.to_string(),
+            },
+        );
+    }
+
+    fn send_notification<S: Serialize>(&self, method: &str, params: S) {
+        match serde_json::to_string(&params) {
+            Err(err) => error!("failed to serialize message for `{}`: {}", method, err),
+            Ok(params) => {
+                let message = format!(
+                    r#"{{"jsonrpc":"2.0","method":"{}","params":{}}}"#,
+                    method, params
+                );
+                tokio::spawn(
+                    self.0
+                        .clone()
+                        .send(message)
+                        .map(|_| ())
+                        .map_err(|_| error!("failed to send message")),
+                );
+            }
+        }
+    }
+}
 
 /// JSON-RPC interface used by the Language Server Protocol.
 #[rpc(server)]
@@ -47,7 +129,7 @@ pub trait LanguageServerCore {
     fn highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>>;
 }
 
-/// Provides a type-safe wrapper for the language server backend.
+/// Wraps the language server backend and provides a `Printer` for sending notifications.
 #[derive(Debug)]
 pub struct Delegate<T> {
     server: T,
@@ -55,8 +137,12 @@ pub struct Delegate<T> {
 }
 
 impl<T: LanguageServer> Delegate<T> {
-    pub fn new(server: T, printer: Printer) -> Self {
-        Delegate { server, printer }
+    /// Creates a new `Delegate` and a stream of notifications from the server to the client.
+    pub fn new(server: T) -> (Self, MessageStream) {
+        let (tx, rx) = mpsc::channel(1);
+        let messages = MessageStream(rx);
+        let printer = Printer(tx);
+        (Delegate { server, printer }, messages)
     }
 }
 

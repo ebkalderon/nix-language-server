@@ -1,3 +1,5 @@
+//! Asynchronous `tower` server with an stdio transport.
+
 use futures::future::{Empty, IntoStream};
 use futures::sync::mpsc;
 use futures::{future, Future, Poll, Sink, Stream};
@@ -8,6 +10,7 @@ use tower::Service;
 
 use super::codec::LanguageServerCodec;
 
+/// Server for processing requests and responses on `stdin` and `stdout`.
 #[derive(Debug)]
 pub struct Server<I, O, S = Nothing> {
     stdin: I,
@@ -20,6 +23,7 @@ where
     I: AsyncRead + Send + 'static,
     O: AsyncWrite + Send + 'static,
 {
+    /// Creates a new `Server` with the given `stdin` and `stdout` handles.
     pub fn new(stdin: I, stdout: O) -> Self {
         Server {
             stdin,
@@ -35,6 +39,7 @@ where
     O: AsyncWrite + Send + 'static,
     S: Stream<Item = String, Error = ()> + Send + 'static,
 {
+    /// Interleaves the given stream of messages into `stdout` together with the responses.
     pub fn interleave<T>(self, stream: T) -> Server<I, O, T>
     where
         T: Stream<Item = String, Error = ()> + Send + 'static,
@@ -46,6 +51,7 @@ where
         }
     }
 
+    /// Spawns the service with messages read through `stdin` and responses printed to `stdout`.
     pub fn serve<T>(self, service: T) -> impl Future<Item = (), Error = ()> + Send + 'static
     where
         T: Service<String, Response = String> + Send + 'static,

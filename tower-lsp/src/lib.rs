@@ -65,7 +65,8 @@
 
 pub extern crate lsp_types;
 
-pub use self::service::{ExitReceiver, LspService, MessageStream, Printer};
+pub use self::delegate::{MessageStream, Printer};
+pub use self::service::{ExitReceiver, LspService};
 pub use self::stdio::Server;
 
 use futures::Future;

@@ -1,6 +1,6 @@
 use futures::future::{Empty, IntoStream};
 use futures::sync::mpsc;
-use futures::{future, Future, Sink, Stream};
+use futures::{future, Future, Poll, Sink, Stream};
 use log::error;
 use tokio::codec::{FramedRead, FramedWrite};
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -9,13 +9,13 @@ use tower::Service;
 use super::codec::LanguageServerCodec;
 
 #[derive(Debug)]
-pub struct Server<I, O, S> {
+pub struct Server<I, O, S = Nothing> {
     stdin: I,
     stdout: O,
     interleave: S,
 }
 
-impl<I, O> Server<I, O, IntoStream<Empty<String, ()>>>
+impl<I, O> Server<I, O, Nothing>
 where
     I: AsyncRead + Send + 'static,
     O: AsyncWrite + Send + 'static,
@@ -24,7 +24,7 @@ where
         Server {
             stdin,
             stdout,
-            interleave: future::empty().into_stream(),
+            interleave: Nothing::new(),
         }
     }
 }
@@ -77,5 +77,24 @@ where
                 })
                 .map(|_| ())
         })
+    }
+}
+
+#[doc(hidden)]
+#[derive(Debug)]
+pub struct Nothing(IntoStream<Empty<String, ()>>);
+
+impl Nothing {
+    fn new() -> Self {
+        Nothing(future::empty().into_stream())
+    }
+}
+
+impl Stream for Nothing {
+    type Item = String;
+    type Error = ();
+
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+        self.0.poll()
     }
 }

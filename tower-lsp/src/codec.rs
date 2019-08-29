@@ -13,7 +13,7 @@ use nom::error::ErrorKind;
 use nom::multi::length_data;
 use nom::sequence::delimited;
 use nom::{Err, IResult, Needed};
-use tokio::codec::{Decoder, Encoder};
+use tokio_codec::{Decoder, Encoder};
 
 /// Errors that can occur when processing an LSP request.
 #[derive(Debug)]

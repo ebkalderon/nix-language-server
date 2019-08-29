@@ -4,9 +4,9 @@ use futures::future::{Empty, IntoStream};
 use futures::sync::mpsc;
 use futures::{future, Future, Poll, Sink, Stream};
 use log::error;
-use tokio::codec::{FramedRead, FramedWrite};
-use tokio::io::{AsyncRead, AsyncWrite};
-use tower::Service;
+use tokio_codec::{FramedRead, FramedWrite};
+use tokio_io::{AsyncRead, AsyncWrite};
+use tower_service::Service;
 
 use super::codec::LanguageServerCodec;
 
@@ -70,7 +70,7 @@ where
                 .forward(framed_stdout.sink_map_err(|e| error!("failed to encode response: {}", e)))
                 .map(|_| ());
 
-            tokio::spawn(printer);
+            tokio_executor::spawn(printer);
 
             framed_stdin
                 .map_err(|e| error!("failed to decode request: {}", e))

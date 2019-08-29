@@ -79,7 +79,7 @@ impl Printer {
                     r#"{{"jsonrpc":"2.0","method":"{}","params":{}}}"#,
                     method, params
                 );
-                tokio::spawn(
+                tokio_executor::spawn(
                     self.0
                         .clone()
                         .send(message)

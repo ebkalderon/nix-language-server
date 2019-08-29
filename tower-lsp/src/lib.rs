@@ -3,7 +3,7 @@
 //! # Example
 //!
 //! ```rust
-//! # use futures::future::{self, Future};
+//! # use futures::future;
 //! # use jsonrpc_core::{BoxFuture, Result};
 //! # use tower_lsp::lsp_types::*;
 //! # use tower_lsp::{LanguageServer, LspService, Printer, Server};

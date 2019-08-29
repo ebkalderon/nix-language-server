@@ -8,7 +8,7 @@ use futures::sync::oneshot::{self, Canceled};
 use futures::{Async, Poll};
 use jsonrpc_core::IoHandler;
 use log::{info, trace};
-use tower::Service;
+use tower_service::Service;
 
 use super::delegate::{Delegate, LanguageServerCore, MessageStream};
 use super::LanguageServer;

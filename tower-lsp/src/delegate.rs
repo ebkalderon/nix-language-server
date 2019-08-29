@@ -95,6 +95,8 @@ impl Printer {
 /// JSON-RPC interface used by the Language Server Protocol.
 #[rpc(server)]
 pub trait LanguageServerCore {
+    type ShutdownFuture: Future<Item = (), Error = Error> + Send;
+
     // Initialization
 
     #[rpc(name = "initialize", raw_params)]
@@ -104,7 +106,7 @@ pub trait LanguageServerCore {
     fn initialized(&self, params: Params);
 
     #[rpc(name = "shutdown", returns = "()")]
-    fn shutdown(&self) -> BoxFuture<()>;
+    fn shutdown(&self) -> Self::ShutdownFuture;
 
     // Text synchronization
 
@@ -151,6 +153,8 @@ impl<T: LanguageServer> Delegate<T> {
 }
 
 impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
+    type ShutdownFuture = T::ShutdownFuture;
+
     fn initialize(&self, params: Params) -> Result<InitializeResult> {
         trace!("received `initialize` request: {:?}", params);
         let params: InitializeParams = params.parse()?;
@@ -165,9 +169,9 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         }
     }
 
-    fn shutdown(&self) -> BoxFuture<()> {
+    fn shutdown(&self) -> Self::ShutdownFuture {
         trace!("received `shutdown` request");
-        Box::new(self.server.shutdown())
+        self.server.shutdown()
     }
 
     fn did_open(&self, params: Params) {

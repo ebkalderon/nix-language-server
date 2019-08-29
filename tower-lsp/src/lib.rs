@@ -4,9 +4,9 @@
 //!
 //! ```rust
 //! # use futures::future::{self, Future};
-//! # use lsp_types::*;
-//! # use jsonrpc_core::{Result, BoxFuture};
-//! # use tower_lsp::{Printer, LanguageServer, Server, LspService};
+//! # use jsonrpc_core::{BoxFuture, Result};
+//! # use tower_lsp::lsp_types::*;
+//! # use tower_lsp::{LanguageServer, LspService, Printer, Server};
 //! #
 //! #[derive(Debug, Default)]
 //! struct Backend;

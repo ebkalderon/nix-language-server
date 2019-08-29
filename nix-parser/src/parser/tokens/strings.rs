@@ -53,7 +53,7 @@ fn interpolation_end(input: LocatedSpan) -> IResult<()> {
 }
 
 /// multi-line string parser
-pub fn single_quote_string(input: LocatedSpan) -> IResult<Partial<Expr>> {
+fn single_quote_string(input: LocatedSpan) -> IResult<Partial<Expr>> {
     // single-quote-string
     let original_input = input;
     let (mut input, _) = tag(SINGLE_QUOTE_DELIM)(input)?; // backtrack
@@ -196,9 +196,11 @@ pub fn single_quote_string(input: LocatedSpan) -> IResult<Partial<Expr>> {
     let interpolations: Partial<_> = interpolations.into_iter().collect();
     let mut expr: Partial<_> = {
         let mut literals = literals.into_iter().map(|(s, start, end)| {
+            let start = start.offset - original_input.offset;
+            let end = end.offset - original_input.offset;
             Expr::Literal(Literal::String(
                 s,
-                original_input.slice(start.offset..end.offset).to_span(),
+                original_input.slice(start..end).to_span(),
             ))
         });
         let first: Partial<_> = literals
@@ -236,6 +238,10 @@ pub fn single_quote_string(input: LocatedSpan) -> IResult<Partial<Expr>> {
     Ok((input, expr))
 }
 
+pub fn string(input: LocatedSpan) -> IResult<Partial<Expr>> {
+    single_quote_string(input)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -245,6 +251,16 @@ mod tests {
     use crate::ast::{tokens::Ident, Bind, BindSimple, ExprSet};
     #[test]
     fn it_works() {
+        let input = LocatedSpan::new("'' ''");
+        let (_, val) = all_consuming(single_quote_string)(input).unwrap();
+        assert_eq!(
+            val,
+            Partial::from(Expr::Literal(Literal::String(
+                "".into(),
+                Default::default()
+            )))
+        );
+
         let input = LocatedSpan::new(
             r#"''
 hello

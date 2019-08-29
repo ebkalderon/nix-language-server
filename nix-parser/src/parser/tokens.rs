@@ -18,6 +18,8 @@ mod keywords;
 mod literal;
 mod strings;
 
+pub use strings::string;
+
 pub fn comment(input: LocatedSpan) -> IResult<Comment> {
     let span = map(not_line_ending, |s: LocatedSpan| s.fragment);
     let rows = separated_nonempty_list(pair(line_ending, space0), preceded(char('#'), span));

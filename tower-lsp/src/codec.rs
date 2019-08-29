@@ -1,17 +1,58 @@
 use std::error::Error;
-use std::io::{self, Write};
-use std::str;
+use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::io::{Error as IoError, Write};
+use std::str::{self, Utf8Error};
 
 use bytes::{BufMut, BytesMut};
 use nom::bytes::streaming::tag;
 use nom::character::streaming::digit1;
 use nom::combinator::{map, map_res};
+use nom::error::ErrorKind;
 use nom::multi::length_data;
 use nom::sequence::delimited;
 use nom::{Err, IResult, Needed};
 use tokio::codec::{Decoder, Encoder};
 
-pub type ParseError = Box<dyn Error + Send + Sync>;
+#[derive(Debug)]
+pub enum ParseError {
+    MissingHeader,
+    InvalidLength,
+    Io(IoError),
+    Utf8(Utf8Error),
+}
+
+impl Display for ParseError {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        match *self {
+            ParseError::MissingHeader => write!(fmt, "missing required `Content-Length` header"),
+            ParseError::InvalidLength => write!(fmt, "unable to parse content length"),
+            ParseError::Io(ref e) => write!(fmt, "IO error: {}", e),
+            ParseError::Utf8(ref e) => write!(fmt, "request contains invalid UTF8: {}", e),
+        }
+    }
+}
+
+impl Error for ParseError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match *self {
+            ParseError::Io(ref e) => Some(e),
+            ParseError::Utf8(ref e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+impl From<IoError> for ParseError {
+    fn from(error: IoError) -> Self {
+        ParseError::Io(error)
+    }
+}
+
+impl From<Utf8Error> for ParseError {
+    fn from(error: Utf8Error) -> Self {
+        ParseError::Utf8(error)
+    }
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct LanguageServerCodec {
@@ -53,12 +94,10 @@ impl Decoder for LanguageServerCodec {
             Err(Err::Incomplete(_)) => {
                 return Ok(None);
             }
-            Err(err) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("parsing '{}' resulted in error: {:?}", string, err),
-                ))?
-            }
+            Err(Err::Error((_, err))) | Err(Err::Failure((_, err))) => match err {
+                ErrorKind::Digit | ErrorKind::MapRes => return Err(ParseError::InvalidLength),
+                _ => return Err(ParseError::MissingHeader),
+            },
         };
 
         src.advance(len);

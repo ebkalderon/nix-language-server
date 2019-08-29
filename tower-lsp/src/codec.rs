@@ -1,3 +1,5 @@
+//! Encoder and decoder for Language Server Protocol messages.
+
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::io::{Error as IoError, Write};
@@ -13,11 +15,16 @@ use nom::sequence::delimited;
 use nom::{Err, IResult, Needed};
 use tokio::codec::{Decoder, Encoder};
 
+/// Errors that can occur when processing an LSP request.
 #[derive(Debug)]
 pub enum ParseError {
+    /// Request lacks the required `Content-Length` header.
     MissingHeader,
+    /// The length value in the `Content-Length` header is invalid.
     InvalidLength,
-    Io(IoError),
+    /// Failed to encode the response.
+    Encode(IoError),
+    /// Request contains invalid UTF8.
     Utf8(Utf8Error),
 }
 
@@ -26,7 +33,7 @@ impl Display for ParseError {
         match *self {
             ParseError::MissingHeader => write!(fmt, "missing required `Content-Length` header"),
             ParseError::InvalidLength => write!(fmt, "unable to parse content length"),
-            ParseError::Io(ref e) => write!(fmt, "IO error: {}", e),
+            ParseError::Encode(ref e) => write!(fmt, "failed to encode response: {}", e),
             ParseError::Utf8(ref e) => write!(fmt, "request contains invalid UTF8: {}", e),
         }
     }
@@ -35,7 +42,7 @@ impl Display for ParseError {
 impl Error for ParseError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match *self {
-            ParseError::Io(ref e) => Some(e),
+            ParseError::Encode(ref e) => Some(e),
             ParseError::Utf8(ref e) => Some(e),
             _ => None,
         }
@@ -44,7 +51,7 @@ impl Error for ParseError {
 
 impl From<IoError> for ParseError {
     fn from(error: IoError) -> Self {
-        ParseError::Io(error)
+        ParseError::Encode(error)
     }
 }
 
@@ -54,6 +61,7 @@ impl From<Utf8Error> for ParseError {
     }
 }
 
+/// Encodes and decodes Language Server Protocol messages.
 #[derive(Clone, Debug, Default)]
 pub struct LanguageServerCodec {
     remaining_msg_bytes: usize,

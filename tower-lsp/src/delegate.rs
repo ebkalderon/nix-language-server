@@ -1,3 +1,5 @@
+//! Type-safe wrapper around JSON-RPC interface.
+
 use futures::future;
 use jsonrpc_core::types::params::Params;
 use jsonrpc_core::{BoxFuture, Error, Result};
@@ -7,6 +9,7 @@ use lsp_types::*;
 
 use super::{LanguageServer, Printer};
 
+/// JSON-RPC interface used by the Language Server Protocol.
 #[rpc(server)]
 pub trait LanguageServerCore {
     // Initialization
@@ -44,6 +47,7 @@ pub trait LanguageServerCore {
     fn highlight(&self, params: Params) -> BoxFuture<Option<Vec<DocumentHighlight>>>;
 }
 
+/// Provides a type-safe wrapper for the language server backend.
 #[derive(Debug)]
 pub struct Delegate<T> {
     server: T,

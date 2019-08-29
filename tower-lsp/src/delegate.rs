@@ -8,6 +8,7 @@ use jsonrpc_core::types::params::Params;
 use jsonrpc_core::{BoxFuture, Error, Result};
 use jsonrpc_derive::rpc;
 use log::{error, trace};
+use lsp_types::notification::{LogMessage, Notification, PublishDiagnostics, ShowMessage};
 use lsp_types::*;
 use serde::Serialize;
 
@@ -38,7 +39,7 @@ impl Printer {
     /// [`window/logMessage`]: https://microsoft.github.io/language-server-protocol/specification#window_logMessage
     pub fn log_message<M: Display>(&self, typ: MessageType, message: M) {
         self.send_notification(
-            "window/logMessage",
+            LogMessage::METHOD,
             LogMessageParams {
                 typ,
                 message: message.to_string(),
@@ -53,7 +54,7 @@ impl Printer {
     /// [`textDocument/publishDiagnostics`]: https://microsoft.github.io/language-server-protocol/specification#textDocument_publishDiagnostics
     pub fn publish_diagnostics(&self, uri: Url, diagnostics: Vec<Diagnostic>) {
         let params = PublishDiagnosticsParams::new(uri, diagnostics);
-        self.send_notification("textDocument/publishDiagnostics", params);
+        self.send_notification(PublishDiagnostics::METHOD, params);
     }
 
     /// Notifies the client to display a particular message in the user interface.
@@ -63,7 +64,7 @@ impl Printer {
     /// [`window/showMessage`]: https://microsoft.github.io/language-server-protocol/specification#window_showMessage
     pub fn show_message<M: Display>(&self, typ: MessageType, message: M) {
         self.send_notification(
-            "window/showMessage",
+            ShowMessage::METHOD,
             ShowMessageParams {
                 typ,
                 message: message.to_string(),

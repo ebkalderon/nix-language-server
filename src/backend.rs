@@ -78,8 +78,6 @@ impl LanguageServer for Nix {
         printer.publish_diagnostics(params.text_document.uri, diags);
     }
 
-    fn did_save(&self, _: &Printer, _: DidSaveTextDocumentParams) {}
-
     fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
         let (source, id) = reload_source(&mut state, &params.text_document, params.content_changes);
@@ -87,11 +85,15 @@ impl LanguageServer for Nix {
         printer.publish_diagnostics(params.text_document.uri, diags);
     }
 
-    fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
+    fn did_save(&self, _: &Printer, _: DidSaveTextDocumentParams) {}
+
+    fn did_close(&self, _: &Printer, _: DidCloseTextDocumentParams) {}
+
+    fn highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
         Box::new(future::ok(None))
     }
 
-    fn highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
+    fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
         Box::new(future::ok(None))
     }
 }

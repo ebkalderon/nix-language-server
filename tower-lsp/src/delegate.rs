@@ -110,11 +110,14 @@ pub trait LanguageServerCore {
     #[rpc(name = "textDocument/didOpen", raw_params)]
     fn did_open(&self, params: Params);
 
+    #[rpc(name = "textDocument/didChange", raw_params)]
+    fn did_change(&self, params: Params);
+
     #[rpc(name = "textDocument/didSave", raw_params)]
     fn did_save(&self, params: Params);
 
-    #[rpc(name = "textDocument/didChange", raw_params)]
-    fn did_change(&self, params: Params);
+    #[rpc(name = "textDocument/didClose", raw_params)]
+    fn did_close(&self, params: Params);
 
     // Language features
 
@@ -174,14 +177,6 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         }
     }
 
-    fn did_save(&self, params: Params) {
-        trace!("received `textDocument/didSave` notification: {:?}", params);
-        match params.parse::<DidSaveTextDocumentParams>() {
-            Ok(params) => self.server.did_save(&self.printer, params),
-            Err(err) => error!("invalid parameters for `textDocument/didSave`: {:?}", err),
-        }
-    }
-
     fn did_change(&self, params: Params) {
         trace!(
             "received `textDocument/didChange` notification: {:?}",
@@ -190,6 +185,25 @@ impl<T: LanguageServer> LanguageServerCore for Delegate<T> {
         match params.parse::<DidChangeTextDocumentParams>() {
             Ok(params) => self.server.did_change(&self.printer, params),
             Err(err) => error!("invalid parameters for `textDocument/didChange`: {:?}", err),
+        }
+    }
+
+    fn did_save(&self, params: Params) {
+        trace!("received `textDocument/didSave` notification: {:?}", params);
+        match params.parse::<DidSaveTextDocumentParams>() {
+            Ok(params) => self.server.did_save(&self.printer, params),
+            Err(err) => error!("invalid parameters for `textDocument/didSave`: {:?}", err),
+        }
+    }
+
+    fn did_close(&self, params: Params) {
+        trace!(
+            "received `textDocument/didClose` notification: {:?}",
+            params
+        );
+        match params.parse::<DidCloseTextDocumentParams>() {
+            Ok(params) => self.server.did_close(&self.printer, params),
+            Err(err) => error!("invalid parameters for `textDocument/didClose`: {:?}", err),
         }
     }
 

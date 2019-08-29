@@ -27,7 +27,7 @@ impl Stream for MessageStream {
 }
 
 /// Sends notifications from the language server to the client.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Printer(Sender<String>);
 
 impl Printer {

@@ -5,19 +5,13 @@ authors = ["Eyal Kalderon <ebkalderon@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-bytes = "0.4.12"
 codespan = "0.4.1"
 codespan-lsp = "0.4.1"
 env_logger = "0.6.2"
 futures = "0.1.28"
 jsonrpc-core = "13.1"
-jsonrpc-derive = "13.1"
-jsonrpc-core-client = "13.1"
 log = "0.4.7"
 nix-parser = { version = "0.1.0", path = "./nix-parser" }
-nom = "5.0.0"
-serde = "1.0.99"
-serde_json = "1.0.40"
 structopt = "0.2.18"
 tokio = "0.1.22"
 tower-lsp = { version = "0.1.0", path = "./tower-lsp" }

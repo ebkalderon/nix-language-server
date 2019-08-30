@@ -8,6 +8,7 @@ use futures::sync::oneshot::{self, Canceled};
 use futures::{Async, Poll};
 use jsonrpc_core::IoHandler;
 use log::{info, trace};
+use lsp_types::notification::{Exit, Notification};
 use tower_service::Service;
 
 use super::delegate::{Delegate, LanguageServerCore, MessageStream};
@@ -83,7 +84,7 @@ impl LspService {
 
         let stopped = Arc::new(AtomicBool::new(false));
         let stopped_arc = stopped.clone();
-        handler.add_notification("exit", move |_| {
+        handler.add_notification(Exit::METHOD, move |_| {
             if let Some(tx) = exit_tx.lock().unwrap_or_else(|tx| tx.into_inner()).take() {
                 info!("exit notification received, shutting down");
                 stopped_arc.store(true, Ordering::SeqCst);

@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use codespan::Span;
 
 use self::tokens::{Comment, Ident, IdentPath, Literal};
+use crate::HasSpan;
 
 pub mod tokens;
 
@@ -28,6 +29,14 @@ impl Display for SourceFile {
         } else {
             write!(fmt, "{}", self.expr)
         }
+    }
+}
+
+impl HasSpan for SourceFile {
+    fn span(&self) -> Span {
+        let first = self.comment.as_ref().map(|c| c.span()).unwrap_or_default();
+        let second = self.expr.span();
+        Span::merge(first, second)
     }
 }
 
@@ -110,6 +119,36 @@ impl Display for Expr {
     }
 }
 
+impl HasSpan for Expr {
+    fn span(&self) -> Span {
+        match *self {
+            Expr::Paren(ref e) => e.span(),
+            Expr::Attr(ref e) => e.span(),
+            Expr::Literal(ref e) => e.span(),
+            Expr::List(ref e) => e.span(),
+            Expr::Set(ref e) => e.span(),
+
+            Expr::Unary(ref e) => e.span(),
+            Expr::Binary(ref e) => e.span(),
+
+            Expr::Let(ref e) => e.span(),
+            Expr::Rec(ref e) => e.span(),
+            Expr::Proj(ref e) => e.span(),
+
+            Expr::If(ref e) => e.span(),
+            Expr::Or(ref e) => e.span(),
+            Expr::Assert(ref e) => e.span(),
+            Expr::With(ref e) => e.span(),
+
+            Expr::LetIn(ref e) => e.span(),
+            Expr::FnDecl(ref e) => e.span(),
+            Expr::FnApp(ref e) => e.span(),
+
+            Expr::Trap(ref e) => *e,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ExprParen {
     expr: Box<Expr>,
@@ -125,6 +164,12 @@ impl ExprParen {
 impl Display for ExprParen {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "({})", self.expr)
+    }
+}
+
+impl HasSpan for ExprParen {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -153,6 +198,12 @@ impl Display for ExprList {
     }
 }
 
+impl HasSpan for ExprList {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 impl PartialEq for ExprList {
     fn eq(&self, other: &Self) -> bool {
         self.elems == other.elems
@@ -175,6 +226,12 @@ impl Display for ExprSet {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         let binds: Vec<_> = self.binds.iter().map(ToString::to_string).collect();
         write!(fmt, "{{{}}}", binds.join(" "))
+    }
+}
+
+impl HasSpan for ExprSet {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -217,6 +274,12 @@ impl ExprUnary {
 impl Display for ExprUnary {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "{}{}", self.op, self.expr)
+    }
+}
+
+impl HasSpan for ExprUnary {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -305,6 +368,12 @@ impl Display for ExprBinary {
     }
 }
 
+impl HasSpan for ExprBinary {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 impl PartialEq for ExprBinary {
     fn eq(&self, other: &Self) -> bool {
         self.op == other.op && self.lhs == other.lhs && self.rhs == other.rhs
@@ -324,6 +393,16 @@ impl Display for Bind {
             Bind::Simple(ref b) => write!(fmt, "{}", b),
             Bind::Inherit(ref b) => write!(fmt, "{}", b),
             Bind::InheritExpr(ref b) => write!(fmt, "{}", b),
+        }
+    }
+}
+
+impl HasSpan for Bind {
+    fn span(&self) -> Span {
+        match *self {
+            Bind::Simple(ref b) => b.span(),
+            Bind::Inherit(ref b) => b.span(),
+            Bind::InheritExpr(ref b) => b.span(),
         }
     }
 }
@@ -357,6 +436,12 @@ impl Display for BindSimple {
     }
 }
 
+impl HasSpan for BindSimple {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 impl PartialEq for BindSimple {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name && self.expr == other.expr && self.comment == other.comment
@@ -379,6 +464,12 @@ impl Display for BindInherit {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         let names: Vec<_> = self.names.iter().map(ToString::to_string).collect();
         write!(fmt, "inherit {};", names.join(" "))
+    }
+}
+
+impl HasSpan for BindInherit {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -408,6 +499,12 @@ impl Display for BindInheritExpr {
     }
 }
 
+impl HasSpan for BindInheritExpr {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 impl PartialEq for BindInheritExpr {
     fn eq(&self, other: &Self) -> bool {
         self.expr == other.expr && self.names == other.names
@@ -430,6 +527,12 @@ impl Display for ExprLet {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         let binds: Vec<_> = self.binds.iter().map(ToString::to_string).collect();
         write!(fmt, "let {{{}}}", binds.join(" "))
+    }
+}
+
+impl HasSpan for ExprLet {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -458,6 +561,12 @@ impl Display for ExprRec {
     }
 }
 
+impl HasSpan for ExprRec {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 impl PartialEq for ExprRec {
     fn eq(&self, other: &Self) -> bool {
         self.binds == other.binds
@@ -477,6 +586,16 @@ impl Display for AttrKey {
             AttrKey::Ident(ref i) => write!(fmt, "{}", i),
             AttrKey::String(ref s, _) => write!(fmt, "{}", s),
             AttrKey::Expr(ref e) => write!(fmt, "{}", e),
+        }
+    }
+}
+
+impl HasSpan for AttrKey {
+    fn span(&self) -> Span {
+        match *self {
+            AttrKey::Ident(ref i) => i.span(),
+            AttrKey::String(_, ref s) => *s,
+            AttrKey::Expr(ref e) => e.span(),
         }
     }
 }
@@ -521,6 +640,12 @@ impl Display for ExprProj {
     }
 }
 
+impl HasSpan for ExprProj {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 impl PartialEq for ExprProj {
     fn eq(&self, other: &Self) -> bool {
         self.expr == other.expr && self.attr == other.attr
@@ -556,6 +681,12 @@ impl Display for ExprIf {
     }
 }
 
+impl HasSpan for ExprIf {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 impl PartialEq for ExprIf {
     fn eq(&self, other: &Self) -> bool {
         self.cond == other.cond && self.body == other.body && self.fallback == other.fallback
@@ -585,6 +716,12 @@ impl Display for ExprOr {
     }
 }
 
+impl HasSpan for ExprOr {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 impl PartialEq for ExprOr {
     fn eq(&self, other: &Self) -> bool {
         self.expr == other.expr && self.fallback == other.fallback
@@ -610,6 +747,12 @@ impl Display for ExprAssert {
     }
 }
 
+impl HasSpan for ExprAssert {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 impl PartialEq for ExprAssert {
     fn eq(&self, other: &Self) -> bool {
         self.cond == other.cond && self.expr == other.expr
@@ -632,6 +775,12 @@ impl ExprWith {
 impl Display for ExprWith {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "with {}; {}", self.with, self.expr)
+    }
+}
+
+impl HasSpan for ExprWith {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -661,6 +810,12 @@ impl Display for ExprLetIn {
     }
 }
 
+impl HasSpan for ExprLetIn {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 impl PartialEq for ExprLetIn {
     fn eq(&self, other: &Self) -> bool {
         self.binds == other.binds && self.body == other.body
@@ -680,6 +835,16 @@ impl Display for Formal {
             Formal::Simple(ref name) => write!(fmt, "{}", name),
             Formal::Default(ref name, ref default, _) => write!(fmt, "{} ? {}", name, default),
             Formal::Ellipsis(_) => fmt.write_str("..."),
+        }
+    }
+}
+
+impl HasSpan for Formal {
+    fn span(&self) -> Span {
+        match *self {
+            Formal::Simple(ref i) => i.span(),
+            Formal::Default(_, _, ref s) => *s,
+            Formal::Ellipsis(ref s) => *s,
         }
     }
 }
@@ -713,6 +878,16 @@ impl Display for ExprFnDecl {
     }
 }
 
+impl HasSpan for ExprFnDecl {
+    fn span(&self) -> Span {
+        match *self {
+            ExprFnDecl::Simple(ref d) => d.span(),
+            ExprFnDecl::Formals(ref d) => d.span(),
+            ExprFnDecl::FormalsExtra(ref d) => d.span(),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct SimpleFnDecl {
     name: Ident,
@@ -729,6 +904,12 @@ impl SimpleFnDecl {
 impl Display for SimpleFnDecl {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "{}: {}", self.name, self.body)
+    }
+}
+
+impl HasSpan for SimpleFnDecl {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -759,6 +940,12 @@ impl Display for FormalsFnDecl {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         let formals: Vec<_> = self.formals.iter().map(ToString::to_string).collect();
         write!(fmt, "{{{}}}: {}", formals.join(", "), self.body)
+    }
+}
+
+impl HasSpan for FormalsFnDecl {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -806,6 +993,12 @@ impl Display for FormalsExtraFnDecl {
     }
 }
 
+impl HasSpan for FormalsExtraFnDecl {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
 impl PartialEq for FormalsExtraFnDecl {
     fn eq(&self, other: &Self) -> bool {
         self.extra == other.extra
@@ -835,6 +1028,12 @@ impl ExprFnApp {
 impl Display for ExprFnApp {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "{} {}", self.function, self.argument)
+    }
+}
+
+impl HasSpan for ExprFnApp {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 

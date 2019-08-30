@@ -43,7 +43,7 @@ impl Future for ExitReceiver {
 
 /// Service abstraction for the Language Server Protocol.
 ///
-/// This service takes JSON-RPC requests as input and produces a JSON-RPC responses as output. If
+/// This service takes a JSON-RPC request as input and produces a JSON-RPC response as output. If
 /// the incoming request is a notification, then the corresponding response string will be empty.
 ///
 /// This implements [`tower_service::Service`] in order to remain independent from the underlying

@@ -69,6 +69,9 @@
 //! }
 //! ```
 
+#![deny(missing_debug_implementations)]
+#![forbid(unsafe_code)]
+
 pub extern crate lsp_types;
 
 pub use self::delegate::{MessageStream, Printer};

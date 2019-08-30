@@ -89,11 +89,11 @@ impl LanguageServer for Nix {
 
     fn did_close(&self, _: &Printer, _: DidCloseTextDocumentParams) {}
 
-    fn highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
+    fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
         Box::new(future::ok(None))
     }
 
-    fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
+    fn highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
         Box::new(future::ok(None))
     }
 }

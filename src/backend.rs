@@ -73,15 +73,15 @@ impl LanguageServer for Nix {
 
     fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        let (source, id) = get_or_insert_source(&mut state, &params.text_document);
-        let (_, diags) = get_diagnostics(&state, id, &source);
+        let id = get_or_insert_source(&mut state, &params.text_document);
+        let diags = get_diagnostics(&state, &params.text_document.uri, id);
         printer.publish_diagnostics(params.text_document.uri, diags);
     }
 
     fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        let (source, id) = reload_source(&mut state, &params.text_document, params.content_changes);
-        let (_, diags) = get_diagnostics(&state, id, &source);
+        let id = reload_source(&mut state, &params.text_document, params.content_changes);
+        let diags = get_diagnostics(&state, &params.text_document.uri, id);
         printer.publish_diagnostics(params.text_document.uri, diags);
     }
 
@@ -98,15 +98,15 @@ impl LanguageServer for Nix {
     }
 }
 
-fn get_or_insert_source(state: &mut State, document: &TextDocumentItem) -> (String, FileId) {
+fn get_or_insert_source(state: &mut State, document: &TextDocumentItem) -> FileId {
     if let Some(id) = state.sources.get(&document.uri) {
-        (state.files.source(*id).to_owned(), *id)
+        *id
     } else {
         let id = state
             .files
             .add(document.uri.to_string(), document.text.clone());
         state.sources.insert(document.uri.clone(), id);
-        (state.files.source(id).to_owned(), id)
+        id
     }
 }
 
@@ -114,7 +114,7 @@ fn reload_source<'a>(
     state: &mut State,
     document: &VersionedTextDocumentIdentifier,
     changes: Vec<TextDocumentContentChangeEvent>,
-) -> (String, FileId) {
+) -> FileId {
     if let Some(id) = state.sources.get(&document.uri) {
         let mut source = state.files.source(*id).to_owned();
         for change in changes {
@@ -127,23 +127,16 @@ fn reload_source<'a>(
             }
         }
         state.files.update(*id, source);
-        (state.files.source(*id).to_owned(), *id)
+        *id
     } else {
         panic!("attempted to reload source that does not exist");
     }
 }
 
-fn get_diagnostics(state: &State, id: FileId, source: &str) -> (Url, Vec<Diagnostic>) {
-    let uri = state
-        .sources
-        .iter()
-        .filter(|(_, v)| **v == id)
-        .next()
-        .map(|(k, _)| k.clone())
-        .unwrap();
-
+fn get_diagnostics(state: &State, uri: &Url, id: FileId) -> Vec<Diagnostic> {
+    let source = state.files.source(id);
     match source.parse::<SourceFile>() {
-        Ok(_) => (uri, Vec::new()),
+        Ok(_) => Vec::new(),
         Err(err) => {
             let diagnostics = err.to_diagnostics(id);
 
@@ -154,7 +147,7 @@ fn get_diagnostics(state: &State, id: FileId, source: &str) -> (Url, Vec<Diagnos
                 new_diags.push(diag);
             }
 
-            (uri, new_diags)
+            new_diags
         }
     }
 }

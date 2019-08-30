@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use codespan::Span;
 use http::Uri;
 
-use crate::ToSpan;
+use crate::{HasSpan, ToSpan};
 
 #[derive(Clone, Debug, Eq)]
 pub struct Comment(String, Span);
@@ -36,6 +36,12 @@ where
 {
     fn from((string, span): (T, S)) -> Self {
         Comment(string.into(), span.to_span())
+    }
+}
+
+impl HasSpan for Comment {
+    fn span(&self) -> Span {
+        self.1
     }
 }
 
@@ -82,6 +88,12 @@ where
     }
 }
 
+impl HasSpan for Ident {
+    fn span(&self) -> Span {
+        self.1
+    }
+}
+
 impl PartialEq for Ident {
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
@@ -123,6 +135,12 @@ where
     fn from((idents, span): (U, S)) -> Self {
         let elems = idents.into_iter().map(Into::into).collect();
         IdentPath(elems, span.to_span())
+    }
+}
+
+impl HasSpan for IdentPath {
+    fn span(&self) -> Span {
+        self.1
     }
 }
 
@@ -282,6 +300,21 @@ impl<S: ToSpan> From<(String, S)> for Literal {
 impl<S: ToSpan> From<(Uri, S)> for Literal {
     fn from((uri, span): (Uri, S)) -> Self {
         Literal::Uri(uri, span.to_span())
+    }
+}
+
+impl HasSpan for Literal {
+    fn span(&self) -> Span {
+        match *self {
+            Literal::Null(ref e) => *e,
+            Literal::Boolean(_, ref e) => *e,
+            Literal::Float(_, ref e) => *e,
+            Literal::Integer(_, ref e) => *e,
+            Literal::Path(_, ref e) => *e,
+            Literal::PathTemplate(_, ref e) => *e,
+            Literal::String(_, ref e) => *e,
+            Literal::Uri(_, ref e) => *e,
+        }
     }
 }
 

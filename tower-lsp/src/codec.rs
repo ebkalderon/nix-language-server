@@ -62,6 +62,10 @@ impl From<Utf8Error> for ParseError {
 }
 
 /// Encodes and decodes Language Server Protocol messages.
+///
+/// # Encoding
+///
+/// If the message length is zero, then the codec will skip encoding the message.
 #[derive(Clone, Debug, Default)]
 pub struct LanguageServerCodec {
     remaining_msg_bytes: usize,

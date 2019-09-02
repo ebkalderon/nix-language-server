@@ -14,7 +14,7 @@ log = "0.4.7"
 nix-parser = { version = "0.1.0", path = "./nix-parser" }
 structopt = "0.2.18"
 tokio = "0.1.22"
-tower-lsp = "0.1.0"
+tower-lsp = "0.2.0"
 
 [workspace]
 members = [".", "nix-parser"]

@@ -125,3 +125,33 @@ fn parse_request(input: &str) -> IResult<&str, String> {
     let message = length_data(header);
     map(message, |msg| msg.to_string())(input)
 }
+
+#[cfg(test)]
+mod tests {
+    use bytes::BytesMut;
+
+    use super::*;
+
+    #[test]
+    fn round_trip() {
+        let decoded = r#"{"jsonrpc":"2.0","method":"exit"}"#.to_string();
+        let encoded = format!("Content-Length: {}\r\n\r\n{}", decoded.len(), decoded);
+
+        let mut codec = LanguageServerCodec::default();
+        let mut buffer = BytesMut::new();
+        codec.encode(decoded.clone(), &mut buffer).unwrap();
+        assert_eq!(buffer, BytesMut::from(encoded.clone()));
+
+        let mut buffer = BytesMut::from(encoded);
+        let message = codec.decode(&mut buffer).unwrap();
+        assert_eq!(message, Some(decoded));
+    }
+
+    #[test]
+    fn skip_encoding_empty_message() {
+        let mut codec = LanguageServerCodec::default();
+        let mut buffer = BytesMut::new();
+        codec.encode("".to_string(), &mut buffer).unwrap();
+        assert_eq!(buffer, BytesMut::new());
+    }
+}

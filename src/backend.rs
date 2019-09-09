@@ -9,6 +9,7 @@ use futures::future::{self, FutureResult};
 use jsonrpc_core::{BoxFuture, Error, Result};
 use log::info;
 use nix_parser::ast::SourceFile;
+use serde_json::Value;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, Printer};
 
@@ -36,6 +37,8 @@ impl Nix {
 
 impl LanguageServer for Nix {
     type ShutdownFuture = FutureResult<(), Error>;
+    type SymbolFuture = FutureResult<Option<Vec<SymbolInformation>>, Error>;
+    type ExecuteFuture = FutureResult<Option<Value>, Error>;
     type HoverFuture = BoxFuture<Option<Hover>>;
     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 
@@ -63,12 +66,16 @@ impl LanguageServer for Nix {
         })
     }
 
-    fn initialized(&self, _: &Printer, _: InitializedParams) {
-        info!("initialized notification received");
-    }
-
     fn shutdown(&self) -> Self::ShutdownFuture {
         future::ok(())
+    }
+
+    fn symbol(&self, _: WorkspaceSymbolParams) -> Self::SymbolFuture {
+        future::ok(None)
+    }
+
+    fn execute_command(&self, _: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
+        future::ok(None)
     }
 
     fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
@@ -85,15 +92,11 @@ impl LanguageServer for Nix {
         printer.publish_diagnostics(params.text_document.uri, diags);
     }
 
-    fn did_save(&self, _: &Printer, _: DidSaveTextDocumentParams) {}
-
-    fn did_close(&self, _: &Printer, _: DidCloseTextDocumentParams) {}
-
     fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
         Box::new(future::ok(None))
     }
 
-    fn highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
+    fn document_highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
         Box::new(future::ok(None))
     }
 }

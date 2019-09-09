@@ -416,9 +416,10 @@ dependencies = [
  "jsonrpc-core 13.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "nix-parser 0.1.0",
+ "serde_json 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "tower-lsp 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tower-lsp 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1024,7 +1025,7 @@ dependencies = [
 
 [[package]]
 name = "tower-lsp"
-version = "0.2.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1289,7 +1290,7 @@ dependencies = [
 "checksum tokio-udp 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "56775b287cda0fd8ca0c5d2f5b1d0646afbd360101e2eef91cd89365fcfc2f5f"
 "checksum tokio-uds 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "037ffc3ba0e12a0ab4aca92e5234e0dedeb48fddf6ccd260f1f150a36a9f2445"
 "checksum toml 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "c7aabe75941d914b72bf3e5d3932ed92ce0664d49d8432305a8b547c37227724"
-"checksum tower-lsp 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f9591f0210e9ca1b6a60ffa18aaaf0a778955bca6c2dbc632487815d54a113ac"
+"checksum tower-lsp 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "205d3623f162acb79667b83ec23f33c928af746a0b21a9601e97782320747589"
 "checksum tower-service 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2cc0c98637d23732f8de6dfd16494c9f1559c3b9e20b4a46462c8f9b9e827bfa"
 "checksum unicode-bidi 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "49f2bd0c6468a8230e1db229cff8029217cf623c767ea5d60bfbd42729ea54d5"
 "checksum unicode-normalization 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "141339a08b982d942be2ca06ff8b076563cbe223d1befd5450716790d44e2426"

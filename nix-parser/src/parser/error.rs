@@ -141,6 +141,15 @@ pub enum Error {
     Message(Span, String),
 }
 
+impl Error {
+    pub fn as_nom_error(&self) -> Option<(Span, &str, ErrorKind)> {
+        match *self {
+            Error::Nom(ref span, ref frag, ref kind) => Some((*span, frag, *kind)),
+            _ => None,
+        }
+    }
+}
+
 impl Display for Error {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {

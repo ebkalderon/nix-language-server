@@ -273,7 +273,7 @@ where
 ///
 /// This combinator is useful for handling fallback cases where `partial` was given a totally
 /// invalid expression which it cannot recover from.
-pub fn map_err_partial<'a, O1, O2, F, G>(
+pub fn skip_if_err<'a, O1, O2, F, G>(
     partial: F,
     skip_to: G,
 ) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>
@@ -284,7 +284,7 @@ where
     move |input| match partial(input) {
         Ok((remaining, value)) => Ok((remaining, value)),
         Err(nom::Err::Failure(e)) | Err(nom::Err::Error(e)) => {
-            let (remaining, failed) = recognize(many_till(anychar, &skip_to))(input)?;
+            let (remaining, _failed) = recognize(many_till(anychar, &skip_to))(input)?;
             let partial = Partial::with_errors(None, e);
             Ok((remaining, partial))
         }

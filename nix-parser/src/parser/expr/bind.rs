@@ -6,7 +6,7 @@ use nom::sequence::{pair, preceded, terminated, tuple};
 
 use super::expr;
 use crate::ast::{Bind, BindInherit, BindInheritExpr, BindSimple};
-use crate::parser::partial::{expect_terminated, map_err_partial, map_partial, Partial};
+use crate::parser::partial::{expect_terminated, map_partial, skip_if_err, Partial};
 use crate::parser::{map_spanned, tokens, IResult, LocatedSpan};
 
 pub fn bind(input: LocatedSpan) -> IResult<Partial<Bind>> {
@@ -14,7 +14,7 @@ pub fn bind(input: LocatedSpan) -> IResult<Partial<Bind>> {
     let inherit_expr = map_partial(inherit_expr, Bind::InheritExpr);
     let simple = map_partial(simple, Bind::Simple);
     let bind = expect_terminated(alt((inherit, inherit_expr, simple)), char(';'));
-    map_err_partial(bind, char(';'))(input)
+    skip_if_err(bind, char(';'))(input)
 }
 
 fn simple(input: LocatedSpan) -> IResult<Partial<BindSimple>> {

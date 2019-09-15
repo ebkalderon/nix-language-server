@@ -11,6 +11,7 @@ use nom::combinator::{cut, map, recognize, verify};
 use nom::multi::{many0, separated_nonempty_list};
 use nom::sequence::{delimited, pair, preceded, terminated};
 
+use super::error::{Errors, ExpectedFoundError};
 use super::{map_spanned, IResult, LocatedSpan};
 use crate::ast::tokens::{Comment, Ident, IdentPath};
 
@@ -52,11 +53,19 @@ pub fn space_until_final_comment(input: LocatedSpan) -> IResult<()> {
 pub fn identifier(input: LocatedSpan) -> IResult<Ident> {
     let first = verify(anychar, |c| is_alphabetic(*c as u8) || *c == '_');
     let rest = take_while(|c: char| is_alphanumeric(c as u8) || "_-'".contains(c));
-    let ident = recognize(pair(first, rest));
-    let verified = verify(ident, |span| !is_keyword(span));
-    map(verified, |span: LocatedSpan| {
-        Ident::from((span.fragment, span))
-    })(input)
+    let (remaining, span) = recognize(pair(first, rest))(input)?;
+
+    if is_keyword(&span) {
+        let mut errors = Errors::new();
+        errors.push(ExpectedFoundError::new(
+            vec!["identifier".to_string()],
+            format!("keyword `{}`", span.fragment),
+            span,
+        ));
+        return Err(nom::Err::Error(errors));
+    }
+
+    Ok((remaining, Ident::from((span.fragment, span))))
 }
 
 pub fn ident_path(input: LocatedSpan) -> IResult<IdentPath> {

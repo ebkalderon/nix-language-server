@@ -169,7 +169,7 @@ impl ToDiagnostic for Error {
             Error::ExpectedFound(ref e) => e.to_diagnostic(file),
             Error::Message(ref span, ref msg) => {
                 let label = Label::new(file, *span, msg.clone());
-                Diagnostic::new_bug(msg.clone(), label)
+                Diagnostic::new_error(msg.clone(), label)
             }
         }
     }

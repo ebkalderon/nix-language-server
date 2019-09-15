@@ -5,6 +5,7 @@ use codespan::{FileId, Span};
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 
 use super::ToDiagnostic;
+use crate::ToSpan;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExpectedFoundError {
@@ -14,6 +15,18 @@ pub struct ExpectedFoundError {
 }
 
 impl ExpectedFoundError {
+    pub fn new<T, U>(expected: Vec<T>, found: T, span: U) -> Self
+    where
+        T: Into<String>,
+        U: ToSpan,
+    {
+        ExpectedFoundError {
+            expected: expected.into_iter().map(Into::into).collect(),
+            found: found.into(),
+            span: span.to_span(),
+        }
+    }
+
     fn expected_message(&self) -> String {
         let expected: String = self.expected.join(", ");
         if self.expected.len() == 1 {

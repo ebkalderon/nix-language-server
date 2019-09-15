@@ -34,8 +34,11 @@ impl Errors {
         self.errors.is_empty()
     }
 
-    pub fn push(&mut self, error: Error) {
-        self.errors.push(error);
+    pub fn push<E>(&mut self, error: E)
+    where
+        E: Into<Error>,
+    {
+        self.errors.push(error.into());
     }
 
     pub fn iter(&self) -> Iter<Error> {
@@ -123,7 +126,7 @@ impl<'a> ParseError<LocatedSpan<'a>> for Errors {
             .unwrap_or_else(|| "EOF".to_string());
 
         let mut errors = Errors::new();
-        errors.push(Error::expected_found(expected, found, span));
+        errors.push(ExpectedFoundError::new(expected, found, span));
         errors
     }
 }

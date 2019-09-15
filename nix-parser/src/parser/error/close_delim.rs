@@ -5,12 +5,37 @@ use codespan::{FileId, Span};
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 
 use super::ToDiagnostic;
+use crate::ToSpan;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CloseDelimiterError {
     pub unmatched_delim: (char, Span),
     pub candidate_span: Option<Span>,
     pub unclosed_span: Option<Span>,
+}
+
+impl CloseDelimiterError {
+    pub fn new<S>(delim: char, span: S) -> Self
+    where
+        S: ToSpan,
+    {
+        CloseDelimiterError {
+            unmatched_delim: (delim, span.to_span()),
+            candidate_span: None,
+            unclosed_span: None,
+        }
+    }
+
+    pub fn new_detailed<S>(delim: char, span: S, candidate: S, unclosed: S) -> Self
+    where
+        S: ToSpan,
+    {
+        CloseDelimiterError {
+            unmatched_delim: (delim, span.to_span()),
+            candidate_span: Some(candidate.to_span()),
+            unclosed_span: Some(unclosed.to_span()),
+        }
+    }
 }
 
 impl Display for CloseDelimiterError {

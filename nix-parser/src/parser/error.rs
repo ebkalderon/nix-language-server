@@ -100,18 +100,12 @@ impl<'a> IntoIterator for &'a Errors {
 impl<'a> ParseError<LocatedSpan<'a>> for Errors {
     fn from_error_kind(input: LocatedSpan<'a>, kind: ErrorKind) -> Self {
         let mut errors = Errors::new();
-        errors.push(Error::Message(
-            input.slice(0..0).to_span(),
-            format!("nom error: {:?}", kind),
-        ));
+        errors.push(Error::Nom(input.to_span(), input.fragment.into(), kind));
         errors
     }
 
     fn append(input: LocatedSpan<'a>, kind: ErrorKind, mut other: Self) -> Self {
-        other.push(Error::Message(
-            input.to_span(),
-            format!("nom error: {:?}", kind),
-        ));
+        other.push(Error::Nom(input.to_span(), input.fragment.into(), kind));
         other
     }
 
@@ -135,6 +129,7 @@ impl<'a> ParseError<LocatedSpan<'a>> for Errors {
 pub enum Error {
     CloseDelimiter(CloseDelimiterError),
     ExpectedFound(ExpectedFoundError),
+    Nom(Span, String, ErrorKind),
     Message(Span, String),
 }
 
@@ -143,6 +138,7 @@ impl Display for Error {
         match *self {
             Error::CloseDelimiter(ref e) => write!(fmt, "{}", e),
             Error::ExpectedFound(ref e) => write!(fmt, "{}", e),
+            Error::Nom(_, ref frag, ref e) => write!(fmt, "nom error: (\"{}\", {:?})", frag, e),
             Error::Message(_, ref e) => write!(fmt, "{}", e),
         }
     }
@@ -167,6 +163,10 @@ impl ToDiagnostic for Error {
         match *self {
             Error::CloseDelimiter(ref e) => e.to_diagnostic(file),
             Error::ExpectedFound(ref e) => e.to_diagnostic(file),
+            Error::Nom(ref span, ref frag, ref kind) => {
+                let label = Label::new(file, *span, self.to_string());
+                Diagnostic::new_error(format!("nom error: {:?}", kind), label)
+            }
             Error::Message(ref span, ref msg) => {
                 let label = Label::new(file, *span, msg.clone());
                 Diagnostic::new_error(msg.clone(), label)

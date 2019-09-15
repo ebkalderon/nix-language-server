@@ -138,16 +138,6 @@ pub enum Error {
     Message(Span, String),
 }
 
-impl Error {
-    pub fn expected_found(expected: Vec<String>, found: String, span: Span) -> Self {
-        Error::ExpectedFound(ExpectedFoundError {
-            expected,
-            found,
-            span,
-        })
-    }
-}
-
 impl Display for Error {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {

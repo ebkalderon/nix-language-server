@@ -312,7 +312,7 @@ where
 
         loop {
             match g(input) {
-                Ok((_, _)) => {
+                Ok(_) => {
                     let mut partial: Partial<_> = partials.into_iter().collect();
                     partial.extend_errors(errors);
                     return Ok((input, partial));

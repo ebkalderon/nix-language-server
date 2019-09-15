@@ -119,7 +119,7 @@ impl<'a> ParseError<LocatedSpan<'a>> for Errors {
 
     fn from_char(input: LocatedSpan<'a>, c: char) -> Self {
         let span = input.slice(0..0).to_span();
-        let expected = vec![format!("`{}`", c)];
+        let expected = format!("`{}`", c);
         let found = input
             .fragment
             .chars()

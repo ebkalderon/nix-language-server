@@ -58,8 +58,8 @@ pub fn identifier(input: LocatedSpan) -> IResult<Ident> {
     if is_keyword(&span) {
         let mut errors = Errors::new();
         errors.push(ExpectedFoundError::new(
-            vec!["identifier".to_string()],
-            format!("keyword `{}`", span.fragment),
+            "identifier",
+            format!("keyword (`{}`)", span.fragment),
             span,
         ));
         return Err(nom::Err::Error(errors));

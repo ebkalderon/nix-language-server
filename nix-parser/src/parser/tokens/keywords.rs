@@ -31,7 +31,7 @@ macro_rules! define_keywords {
                     };
 
                     ExpectedFoundError::new(
-                        vec![format!("keyword `{}`", stringify!($keyword))],
+                        format!("keyword `{}`", stringify!($keyword)),
                         found,
                         span,
                     )

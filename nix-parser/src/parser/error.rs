@@ -41,6 +41,14 @@ impl Errors {
         self.errors.push(error.into());
     }
 
+    pub fn pop(&mut self) -> Option<Error> {
+        self.errors.pop()
+    }
+
+    pub fn last(&mut self) -> Option<&Error> {
+        self.errors.last()
+    }
+
     pub fn iter(&self) -> Iter<Error> {
         self.errors.iter()
     }

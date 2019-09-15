@@ -207,7 +207,7 @@ impl<T> FromIterator<Partial<T>> for Partial<Vec<T>> {
 /// Combinator which runs the given partial parser and then expects on a terminator.
 ///
 /// If the terminator is missing, an unclosed delimiter error will be appended to the `Partial`,
-/// and parsing will be allowed to continue as through the terminator existed.
+/// and parsing will be allowed to continue as though the terminator existed.
 pub fn expect_terminated<'a, O1, O2, F, G>(
     f: F,
     term: G,

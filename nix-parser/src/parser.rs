@@ -25,7 +25,7 @@ type IResult<'a, T> = nom::IResult<LocatedSpan<'a>, T, Errors>;
 impl<'a> ToSpan for LocatedSpan<'a> {
     fn to_span(&self) -> Span {
         let start = self.offset;
-        let end = start + self.fragment.len().saturating_sub(1);
+        let end = start + self.fragment.len();
         Span::new(start as u32, end as u32)
     }
 }

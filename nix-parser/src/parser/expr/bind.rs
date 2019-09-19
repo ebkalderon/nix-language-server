@@ -1,6 +1,6 @@
 use nom::branch::alt;
 use nom::character::complete::{char, multispace0};
-use nom::combinator::{map, opt};
+use nom::combinator::{map, opt, peek};
 use nom::multi::many1;
 use nom::sequence::{pair, preceded, terminated, tuple};
 
@@ -20,7 +20,8 @@ pub fn bind(input: LocatedSpan) -> IResult<Partial<Bind>> {
 fn simple(input: LocatedSpan) -> IResult<Partial<BindSimple>> {
     let (input, comment) = opt(terminated(tokens::comment, multispace0))(input)?;
 
-    let lhs = map(terminated(tokens::ident_path, tokens::space), Partial::from);
+    let attr = map(terminated(tokens::ident_path, tokens::space), Partial::from);
+    let lhs = skip_if_err(attr, peek(char('=')));
     let rhs = map_partial(preceded(tokens::space, expr), Box::new);
     let simple = pair(expect_terminated(lhs, char('=')), rhs);
     let bind = map(simple, |(name, expr)| {

@@ -1,11 +1,12 @@
 use nom::branch::alt;
 use nom::character::complete::char;
-use nom::combinator::cut;
 use nom::sequence::{pair, preceded, terminated};
 
-use super::{bind, expr, unary};
-use crate::ast::{ExprList, ExprParen, ExprSet};
-use crate::parser::partial::{expect_terminated, many_till_partial, map_partial_spanned, Partial};
+use super::{atomic, bind, expr, unary};
+use crate::ast::{ExprFnApp, ExprList, ExprParen, ExprSet};
+use crate::parser::partial::{
+    expect_terminated, many_till_partial, map_partial, map_partial_spanned, Partial,
+};
 use crate::parser::{tokens, IResult, LocatedSpan};
 
 pub fn paren(input: LocatedSpan) -> IResult<Partial<ExprParen>> {

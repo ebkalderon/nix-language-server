@@ -284,7 +284,7 @@ where
     move |input| match partial(input) {
         Ok((remaining, value)) => Ok((remaining, value)),
         Err(nom::Err::Failure(e)) | Err(nom::Err::Error(e)) => {
-            let (remaining, _failed) = recognize(many_till(anychar, &skip_to))(input)?;
+            let (remaining, failed) = recognize(many_till(anychar, &skip_to))(input)?;
             let partial = Partial::with_errors(None, e);
             Ok((remaining, partial))
         }
@@ -337,6 +337,29 @@ where
                 Err(err) => return Err(err),
             }
         }
+    }
+}
+
+/// Combinator which gets the result from the first partial parser, then gets the result from the
+/// second partial parser, and produces a partial value containing a tuple of the two results.
+///
+/// This is effectively shorthand for:
+///
+/// ```rust,ignore
+/// map(pair(first, second), |(f, g)| f.flat_map(|f| g.map(|g| (f, g))))
+/// ```
+pub fn pair_partial<'a, O1, O2, F, G>(
+    first: F,
+    second: G,
+) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<(O1, O2)>>
+where
+    F: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
+    G: Fn(LocatedSpan<'a>) -> IResult<Partial<O2>>,
+{
+    move |input| {
+        let (input, f) = first(input)?;
+        let (remaining, g) = second(input)?;
+        Ok((remaining, f.flat_map(|f| g.map(|g| (f, g)))))
     }
 }
 

@@ -14,9 +14,17 @@ use crate::HasSpan;
 
 mod atomic;
 mod bind;
+mod stmt;
 
 pub fn expr(input: LocatedSpan) -> IResult<Partial<Expr>> {
-    terminated(imply, tokens::space)(input)
+    terminated(stmt, tokens::space)(input)
+}
+
+fn stmt(input: LocatedSpan) -> IResult<Partial<Expr>> {
+    let with = map_partial(stmt::with, Expr::With);
+    let assert = map_partial(stmt::assert, Expr::Assert);
+    let let_in = map_partial(stmt::let_in, Expr::LetIn);
+    alt((with, assert, let_in, imply))(input)
 }
 
 fn imply(input: LocatedSpan) -> IResult<Partial<Expr>> {

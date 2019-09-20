@@ -176,10 +176,25 @@ fn concat(input: LocatedSpan) -> IResult<Partial<Expr>> {
 fn unary(input: LocatedSpan) -> IResult<Partial<Expr>> {
     let neg = map(char('-'), |_| UnaryOp::Neg);
     let not = map(char('!'), |_| UnaryOp::Not);
-    let expr = pair(opt(alt((neg, not))), atomic);
+    let expr = pair(opt(alt((neg, not))), fn_app);
     map_spanned(expr, |span, (unary, expr)| match unary {
         Some(op) => expr.map(|expr| Expr::Unary(ExprUnary::new(op, Box::new(expr), span))),
         None => expr,
+    })(input)
+}
+
+fn fn_app(input: LocatedSpan) -> IResult<Partial<Expr>> {
+    let expr = pair(atomic, many0(preceded(tokens::space1, atomic)));
+    map(expr, |(first, rest)| {
+        rest.into_iter().fold(first, |lhs, rhs| {
+            lhs.flat_map(|lhs| {
+                rhs.map(|rhs| {
+                    let span = Span::merge(lhs.span(), rhs.span());
+                    let expr = ExprFnApp::new(Box::new(lhs), Box::new(rhs), span);
+                    Expr::FnApp(expr)
+                })
+            })
+        })
     })(input)
 }
 

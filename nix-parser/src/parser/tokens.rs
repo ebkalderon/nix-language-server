@@ -8,11 +8,11 @@ use nom::character::complete::{
 };
 use nom::character::{is_alphabetic, is_alphanumeric};
 use nom::combinator::{cut, map, recognize, verify};
-use nom::multi::{many0, separated_nonempty_list};
+use nom::multi::{many0, many1, separated_nonempty_list};
 use nom::sequence::{delimited, pair, preceded, terminated};
 
 use super::error::{Errors, ExpectedFoundError};
-use super::{map_spanned, IResult, LocatedSpan};
+use super::{map_err, map_spanned, IResult, LocatedSpan};
 use crate::ast::tokens::{Comment, Ident, IdentPath};
 
 mod keywords;
@@ -36,6 +36,12 @@ pub fn space(input: LocatedSpan) -> IResult<()> {
     let line = delimited(char('#'), not_line_ending, line_ending);
     let block = delimited(tag("/*"), take_until("*/"), cut(tag("*/")));
     map(many0(alt((multispace1, line, block))), |_| ())(input)
+}
+
+pub fn space1(input: LocatedSpan) -> IResult<()> {
+    let line = delimited(char('#'), not_line_ending, line_ending);
+    let block = delimited(tag("/*"), take_until("*/"), cut(tag("*/")));
+    map(many1(alt((multispace1, line, block))), |_| ())(input)
 }
 
 pub fn space_until_final_comment(input: LocatedSpan) -> IResult<()> {

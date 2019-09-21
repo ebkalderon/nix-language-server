@@ -7,9 +7,9 @@ use nom::multi::many0;
 use nom::sequence::{delimited, pair, preceded, terminated, tuple};
 use std::iter::{self, FromIterator};
 
-use super::partial::{map_partial, Partial};
+use super::partial::{expect_terminated, map_partial, map_partial_spanned, pair_partial, Partial};
 use super::{map_spanned, tokens, IResult, LocatedSpan};
-use crate::ast::{BinaryOp, Expr, ExprBinary, ExprFnApp, ExprUnary, UnaryOp};
+use crate::ast::{BinaryOp, Expr, ExprBinary, ExprFnApp, ExprIf, ExprUnary, UnaryOp};
 use crate::HasSpan;
 
 mod atomic;
@@ -24,7 +24,24 @@ fn stmt(input: LocatedSpan) -> IResult<Partial<Expr>> {
     let with = map_partial(stmt::with, Expr::With);
     let assert = map_partial(stmt::assert, Expr::Assert);
     let let_in = map_partial(stmt::let_in, Expr::LetIn);
-    alt((with, assert, let_in, imply))(input)
+    alt((with, assert, let_in, if_else))(input)
+}
+
+fn if_else(input: LocatedSpan) -> IResult<Partial<Expr>> {
+    let keyword_if = pair(tokens::keyword_if, tokens::space1);
+    let keyword_then = pair(tokens::keyword_then, tokens::space1);
+    let keyword_else = pair(tokens::keyword_else, tokens::space1);
+
+    let cond = expect_terminated(map_partial(expr, Box::new), keyword_then);
+    let body = expect_terminated(map_partial(expr, Box::new), keyword_else);
+    let fallback = map_partial(expr, Box::new);
+
+    let expr = preceded(keyword_if, pair_partial(cond, pair_partial(body, fallback)));
+    let if_else = map_partial_spanned(expr, |span, (cond, (body, fallback))| {
+        Expr::If(ExprIf::new(cond, body, fallback, span))
+    });
+
+    alt((if_else, imply))(input)
 }
 
 fn imply(input: LocatedSpan) -> IResult<Partial<Expr>> {
@@ -209,8 +226,10 @@ fn fn_app(input: LocatedSpan) -> IResult<Partial<Expr>> {
 fn atomic(input: LocatedSpan) -> IResult<Partial<Expr>> {
     let paren = map_partial(atomic::paren, Expr::Paren);
     let set = map_partial(atomic::set, Expr::Set);
+    let rec_set = map_partial(atomic::let_set, Expr::Let);
+    let let_set = map_partial(atomic::rec_set, Expr::Rec);
     let list = map_partial(atomic::list, Expr::List);
     let literal = map(map(tokens::literal, Expr::Literal), Partial::from);
     let attr = map(map(tokens::ident_path, Expr::Attr), Partial::from);
-    alt((paren, set, list, literal, attr))(input)
+    alt((paren, set, rec_set, let_set, list, literal, attr))(input)
 }

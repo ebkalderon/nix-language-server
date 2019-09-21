@@ -1,17 +1,37 @@
 use std::str::FromStr;
 
+use nom::bytes::complete::take_while;
 use nom::character::complete::{char, digit0, digit1, one_of};
 use nom::combinator::{cut, map_res, opt, recognize};
 use nom::sequence::{pair, tuple};
+use nom::Slice;
+use once_cell::sync::OnceCell;
+use regex::Regex;
 
+use crate::parser::error::{Errors, ExpectedFoundError};
 use crate::parser::{IResult, LocatedSpan};
 
 pub fn float(input: LocatedSpan) -> IResult<f64> {
-    let frac = pair(char('.'), cut(digit1));
-    let exp = tuple((one_of("eE"), opt(one_of("+-")), cut(digit1)));
-    let number = tuple((opt(char('-')), digit0, frac, opt(exp)));
-    let float = recognize(number);
-    map_res(float, |s: LocatedSpan| f64::from_str(s.fragment))(input)
+    static REGEX: OnceCell<Regex> = OnceCell::new();
+    let regex = REGEX.get_or_init(|| {
+        Regex::from_str(r#"(([1-9][0-9]*\.[0-9]*)|(0?\.[0-9]+))([Ee][+-]?[0-9]+)?"#).unwrap()
+    });
+
+    if let Some(m) = regex.captures(input.fragment).and_then(|c| c.get(0)) {
+        let span = input.slice(m.start()..m.end());
+        let remaining = input.slice(m.end()..);
+        let float = span.fragment.parse().expect("float parsing cannot fail");
+        Ok((remaining, float))
+    } else {
+        let (_, token) = take_while(|c: char| !" \n,;=)}".contains(c))(input)?;
+        let mut errors = Errors::new();
+        errors.push(ExpectedFoundError::new(
+            "float",
+            format!("`{}`", token.fragment),
+            token,
+        ));
+        Err(nom::Err::Error(errors))
+    }
 }
 
 pub fn integer(input: LocatedSpan) -> IResult<i64> {

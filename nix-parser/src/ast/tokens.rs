@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::path::{Path, PathBuf};
 
 use codespan::Span;
-use http::Uri;
+use url::Url;
 
 use crate::{HasSpan, ToSpan};
 
@@ -165,7 +165,7 @@ pub enum Literal {
     Path(PathBuf, Span),
     PathTemplate(String, Span),
     String(String, Span),
-    Uri(Uri, Span),
+    Uri(Url, Span),
 }
 
 impl Literal {
@@ -297,8 +297,8 @@ impl<S: ToSpan> From<(String, S)> for Literal {
     }
 }
 
-impl<S: ToSpan> From<(Uri, S)> for Literal {
-    fn from((uri, span): (Uri, S)) -> Self {
+impl<S: ToSpan> From<(Url, S)> for Literal {
+    fn from((uri, span): (Url, S)) -> Self {
         Literal::Uri(uri, span.to_span())
     }
 }

@@ -9,10 +9,10 @@ edition = "2018"
 codespan = "0.4.1"
 codespan-reporting = "0.4.1"
 float-cmp = "0.5.2"
-http = "0.1.18"
 nom = "5.0.1"
 nom_locate = "1.0.0"
 once_cell = "1.1.0"
+url = "2.1.0"
 
 [dependencies.regex]
 version = "1.3.1"

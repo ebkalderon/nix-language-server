@@ -20,6 +20,14 @@ impl SourceFile {
     pub fn new(comment: Option<Comment>, expr: Box<Expr>) -> Self {
         SourceFile { comment, expr }
     }
+
+    pub fn comment(&self) -> Option<&Comment> {
+        self.comment.as_ref()
+    }
+
+    pub fn expr(&self) -> &Expr {
+        &self.expr
+    }
 }
 
 impl Display for SourceFile {
@@ -159,6 +167,10 @@ impl ExprParen {
     pub fn new(expr: Box<Expr>, span: Span) -> Self {
         ExprParen { expr, span }
     }
+
+    pub fn expr(&self) -> &Expr {
+        &self.expr
+    }
 }
 
 impl Display for ExprParen {
@@ -188,6 +200,10 @@ pub struct ExprList {
 impl ExprList {
     pub fn new(elems: Vec<Expr>, span: Span) -> Self {
         ExprList { elems, span }
+    }
+
+    pub fn elems(&self) -> &[Expr] {
+        &self.elems[..]
     }
 }
 
@@ -220,6 +236,10 @@ impl ExprSet {
     pub fn new(binds: Vec<Bind>, span: Span) -> Self {
         ExprSet { binds, span }
     }
+
+    pub fn binds(&self) -> &[Bind] {
+        &self.binds[..]
+    }
 }
 
 impl Display for ExprSet {
@@ -241,7 +261,7 @@ impl PartialEq for ExprSet {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum UnaryOp {
     /// The unary `-` operator.
     Neg,
@@ -269,6 +289,14 @@ impl ExprUnary {
     pub fn new(op: UnaryOp, expr: Box<Expr>, span: Span) -> Self {
         ExprUnary { op, expr, span }
     }
+
+    pub fn op(&self) -> UnaryOp {
+        self.op
+    }
+
+    pub fn expr(&self) -> &Expr {
+        &self.expr
+    }
 }
 
 impl Display for ExprUnary {
@@ -289,7 +317,7 @@ impl PartialEq for ExprUnary {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BinaryOp {
     /// The binary `+` operator.
     Add,
@@ -360,6 +388,18 @@ impl ExprBinary {
     pub fn new(op: BinaryOp, lhs: Box<Expr>, rhs: Box<Expr>, span: Span) -> Self {
         ExprBinary { op, lhs, rhs, span }
     }
+
+    pub fn op(&self) -> BinaryOp {
+        self.op
+    }
+
+    pub fn left(&self) -> &Expr {
+        &self.lhs
+    }
+
+    pub fn right(&self) -> &Expr {
+        &self.rhs
+    }
 }
 
 impl Display for ExprBinary {
@@ -424,6 +464,18 @@ impl BindSimple {
             span,
         }
     }
+
+    pub fn comment(&self) -> Option<&Comment> {
+        self.comment.as_ref()
+    }
+
+    pub fn name(&self) -> &IdentPath {
+        &self.name
+    }
+
+    pub fn expr(&self) -> &Expr {
+        &self.expr
+    }
 }
 
 impl Display for BindSimple {
@@ -458,6 +510,10 @@ impl BindInherit {
     pub fn new(names: Vec<Ident>, span: Span) -> Self {
         BindInherit { names, span }
     }
+
+    pub fn names(&self) -> &[Ident] {
+        &self.names[..]
+    }
 }
 
 impl Display for BindInherit {
@@ -490,6 +546,14 @@ impl BindInheritExpr {
     pub fn new(expr: Box<Expr>, names: Vec<Ident>, span: Span) -> Self {
         BindInheritExpr { expr, names, span }
     }
+
+    pub fn expr(&self) -> &Expr {
+        &self.expr
+    }
+
+    pub fn names(&self) -> &[Ident] {
+        &self.names[..]
+    }
 }
 
 impl Display for BindInheritExpr {
@@ -521,6 +585,10 @@ impl ExprLet {
     pub fn new(binds: Vec<Bind>, span: Span) -> Self {
         ExprLet { binds, span }
     }
+
+    pub fn binds(&self) -> &[Bind] {
+        &self.binds[..]
+    }
 }
 
 impl Display for ExprLet {
@@ -551,6 +619,10 @@ pub struct ExprRec {
 impl ExprRec {
     pub fn new(binds: Vec<Bind>, span: Span) -> Self {
         ExprRec { binds, span }
+    }
+
+    pub fn binds(&self) -> &[Bind] {
+        &self.binds[..]
     }
 }
 
@@ -613,29 +685,41 @@ impl PartialEq for AttrKey {
 
 #[derive(Clone, Debug)]
 pub struct ExprProj {
-    expr: Box<Expr>,
+    base: Box<Expr>,
     attr: AttrKey,
     fallback: Option<Box<Expr>>,
     span: Span,
 }
 
 impl ExprProj {
-    pub fn new(expr: Box<Expr>, attr: AttrKey, fallback: Option<Box<Expr>>, span: Span) -> Self {
+    pub fn new(base: Box<Expr>, attr: AttrKey, fallback: Option<Box<Expr>>, span: Span) -> Self {
         ExprProj {
-            expr,
+            base,
             attr,
             fallback,
             span,
         }
+    }
+
+    pub fn base(&self) -> &Expr {
+        &self.base
+    }
+
+    pub fn attr(&self) -> &AttrKey {
+        &self.attr
+    }
+
+    pub fn fallback(&self) -> Option<&Expr> {
+        self.fallback.as_ref().map(|e| e.as_ref())
     }
 }
 
 impl Display for ExprProj {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         if let Some(ref val) = self.fallback.as_ref() {
-            write!(fmt, "{}.{} or {}", self.expr, self.attr, val)
+            write!(fmt, "{}.{} or {}", self.base, self.attr, val)
         } else {
-            write!(fmt, "{}.{}", self.expr, self.attr)
+            write!(fmt, "{}.{}", self.base, self.attr)
         }
     }
 }
@@ -648,7 +732,7 @@ impl HasSpan for ExprProj {
 
 impl PartialEq for ExprProj {
     fn eq(&self, other: &Self) -> bool {
-        self.expr == other.expr && self.attr == other.attr
+        self.base == other.base && self.attr == other.attr
     }
 }
 
@@ -668,6 +752,18 @@ impl ExprIf {
             fallback,
             span,
         }
+    }
+
+    pub fn condition(&self) -> &Expr {
+        &self.cond
+    }
+
+    pub fn body(&self) -> &Expr {
+        &self.body
+    }
+
+    pub fn fallback(&self) -> &Expr {
+        &self.fallback
     }
 }
 
@@ -708,6 +804,14 @@ impl ExprOr {
             span,
         }
     }
+
+    pub fn expr(&self) -> &Expr {
+        &self.expr
+    }
+
+    pub fn fallback(&self) -> &Expr {
+        &self.fallback
+    }
 }
 
 impl Display for ExprOr {
@@ -738,6 +842,14 @@ pub struct ExprAssert {
 impl ExprAssert {
     pub fn new(cond: Box<Expr>, expr: Box<Expr>, span: Span) -> Self {
         ExprAssert { cond, expr, span }
+    }
+
+    pub fn condition(&self) -> &Expr {
+        &self.cond
+    }
+
+    pub fn expr(&self) -> &Expr {
+        &self.expr
     }
 }
 
@@ -770,6 +882,14 @@ impl ExprWith {
     pub fn new(with: Box<Expr>, expr: Box<Expr>, span: Span) -> Self {
         ExprWith { with, expr, span }
     }
+
+    pub fn with(&self) -> &Expr {
+        &self.with
+    }
+
+    pub fn expr(&self) -> &Expr {
+        &self.expr
+    }
 }
 
 impl Display for ExprWith {
@@ -800,6 +920,14 @@ pub struct ExprLetIn {
 impl ExprLetIn {
     pub fn new(binds: Vec<Bind>, body: Box<Expr>, span: Span) -> Self {
         ExprLetIn { binds, body, span }
+    }
+
+    pub fn binds(&self) -> &[Bind] {
+        &self.binds[..]
+    }
+
+    pub fn body(&self) -> &Expr {
+        &self.body
     }
 }
 
@@ -899,6 +1027,14 @@ impl SimpleFnDecl {
     pub fn new(name: Ident, body: Box<Expr>, span: Span) -> Self {
         SimpleFnDecl { name, body, span }
     }
+
+    pub fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    pub fn body(&self) -> &Expr {
+        &self.body
+    }
 }
 
 impl Display for SimpleFnDecl {
@@ -933,6 +1069,14 @@ impl FormalsFnDecl {
             body,
             span,
         }
+    }
+
+    pub fn formals(&self) -> &[Formal] {
+        &self.formals[..]
+    }
+
+    pub fn body(&self) -> &Expr {
+        &self.body
     }
 }
 
@@ -980,6 +1124,22 @@ impl FormalsExtraFnDecl {
             span,
         }
     }
+
+    pub fn extra_args(&self) -> &Ident {
+        &self.extra
+    }
+
+    pub fn is_prefix(&self) -> bool {
+        self.is_prefix
+    }
+
+    pub fn formals(&self) -> &[Formal] {
+        &self.formals[..]
+    }
+
+    pub fn body(&self) -> &Expr {
+        &self.body
+    }
 }
 
 impl Display for FormalsExtraFnDecl {
@@ -1022,6 +1182,14 @@ impl ExprFnApp {
             argument,
             span,
         }
+    }
+
+    pub fn function(&self) -> &Expr {
+        &self.function
+    }
+
+    pub fn argument(&self) -> &Expr {
+        &self.argument
     }
 }
 

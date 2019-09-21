@@ -6,12 +6,14 @@ pub use self::strings::single_quote_string;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_until, take_while};
 use nom::character::complete::{
-    anychar, char, line_ending, multispace0, multispace1, not_line_ending, space0,
+    char, line_ending, multispace0, multispace1, not_line_ending, space0,
 };
-use nom::character::{is_alphabetic, is_alphanumeric};
-use nom::combinator::{cut, map, recognize, verify};
+use nom::combinator::{cut, map, recognize};
 use nom::multi::{many0, many1, separated_nonempty_list};
 use nom::sequence::{delimited, pair, preceded, terminated};
+use nom::Slice;
+use once_cell::sync::OnceCell;
+use regex::Regex;
 
 use super::error::{Errors, ExpectedFoundError};
 use super::{map_spanned, IResult, LocatedSpan};
@@ -60,21 +62,34 @@ pub fn space_until_final_comment(input: LocatedSpan) -> IResult<()> {
 }
 
 pub fn identifier(input: LocatedSpan) -> IResult<Ident> {
-    let first = verify(anychar, |c| is_alphabetic(*c as u8) || *c == '_');
-    let rest = take_while(|c: char| is_alphanumeric(c as u8) || "_-'".contains(c));
-    let (remaining, span) = recognize(pair(first, rest))(input)?;
+    static REGEX: OnceCell<Regex> = OnceCell::new();
+    let regex = REGEX.get_or_init(|| Regex::new(r#"\A[a-zA-Z_][a-zA-Z0-9_'\-]*"#).unwrap());
 
-    if is_keyword(&span) {
+    if let Some(m) = regex.captures(input.fragment).and_then(|c| c.get(0)) {
+        let span = input.slice(m.start()..m.end());
+        let remaining = input.slice(m.end()..);
+
+        if !is_keyword(&span) {
+            Ok((remaining, Ident::from((span.fragment, span))))
+        } else {
+            let mut errors = Errors::new();
+            errors.push(ExpectedFoundError::new(
+                "identifier",
+                format!("keyword (`{}`)", span.fragment),
+                span,
+            ));
+            Err(nom::Err::Error(errors))
+        }
+    } else {
+        let (_, token) = take_while(|c: char| !" \n,;=)}".contains(c))(input)?;
         let mut errors = Errors::new();
         errors.push(ExpectedFoundError::new(
             "identifier",
-            format!("keyword (`{}`)", span.fragment),
-            span,
+            format!("`{}`", token.fragment),
+            token,
         ));
-        return Err(nom::Err::Error(errors));
+        Err(nom::Err::Error(errors))
     }
-
-    Ok((remaining, Ident::from((span.fragment, span))))
 }
 
 pub fn ident_path(input: LocatedSpan) -> IResult<IdentPath> {

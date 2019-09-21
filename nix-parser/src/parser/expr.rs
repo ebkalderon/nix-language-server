@@ -1,7 +1,5 @@
 use codespan::Span;
 use nom::branch::alt;
-use nom::bytes::complete::tag;
-use nom::character::complete::char;
 use nom::combinator::{map, opt};
 use nom::multi::many0;
 use nom::sequence::{delimited, pair, preceded, terminated, tuple};
@@ -45,7 +43,7 @@ fn if_else(input: LocatedSpan) -> IResult<Partial<Expr>> {
 }
 
 fn imply(input: LocatedSpan) -> IResult<Partial<Expr>> {
-    let imply = tuple((tokens::space1, tag("->"), tokens::space));
+    let imply = tuple((tokens::space1, tokens::op_imply, tokens::space));
     let expr = pair(and, many0(preceded(imply, and)));
     map(expr, |(first, rest)| {
         rest.into_iter().fold(first, |lhs, rhs| {
@@ -61,7 +59,7 @@ fn imply(input: LocatedSpan) -> IResult<Partial<Expr>> {
 }
 
 fn and(input: LocatedSpan) -> IResult<Partial<Expr>> {
-    let and = tuple((tokens::space, tag("&&"), tokens::space));
+    let and = tuple((tokens::space, tokens::op_and, tokens::space));
     let expr = pair(or, many0(preceded(and, or)));
     map(expr, |(first, rest)| {
         rest.into_iter().fold(first, |lhs, rhs| {
@@ -77,7 +75,7 @@ fn and(input: LocatedSpan) -> IResult<Partial<Expr>> {
 }
 
 fn or(input: LocatedSpan) -> IResult<Partial<Expr>> {
-    let or = tuple((tokens::space, tag("||"), tokens::space));
+    let or = tuple((tokens::space, tokens::op_or, tokens::space));
     let expr = pair(equality, many0(preceded(or, equality)));
     map(expr, |(first, rest)| {
         rest.into_iter().fold(first, |lhs, rhs| {
@@ -93,8 +91,8 @@ fn or(input: LocatedSpan) -> IResult<Partial<Expr>> {
 }
 
 fn equality(input: LocatedSpan) -> IResult<Partial<Expr>> {
-    let eq = map(tag("=="), |_| BinaryOp::Eq);
-    let neq = map(tag("!="), |_| BinaryOp::NotEq);
+    let eq = map(tokens::op_eq, |_| BinaryOp::Eq);
+    let neq = map(tokens::op_neq, |_| BinaryOp::NotEq);
 
     let op = delimited(tokens::space, alt((eq, neq)), tokens::space);
     let expr = pair(compare, opt(pair(op, compare)));
@@ -111,10 +109,10 @@ fn equality(input: LocatedSpan) -> IResult<Partial<Expr>> {
 }
 
 fn compare(input: LocatedSpan) -> IResult<Partial<Expr>> {
-    let lte = map(tag("<="), |_| BinaryOp::LessThanEq);
-    let lt = map(char('<'), |_| BinaryOp::LessThan);
-    let gte = map(tag(">="), |_| BinaryOp::LessThanEq);
-    let gt = map(char('>'), |_| BinaryOp::LessThan);
+    let lte = map(tokens::op_lte, |_| BinaryOp::LessThanEq);
+    let lt = map(tokens::op_lt, |_| BinaryOp::LessThan);
+    let gte = map(tokens::op_gte, |_| BinaryOp::LessThanEq);
+    let gt = map(tokens::op_gt, |_| BinaryOp::LessThan);
 
     let op = delimited(tokens::space, alt((lte, lt, gte, gt)), tokens::space);
     let expr = pair(update, opt(pair(op, update)));
@@ -131,7 +129,7 @@ fn compare(input: LocatedSpan) -> IResult<Partial<Expr>> {
 }
 
 fn update(input: LocatedSpan) -> IResult<Partial<Expr>> {
-    let op = delimited(tokens::space, tag("//"), tokens::space);
+    let op = delimited(tokens::space, tokens::op_update, tokens::space);
     let expr = pair(sum, many0(preceded(op, sum)));
     map(expr, |(first, rest)| {
         let exprs = Partial::from_iter(iter::once(first).chain(rest));
@@ -147,8 +145,8 @@ fn update(input: LocatedSpan) -> IResult<Partial<Expr>> {
 }
 
 fn sum(input: LocatedSpan) -> IResult<Partial<Expr>> {
-    let add = map(char('+'), |_| BinaryOp::Add);
-    let sub = map(char('-'), |_| BinaryOp::Sub);
+    let add = map(tokens::op_add, |_| BinaryOp::Add);
+    let sub = map(tokens::op_sub, |_| BinaryOp::Sub);
     let op = delimited(tokens::space, alt((add, sub)), tokens::space);
     let expr = pair(product, many0(pair(op, product)));
     map(expr, |(first, rest)| {
@@ -165,8 +163,8 @@ fn sum(input: LocatedSpan) -> IResult<Partial<Expr>> {
 }
 
 fn product(input: LocatedSpan) -> IResult<Partial<Expr>> {
-    let mul = map(char('*'), |_| BinaryOp::Mul);
-    let div = map(char('/'), |_| BinaryOp::Div);
+    let mul = map(tokens::op_mul, |_| BinaryOp::Mul);
+    let div = map(tokens::op_div, |_| BinaryOp::Div);
     let op = delimited(tokens::space, alt((mul, div)), tokens::space);
     let expr = pair(concat, many0(pair(op, concat)));
     map(expr, |(first, rest)| {
@@ -183,7 +181,7 @@ fn product(input: LocatedSpan) -> IResult<Partial<Expr>> {
 }
 
 fn concat(input: LocatedSpan) -> IResult<Partial<Expr>> {
-    let op = delimited(tokens::space, tag("++"), tokens::space);
+    let op = delimited(tokens::space, tokens::op_concat, tokens::space);
     let expr = pair(unary, many0(preceded(op, unary)));
     map(expr, |(first, rest)| {
         let exprs = Partial::from_iter(iter::once(first).chain(rest));
@@ -199,8 +197,8 @@ fn concat(input: LocatedSpan) -> IResult<Partial<Expr>> {
 }
 
 fn unary(input: LocatedSpan) -> IResult<Partial<Expr>> {
-    let neg = map(char('-'), |_| UnaryOp::Neg);
-    let not = map(char('!'), |_| UnaryOp::Not);
+    let neg = map(tokens::op_sub, |_| UnaryOp::Neg);
+    let not = map(tokens::op_not, |_| UnaryOp::Not);
     let expr = pair(opt(alt((neg, not))), fn_app);
     map_spanned(expr, |span, (unary, expr)| match unary {
         Some(op) => expr.map(|expr| Expr::Unary(ExprUnary::new(op, Box::new(expr), span))),

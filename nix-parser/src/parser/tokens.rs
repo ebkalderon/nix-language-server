@@ -1,5 +1,6 @@
 pub use self::keywords::*;
 pub use self::literal::literal;
+pub use self::ops::*;
 
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_until, take_while};
@@ -17,6 +18,7 @@ use crate::ast::tokens::{Comment, Ident, IdentPath};
 
 mod keywords;
 mod literal;
+mod ops;
 mod strings;
 
 pub fn comment(input: LocatedSpan) -> IResult<Comment> {

@@ -1,6 +1,7 @@
 pub use self::keywords::*;
 pub use self::literal::literal;
 pub use self::ops::*;
+pub use self::strings::single_quote_string;
 
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take, take_until, take_while};

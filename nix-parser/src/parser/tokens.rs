@@ -13,7 +13,7 @@ use nom::multi::{many0, many1, separated_nonempty_list};
 use nom::sequence::{delimited, pair, preceded, terminated};
 
 use super::error::{Errors, ExpectedFoundError};
-use super::{map_err, map_spanned, IResult, LocatedSpan};
+use super::{map_spanned, IResult, LocatedSpan};
 use crate::ast::tokens::{Comment, Ident, IdentPath};
 
 mod keywords;

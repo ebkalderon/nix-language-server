@@ -91,7 +91,7 @@ where
 }
 
 /// Combinator which converts an underlying `nom` error, if any, into a custom parse error.
-pub fn map_err<'a, O, P, F, E>(parser: P, op: F) -> impl Fn(LocatedSpan<'a>) -> IResult<O>
+fn map_err<'a, O, P, F, E>(parser: P, op: F) -> impl Fn(LocatedSpan<'a>) -> IResult<O>
 where
     P: Fn(LocatedSpan<'a>) -> IResult<O>,
     F: Fn(Span, &str, ErrorKind) -> E,

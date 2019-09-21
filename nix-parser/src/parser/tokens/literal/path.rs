@@ -1,23 +1,48 @@
 use std::path::PathBuf;
 
-use nom::branch::alt;
-use nom::bytes::complete::{is_a, take_while1};
+use nom::bytes::complete::take_while1;
 use nom::character::{complete::char, is_alphanumeric};
-use nom::combinator::{cut, map, opt, recognize};
-use nom::multi::separated_nonempty_list;
-use nom::sequence::{delimited, tuple};
+use nom::combinator::{cut, map};
+use nom::sequence::delimited;
+use nom::Slice;
+use once_cell::sync::OnceCell;
+use regex::Regex;
 
+use crate::parser::error::{Error, Errors};
 use crate::parser::{IResult, LocatedSpan};
+use crate::ToSpan;
 
 pub fn path(input: LocatedSpan) -> IResult<PathBuf> {
-    let prefix = opt(alt((is_a("~"), path_segment)));
-    let segments = separated_nonempty_list(char('/'), path_segment);
-    let path = recognize(tuple((prefix, char('/'), segments)));
-    map(path, |p: LocatedSpan| PathBuf::from(p.fragment))(input)
+    let path_match = normal_path_regex()
+        .captures(input.fragment)
+        .or_else(|| home_path_regex().captures(input.fragment))
+        .and_then(|captures| captures.get(0));
+
+    if let Some(m) = path_match {
+        let span = input.slice(m.start()..m.end());
+        let remaining = input.slice(m.end()..);
+
+        if !span.fragment.ends_with('/') {
+            Ok((remaining, PathBuf::from(span.fragment)))
+        } else {
+            let mut errors = Errors::new();
+            let message = format!("paths cannot have trailing slashes");
+            errors.push(Error::Message(span.to_span(), message));
+            Err(nom::Err::Failure(errors))
+        }
+    } else {
+        Err(nom::Err::Error(Errors::new()))
+    }
 }
 
-fn path_segment(input: LocatedSpan) -> IResult<LocatedSpan> {
-    take_while1(|c: char| is_alphanumeric(c as u8) || "._-+".contains(c))(input)
+fn normal_path_regex<'a>() -> &'a Regex {
+    static PATH: OnceCell<Regex> = OnceCell::new();
+    PATH.get_or_init(|| Regex::new(r#"\A[a-zA-Z0-9\._\-\+]*(/[a-zA-Z0-9\._\-\+]+)+/?"#).unwrap())
+}
+
+fn home_path_regex<'a>() -> &'a Regex {
+    static PATH: OnceCell<Regex> = OnceCell::new();
+    PATH.get_or_init(|| Regex::new(r#"\A\~(/[a-zA-Z0-9\._\-\+]+)+/?"#).unwrap())
 }
 
 pub fn path_template(input: LocatedSpan) -> IResult<String> {

@@ -18,7 +18,7 @@ pub fn literal(input: LocatedSpan) -> IResult<Literal> {
     let null = map_spanned(null, |span, n| Literal::from((n, span)));
     let path = map_spanned(path, |span, p| Literal::from((p, span)));
     let temp = map_spanned(path_template, |span, p| Literal::path_template(p, span));
-    alt((boolean, float, integer, null, path, temp))(input)
+    alt((boolean, path, float, integer, null, temp))(input)
 }
 
 pub fn boolean(input: LocatedSpan) -> IResult<bool> {

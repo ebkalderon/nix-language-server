@@ -3,7 +3,7 @@
 {
   hello.bar.baz = 12345;
 
-  blah = { foo = { thing  = true; };  hello = true; };
+  blah = { foo = { thing = true; };  hello = true; };
 
   # thing1
   #

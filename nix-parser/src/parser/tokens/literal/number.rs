@@ -52,10 +52,6 @@ mod tests {
         let (_, bare_frac_float) = all_consuming(float)(string).expect("bare float failed");
         assert!(approx_eq!(f64, bare_frac_float, 1.23));
 
-        let string = LocatedSpan::new("-2.5");
-        let (_, neg_frac_float) = all_consuming(float)(string).expect("negative float failed");
-        assert!(approx_eq!(f64, neg_frac_float, -2.5));
-
         let string = LocatedSpan::new("6.1E4");
         let (_, bare_exp_float) = all_consuming(float)(string).expect("bare exp float failed");
         assert!(approx_eq!(f64, bare_exp_float, 6.1E4));

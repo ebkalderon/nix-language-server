@@ -3,6 +3,8 @@
 use codespan::Span;
 
 pub mod ast;
+pub mod error;
+pub mod lexer;
 pub mod parser;
 
 pub trait HasSpan {

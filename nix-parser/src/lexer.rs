@@ -96,24 +96,3 @@ fn unknown(input: LocatedSpan) -> IResult<Token> {
         Token::Unknown(span.fragment.into(), span.to_span(), error.into())
     })(input)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn lexer() {
-        let lexer = Lexer::new(
-            r#"
-{
-  foo = ''
-    hello
-    ${hello}
-    world
-  '';
-  ${blah = 12};
-"#,
-        )
-        .unwrap();
-    }
-}

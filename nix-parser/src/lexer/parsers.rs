@@ -31,7 +31,7 @@ pub fn comment(input: LocatedSpan) -> IResult<Token> {
     let span = map(not_line_ending, |s: LocatedSpan| s.fragment);
     let rows = separated_nonempty_list(pair(line_ending, space0), preceded(char('#'), span));
     let line_comment = map_spanned(rows, |span, r| Token::Comment(r.join("\n"), span.to_span()));
-    terminated(alt((line_comment, block_comment)), multispace0)(input)
+    alt((line_comment, block_comment))(input)
 }
 
 fn block_comment(input: LocatedSpan) -> IResult<Token> {
@@ -59,7 +59,7 @@ fn block_comment(input: LocatedSpan) -> IResult<Token> {
 pub fn identifier(input: LocatedSpan) -> IResult<Token> {
     let first = alt((alpha1, is_a("_")));
     let rest = alt((alphanumeric1, is_a("_-'")));
-    let ident = terminated(recognize(pair(first, many0(rest))), multispace0);
+    let ident = recognize(pair(first, many0(rest)));
     map_spanned(ident, |span, ident| {
         Token::Identifier(ident.fragment.into(), span)
     })(input)
@@ -72,13 +72,11 @@ pub fn literal(input: LocatedSpan) -> IResult<Token> {
 fn boolean(input: LocatedSpan) -> IResult<Token> {
     let true_val = map_spanned(tag("true"), |span, _| Token::Boolean(true, span));
     let false_val = map_spanned(tag("false"), |span, _| Token::Boolean(false, span));
-    terminated(alt((true_val, false_val)), multispace0)(input)
+    alt((true_val, false_val))(input)
 }
 
 fn null(input: LocatedSpan) -> IResult<Token> {
-    map_spanned(terminated(tag("null"), multispace0), |span, _| {
-        Token::Null(span)
-    })(input)
+    map_spanned(tag("null"), |span, _| Token::Null(span))(input)
 }
 
 pub fn interpolation(input: LocatedSpan) -> IResult<Token> {
@@ -110,15 +108,13 @@ pub fn interpolation(input: LocatedSpan) -> IResult<Token> {
     }
 
     let span = Span::from(input.to_span().start()..remaining.to_span().end());
-    let (remaining, _) = multispace0(remaining)?;
     Ok((remaining, Token::Interpolation(tokens, span)))
 }
 
 macro_rules! define_keywords {
     ($($function:ident => $variant:ident ( $keyword:expr )),+) => {
         pub fn keyword(input: LocatedSpan) -> IResult<Token> {
-            let terms = alt(($($function),+));
-            terminated(terms, multispace0)(input)
+            alt(($($function),+))(input)
         }
 
         $(
@@ -151,8 +147,7 @@ macro_rules! define_operator {
 
         $(
             fn $function(input: LocatedSpan) -> IResult<Token> {
-                let op = map(tag($op), |span: LocatedSpan| Token::$variant(span.to_span()));
-                terminated(op, multispace0)(input)
+                map(tag($op), |span: LocatedSpan| Token::$variant(span.to_span()))(input)
             }
         )+
     };
@@ -181,7 +176,7 @@ define_operator! {
 macro_rules! define_punctuation {
     ($($function:ident => $variant:ident ( $punct:expr )),+) => {
         pub fn punctuation(input: LocatedSpan) -> IResult<Token> {
-            terminated(alt(($($function),+)), multispace0)(input)
+            alt(($($function),+))(input)
         }
 
         $(

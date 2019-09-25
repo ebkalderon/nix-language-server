@@ -74,22 +74,24 @@ impl Lexer {
 }
 
 fn token(input: LocatedSpan) -> IResult<Token> {
-    alt((
-        comment,
-        literal,
-        operator,
-        string,
-        interpolation,
-        punctuation,
-        keyword,
-        identifier,
-        unknown,
-    ))(input)
+    terminated(
+        alt((
+            comment,
+            literal,
+            operator,
+            string,
+            interpolation,
+            punctuation,
+            keyword,
+            identifier,
+            unknown,
+        )),
+        multispace0,
+    )(input)
 }
 
 fn unknown(input: LocatedSpan) -> IResult<Token> {
-    let token = terminated(take(1usize), multispace0);
-    map(token, |span: LocatedSpan| {
+    map(take(1usize), |span: LocatedSpan| {
         let error = UnexpectedError::new(format!("token `{}`", span.fragment), span.to_span());
         Token::Unknown(span.fragment.into(), span.to_span(), error.into())
     })(input)

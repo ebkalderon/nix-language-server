@@ -48,8 +48,7 @@ impl Lexer {
                 };
 
                 let end = input.fragment.len() as u32;
-                let span = Span::new(end - 1, end);
-                tokens.push(Token::Eof(span));
+                tokens.push(Token::Eof(Span::new(end, end)));
                 Ok(Lexer { tokens, errors })
             }
         }

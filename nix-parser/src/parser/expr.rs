@@ -44,7 +44,7 @@ fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn atomic(input: Tokens) -> IResult<Partial<Expr>> {
-    alt((atomic::paren, atomic::literal, unknown))(input)
+    alt((atomic::paren, atomic::literal))(input)
 }
 
 fn unknown(input: Tokens) -> IResult<Partial<Expr>> {

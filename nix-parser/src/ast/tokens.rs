@@ -163,19 +163,9 @@ pub enum Literal {
     Float(f64, Span),
     Integer(i64, Span),
     Path(PathBuf, Span),
-    PathTemplate(String, Span),
+    PathTemplate(PathBuf, Span),
     String(String, Span),
     Uri(Url, Span),
-}
-
-impl Literal {
-    pub fn path_template<T, U>(string: T, span: U) -> Self
-    where
-        T: Into<String>,
-        U: ToSpan,
-    {
-        Literal::PathTemplate(string.into(), span.to_span())
-    }
 }
 
 impl Display for Literal {
@@ -186,7 +176,7 @@ impl Display for Literal {
             Literal::Float(ref f, _) => write!(fmt, "{:?}", f),
             Literal::Integer(ref i, _) => write!(fmt, "{}", i),
             Literal::Path(ref p, _) => write!(fmt, "{}", p.to_string_lossy()),
-            Literal::PathTemplate(ref p, _) => write!(fmt, "<{}>", p),
+            Literal::PathTemplate(ref p, _) => write!(fmt, "<{}>", p.to_string_lossy()),
             Literal::String(ref s, _) => write!(fmt, "\"{}\"", s),
             Literal::Uri(ref u, _) => write!(fmt, "{}", u),
         }

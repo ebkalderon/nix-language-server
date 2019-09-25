@@ -124,7 +124,8 @@ fn reload_source<'a>(
             if let (None, None) = (change.range, change.range_length) {
                 source = change.text;
             } else if let Some(range) = change.range {
-                let span = range_to_byte_span(&state.files, *id, &range).unwrap();
+                let span =
+                    range_to_byte_span(&state.files, *id, &range).unwrap_or(Default::default());
                 let range = (span.start().to_usize())..(span.end().to_usize());
                 source.replace_range(range, &change.text);
             }
@@ -139,8 +140,12 @@ fn reload_source<'a>(
 fn get_diagnostics(state: &State, uri: &Url, id: FileId) -> Vec<Diagnostic> {
     let source = state.files.source(id);
     match source.parse::<SourceFile>() {
-        Ok(_) => Vec::new(),
+        Ok(expr) => {
+            info!("parsed expression: {}", expr);
+            Vec::new()
+        }
         Err(err) => {
+            info!("expression has errors: {}", err);
             let diagnostics = err.to_diagnostics(id);
 
             let mut new_diags = Vec::new();

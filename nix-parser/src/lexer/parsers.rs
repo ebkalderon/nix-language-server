@@ -4,11 +4,11 @@ use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::{is_a, tag};
 use nom::character::complete::{
-    alpha1, alphanumeric1, anychar, char, line_ending, multispace0, not_line_ending, space0,
+    alpha1, alphanumeric1, char, line_ending, multispace0, not_line_ending, space0,
 };
 
-use nom::combinator::{cond, map, not, peek, recognize};
-use nom::multi::{many0, many1, many_till, separated_nonempty_list};
+use nom::combinator::{map, not, peek, recognize};
+use nom::multi::{many0, many1, separated_nonempty_list};
 use nom::sequence::{pair, preceded, terminated, tuple};
 use nom::Slice;
 use once_cell::sync::OnceCell;
@@ -16,14 +16,16 @@ use regex::Regex;
 
 use self::number::{float, integer};
 use self::path::{path, path_template};
+use self::uri::uri;
 use super::util::{map_spanned, split_lines_without_indentation};
-use super::{token, IResult, LocatedSpan, StringFragment, Token};
-use crate::error::{Error, Errors};
+use super::{token, IResult, LocatedSpan, Token};
+use crate::error::Error;
 use crate::ToSpan;
 
 mod number;
 mod path;
 mod string;
+mod uri;
 
 pub fn comment(input: LocatedSpan) -> IResult<Token> {
     let span = map(not_line_ending, |s: LocatedSpan| s.fragment);
@@ -64,17 +66,19 @@ pub fn identifier(input: LocatedSpan) -> IResult<Token> {
 }
 
 pub fn literal(input: LocatedSpan) -> IResult<Token> {
-    alt((boolean, null, path, path_template, float, integer))(input)
+    alt((boolean, null, path, float, integer, path_template, uri))(input)
 }
 
 fn boolean(input: LocatedSpan) -> IResult<Token> {
     let true_val = map_spanned(tag("true"), |span, _| Token::Boolean(true, span));
     let false_val = map_spanned(tag("false"), |span, _| Token::Boolean(false, span));
-    alt((true_val, false_val))(input)
+    terminated(alt((true_val, false_val)), multispace0)(input)
 }
 
 fn null(input: LocatedSpan) -> IResult<Token> {
-    map_spanned(tag("null"), |span, _| Token::Null(span))(input)
+    map_spanned(terminated(tag("null"), multispace0), |span, _| {
+        Token::Null(span)
+    })(input)
 }
 
 pub fn interpolation(input: LocatedSpan) -> IResult<Token> {
@@ -118,7 +122,7 @@ macro_rules! define_keywords {
         }
 
         $(
-            pub fn $function(input: LocatedSpan) -> IResult<Token> {
+            fn $function(input: LocatedSpan) -> IResult<Token> {
                 let keyword = map(tag($keyword), |s: LocatedSpan| Token::$variant(s.to_span()));
                 terminated(keyword, peek(not(alpha1)))(input)
             }
@@ -169,7 +173,7 @@ define_operator! {
     op_or => LogicalOr("||"),
     op_concat => Concat("++"),
     op_update => Update("//"),
-    op_has_attr => Question("?"),
+    op_question => Question("?"),
     op_imply => Imply("->"),
     op_not => Not("!")
 }
@@ -181,7 +185,7 @@ macro_rules! define_punctuation {
         }
 
         $(
-            pub fn $function(input: LocatedSpan) -> IResult<Token> {
+            fn $function(input: LocatedSpan) -> IResult<Token> {
                 map(tag($punct), |s: LocatedSpan| Token::$variant(s.to_span()))(input)
             }
         )+

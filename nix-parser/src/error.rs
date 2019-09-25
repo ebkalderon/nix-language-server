@@ -1,5 +1,6 @@
 pub use self::expected_found::ExpectedFoundError;
 pub use self::incorrect_delim::IncorrectDelimError;
+pub use self::unclosed_delim::UnclosedDelimError;
 pub use self::unexpected::UnexpectedError;
 
 use std::fmt::{Display, Formatter, Result as FmtResult};
@@ -15,6 +16,7 @@ use crate::ToSpan;
 
 mod expected_found;
 mod incorrect_delim;
+mod unclosed_delim;
 mod unexpected;
 
 pub trait ToDiagnostic {
@@ -126,6 +128,7 @@ where
 pub enum Error {
     ExpectedFound(ExpectedFoundError),
     IncorrectDelim(IncorrectDelimError),
+    UnclosedDelim(UnclosedDelimError),
     Unexpected(UnexpectedError),
     Nom(Span, String, ErrorKind),
     Message(Span, String),
@@ -145,6 +148,7 @@ impl Display for Error {
         match *self {
             Error::ExpectedFound(ref e) => write!(fmt, "{}", e),
             Error::IncorrectDelim(ref e) => write!(fmt, "{}", e),
+            Error::UnclosedDelim(ref e) => write!(fmt, "{}", e),
             Error::Unexpected(ref e) => write!(fmt, "{}", e),
             Error::Nom(_, ref frag, ref e) => write!(fmt, "nom error: (\"{}\", {:?})", frag, e),
             Error::Message(_, ref e) => write!(fmt, "{}", e),
@@ -166,6 +170,12 @@ impl From<IncorrectDelimError> for Error {
     }
 }
 
+impl From<UnclosedDelimError> for Error {
+    fn from(error: UnclosedDelimError) -> Self {
+        Error::UnclosedDelim(error)
+    }
+}
+
 impl From<UnexpectedError> for Error {
     fn from(error: UnexpectedError) -> Self {
         Error::Unexpected(error)
@@ -178,9 +188,13 @@ impl ToDiagnostic for Error {
             Error::ExpectedFound(ref e) => e.to_diagnostic(file),
             Error::IncorrectDelim(ref e) => e.to_diagnostic(file),
             Error::Unexpected(ref e) => e.to_diagnostic(file),
+            Error::UnclosedDelim(ref e) => e.to_diagnostic(file),
             Error::Nom(ref span, ref _frag, ref kind) => {
                 let label = Label::new(file, *span, self.to_string());
-                Diagnostic::new_error(format!("nom error: {:?}", kind), label)
+                let mut diag = Diagnostic::new_error(format!("nom error: {:?}", kind), label);
+                let note = "note: this indicates an unhandled case in the parser".to_string();
+                diag.notes.push(note);
+                diag
             }
             Error::Message(ref span, ref msg) => {
                 let label = Label::new(file, *span, msg.clone());

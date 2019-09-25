@@ -1,15 +1,14 @@
 use std::iter::FromIterator;
 
 use codespan::Span;
-use nom::bytes::complete::take;
-use nom::combinator::cut;
+use nom::character::complete::anychar;
+use nom::combinator::{cut, recognize};
 use nom::multi::many_till;
 use nom::sequence::terminated;
 use nom::Slice;
 
-use super::IResult;
-use crate::error::{Error, Errors};
-use crate::lexer::Tokens;
+use super::error::{Error, Errors};
+use super::{IResult, LocatedSpan};
 use crate::ToSpan;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -63,8 +62,8 @@ impl<T> Partial<T> {
     /// # Examples
     ///
     /// ```rust
-    /// # use nix_parser::error::Errors;
-    /// # use nix_parser::parser::Partial;
+    /// # use nix_parser::parser::{error::Errors, Partial};
+    /// # use nom_locate::LocatedSpan;
     /// # fn main() -> Result<(), Errors> {
     /// let partial_string = Partial::from(String::from("Hello, world!"));
     /// let partial_len = partial_string.map(|s| s.len());
@@ -124,7 +123,8 @@ impl<T> Partial<T> {
     /// # Examples
     ///
     /// ```rust
-    /// # use nix_parser::parser::Partial;
+    /// # use nix_parser::parser::{error::Errors, Partial};
+    /// # use nom_locate::LocatedSpan;
     /// let partial = Partial::new(Some(123));
     /// assert_eq!(Ok(123), partial.verify());
     ///
@@ -204,20 +204,6 @@ impl<T> FromIterator<Partial<T>> for Partial<Vec<T>> {
     }
 }
 
-// pub fn expect<'a, O, P>(parser: P) -> impl Fn(Tokens<'a>) -> IResult<Partial<O>>
-// where
-//     P: Fn(Tokens<'a>) -> IResult<O>,
-// {
-//     move |input| match parser(input) {
-//         Ok((remaining, partial)) => Ok((remaining, partial)),
-//         Err(nom::Err::Error(err)) => {
-//             let partial = Partial::with_errors(None, err);
-//             Ok((input, partial))
-//         }
-//         Err(err) => Err(err),
-//     }
-// }
-
 /// Combinator which runs the given partial parser and then expects on a terminator.
 ///
 /// If the terminator is missing, an unclosed delimiter error will be appended to the `Partial`,
@@ -225,12 +211,12 @@ impl<T> FromIterator<Partial<T>> for Partial<Vec<T>> {
 pub fn expect_terminated<'a, O1, O2, F, G>(
     f: F,
     term: G,
-) -> impl Fn(Tokens<'a>) -> IResult<Partial<O1>>
+) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>
 where
-    F: Fn(Tokens<'a>) -> IResult<Partial<O1>>,
-    G: Fn(Tokens<'a>) -> IResult<O2>,
+    F: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
+    G: Fn(LocatedSpan<'a>) -> IResult<O2>,
 {
-    move |input| match terminated(&f, &term)(input) {
+    move |input| match terminated(&f, cut(&term))(input) {
         Ok((remaining, partial)) => Ok((remaining, partial)),
         Err(nom::Err::Error(err)) => {
             let (remaining, mut partial) = f(input)?;
@@ -249,9 +235,9 @@ where
 pub fn map_partial<'a, O1, O2, P, F>(
     partial: P,
     f: F,
-) -> impl Fn(Tokens<'a>) -> IResult<Partial<O2>>
+) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<O2>>
 where
-    P: Fn(Tokens<'a>) -> IResult<Partial<O1>>,
+    P: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
     F: Fn(O1) -> O2,
 {
     move |input| {
@@ -266,44 +252,45 @@ where
 pub fn map_partial_spanned<'a, O1, O2, P, F>(
     partial: P,
     f: F,
-) -> impl Fn(Tokens<'a>) -> IResult<Partial<O2>>
+) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<O2>>
 where
-    P: Fn(Tokens<'a>) -> IResult<Partial<O1>>,
+    P: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
     F: Fn(Span, O1) -> O2,
 {
     move |input| {
         let (remainder, partial) = partial(input)?;
-        let span = Span::new(input.to_span().start(), remainder.to_span().start());
+        let partial_len = remainder.offset - input.offset;
+        let span = input.slice(..partial_len).to_span();
         Ok((remainder, partial.map(|p| f(span, p))))
     }
 }
 
-///// Combinator for handling fallback cases for partial parsers.
-/////
-///// If the given partial parser succeeds, parsing continues like normal. If it fails, this
-///// combinator skips up to and including the location described by `skip_to` and appends `error` to
-///// the partial value.
-/////
-///// This combinator is useful for handling fallback cases where `partial` was given a totally
-///// invalid expression which it cannot recover from.
-//pub fn skip_if_err<'a, O1, O2, F, G>(
-//    partial: F,
-//    skip_to: G,
-//) -> impl Fn(Tokens<'a>) -> IResult<Partial<O1>>
-//where
-//    F: Fn(Tokens<'a>) -> IResult<Partial<O1>>,
-//    G: Fn(Tokens<'a>) -> IResult<O2>,
-//{
-//    move |input| match partial(input) {
-//        Ok((remaining, value)) => Ok((remaining, value)),
-//        Err(nom::Err::Failure(e)) | Err(nom::Err::Error(e)) => {
-//            let (remaining, failed) = recognize(many_till(anychar, &skip_to))(input)?;
-//            let partial = Partial::with_errors(None, e);
-//            Ok((remaining, partial))
-//        }
-//        Err(e) => Err(e),
-//    }
-//}
+/// Combinator for handling fallback cases for partial parsers.
+///
+/// If the given partial parser succeeds, parsing continues like normal. If it fails, this
+/// combinator skips up to and including the location described by `skip_to` and appends `error` to
+/// the partial value.
+///
+/// This combinator is useful for handling fallback cases where `partial` was given a totally
+/// invalid expression which it cannot recover from.
+pub fn skip_if_err<'a, O1, O2, F, G>(
+    partial: F,
+    skip_to: G,
+) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>
+where
+    F: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
+    G: Fn(LocatedSpan<'a>) -> IResult<O2>,
+{
+    move |input| match partial(input) {
+        Ok((remaining, value)) => Ok((remaining, value)),
+        Err(nom::Err::Failure(e)) | Err(nom::Err::Error(e)) => {
+            let (remaining, failed) = recognize(many_till(anychar, &skip_to))(input)?;
+            let partial = Partial::with_errors(None, e);
+            Ok((remaining, partial))
+        }
+        Err(e) => Err(e),
+    }
+}
 
 /// Combinator which applies the partial parser `f` until the parser `g` produces a result,
 /// returning a `Partial<Vec<_>>` of the results of `f`.
@@ -313,10 +300,10 @@ where
 pub fn many_till_partial<'a, O1, O2, F, G>(
     f: F,
     g: G,
-) -> impl Fn(Tokens<'a>) -> IResult<Partial<Vec<O1>>>
+) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<Vec<O1>>>
 where
-    F: Fn(Tokens<'a>) -> IResult<Partial<O1>>,
-    G: Fn(Tokens<'a>) -> IResult<O2>,
+    F: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
+    G: Fn(LocatedSpan<'a>) -> IResult<O2>,
 {
     move |input| {
         let mut partials = Vec::new();
@@ -332,13 +319,12 @@ where
                 }
                 Err(nom::Err::Error(_)) => match f(input) {
                     Err(nom::Err::Failure(err)) | Err(nom::Err::Error(err)) => {
-                        if let Ok((remainder, _)) = take::<_, _, Errors>(1usize)(input) {
+                        if let Ok((remainder, _)) = anychar::<_, Errors>(input) {
                             errors.extend(err);
                             input = remainder;
                         } else {
                             let partial: Partial<_> = partials.into_iter().collect();
-                            let end = input.to_span().end().to_usize();
-                            let eof = input.slice(end..);
+                            let eof = input.slice(input.fragment.len()..input.fragment.len());
                             return Ok((eof, partial));
                         }
                     }
@@ -365,10 +351,10 @@ where
 pub fn pair_partial<'a, O1, O2, F, G>(
     first: F,
     second: G,
-) -> impl Fn(Tokens<'a>) -> IResult<Partial<(O1, O2)>>
+) -> impl Fn(LocatedSpan<'a>) -> IResult<Partial<(O1, O2)>>
 where
-    F: Fn(Tokens<'a>) -> IResult<Partial<O1>>,
-    G: Fn(Tokens<'a>) -> IResult<Partial<O2>>,
+    F: Fn(LocatedSpan<'a>) -> IResult<Partial<O1>>,
+    G: Fn(LocatedSpan<'a>) -> IResult<Partial<O2>>,
 {
     move |input| {
         let (input, f) = first(input)?;
@@ -378,9 +364,9 @@ where
 }
 
 /// Combinator which asserts that a given partial parser produces a value and contains no errors.
-pub fn verify_full<'a, O, F>(f: F) -> impl Fn(Tokens<'a>) -> IResult<O>
+pub fn verify_full<'a, O, F>(f: F) -> impl Fn(LocatedSpan<'a>) -> IResult<O>
 where
-    F: Fn(Tokens<'a>) -> IResult<Partial<O>>,
+    F: Fn(LocatedSpan<'a>) -> IResult<Partial<O>>,
 {
     move |input| {
         let (input, partial) = f(input)?;

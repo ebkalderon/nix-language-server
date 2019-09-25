@@ -200,7 +200,7 @@ pub enum Token {
     Path(PathBuf, Span),
     PathTemplate(PathBuf, Span),
     String(Vec<StringFragment>, Span),
-    Url(Url, Span),
+    Uri(Url, Span),
 
     // Operators
     Add(Span),
@@ -277,7 +277,7 @@ impl Token {
     pub fn description(&self) -> String {
         match *self {
             Token::Eof(_) => "<eof>".to_string(),
-            Token::Unknown(ref text, _, _) => format!("token `{}`", text),
+            Token::Unknown(ref text, _, _) => format!("token `{}`", text.escape_debug()),
 
             Token::Comment(_, _) => "comment".to_string(),
             Token::Identifier(ref ident, _) => format!("identifier `{}`", ident),
@@ -289,7 +289,7 @@ impl Token {
             Token::Path(_, _) => "path literal".to_string(),
             Token::PathTemplate(_, _) => "path template".to_string(),
             Token::String(_, _) => "string".to_string(),
-            Token::Url(_, _) => "URI".to_string(),
+            Token::Uri(_, _) => "URI".to_string(),
 
             Token::Add(_) => "operator `+`".to_string(),
             Token::Sub(_) => "operator `-`".to_string(),
@@ -362,7 +362,7 @@ impl Debug for Token {
                 fmt.debug_tuple("PathTemplate").field(&value).finish()
             }
             Token::String(ref value, _) => fmt.debug_tuple("String").field(&value).finish(),
-            Token::Url(ref value, _) => fmt.debug_tuple("Url").field(&value).finish(),
+            Token::Uri(ref value, _) => fmt.debug_tuple("Uri").field(&value).finish(),
 
             Token::Add(_) => fmt.write_str("Add"),
             Token::Sub(_) => fmt.write_str("Sub"),
@@ -427,7 +427,7 @@ impl ToSpan for Token {
             Token::Path(_, ref span) => *span,
             Token::PathTemplate(_, ref span) => *span,
             Token::String(_, ref span) => *span,
-            Token::Url(_, ref span) => *span,
+            Token::Uri(_, ref span) => *span,
 
             Token::Add(ref span) => *span,
             Token::Sub(ref span) => *span,

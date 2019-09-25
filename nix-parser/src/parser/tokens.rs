@@ -1,170 +1,139 @@
-pub use self::keywords::*;
-pub use self::literal::literal;
-pub use self::ops::*;
-pub use self::strings::single_quote_string;
+use codespan::Span;
+use nom::bytes::complete::take;
 
-use nom::branch::alt;
-use nom::bytes::complete::{tag, take, take_until, take_while};
-use nom::character::complete::{
-    char, line_ending, multispace0, multispace1, not_line_ending, space0,
-};
-use nom::combinator::{cut, map, recognize};
-use nom::multi::{many0, many1, separated_nonempty_list};
-use nom::sequence::{delimited, pair, preceded, terminated};
-use nom::Slice;
-use once_cell::sync::OnceCell;
-use regex::Regex;
+use super::IResult;
+use crate::ast::tokens::{Comment, Ident, Literal};
+use crate::error::{Error, Errors, ExpectedFoundError};
+use crate::lexer::{Token, Tokens};
+use crate::ToSpan;
 
-use super::error::{Errors, ExpectedFoundError};
-use super::{map_spanned, IResult, LocatedSpan};
-use crate::ast::tokens::{Comment, Ident, IdentPath};
+macro_rules! define_tokens {
+    ($($function:ident { $($inner:tt)+ })+) => {
+        $(define_tokens!(@token $function { $($inner)+ });)+
+    };
 
-mod keywords;
-mod literal;
-mod ops;
-mod strings;
+    (@token $function:ident { $variant:ident, $expects:expr }) => {
+        define_tokens!(@token $function {
+            returns: Span,
+            parse: Token::$variant(ref span) => *span,
+            expects: $expects,
+        });
+    };
 
-pub fn comment(input: LocatedSpan) -> IResult<Comment> {
-    let span = map(not_line_ending, |s: LocatedSpan| s.fragment);
-    let rows = separated_nonempty_list(pair(line_ending, space0), preceded(char('#'), span));
-    let line = map(rows, |r| r.join("\n"));
-
-    let span = delimited(tag("/*"), take_until("*/"), cut(tag("*/")));
-    let rows = map(span, |s: LocatedSpan| s.fragment.lines());
-    let block = map(rows, |r| r.collect::<Vec<_>>().join("\n"));
-
-    let comment = alt((line, block));
-    map_spanned(comment, |span, c| Comment::from((c, span)))(input)
-}
-
-pub fn space(input: LocatedSpan) -> IResult<()> {
-    let line = delimited(char('#'), not_line_ending, line_ending);
-    let block = delimited(tag("/*"), take_until("*/"), cut(tag("*/")));
-    map(many0(alt((multispace1, line, block))), |_| ())(input)
-}
-
-pub fn space1(input: LocatedSpan) -> IResult<()> {
-    let line = delimited(char('#'), not_line_ending, line_ending);
-    let block = delimited(tag("/*"), take_until("*/"), cut(tag("*/")));
-    map(many1(alt((multispace1, line, block))), |_| ())(input)
-}
-
-pub fn space_until_final_comment(input: LocatedSpan) -> IResult<()> {
-    let trimmed_comment = terminated(recognize(comment), multispace0);
-    let (remainder, comments) = preceded(multispace0, many0(trimmed_comment))(input)?;
-
-    let chars_to_take = comments
-        .last()
-        .map(|comment| comment.offset - input.offset)
-        .unwrap_or_else(|| remainder.offset - input.offset);
-
-    map(take(chars_to_take), |_| ())(input)
-}
-
-pub fn identifier(input: LocatedSpan) -> IResult<Ident> {
-    static REGEX: OnceCell<Regex> = OnceCell::new();
-    let regex = REGEX.get_or_init(|| Regex::new(r#"\A[a-zA-Z_][a-zA-Z0-9_'\-]*"#).unwrap());
-
-    if let Some(m) = regex.captures(input.fragment).and_then(|c| c.get(0)) {
-        let span = input.slice(m.start()..m.end());
-        let remaining = input.slice(m.end()..);
-
-        if !is_keyword(&span) {
-            Ok((remaining, Ident::from((span.fragment, span))))
-        } else {
-            let mut errors = Errors::new();
-            errors.push(ExpectedFoundError::new(
-                "identifier",
-                format!("keyword (`{}`)", span.fragment),
-                span,
-            ));
-            Err(nom::Err::Error(errors))
+    (@token $function:ident { returns: $ret:ty, parse: $variant:pat => $value:expr, expects: $expects:expr, }) => {
+        pub fn $function(input: Tokens) -> IResult<$ret> {
+            let (remaining, tokens) = take(1usize)(input)?;
+            match tokens.current() {
+                $variant => Ok((remaining, $value)),
+                token => {
+                    let mut errors = Errors::new();
+                    let found = token.description();
+                    errors.push(ExpectedFoundError::new($expects, found, token.to_span()));
+                    Err(nom::Err::Error(errors))
+                }
+            }
         }
-    } else {
-        let (_, token) = take_while(|c: char| !" \n,;=)}".contains(c))(input)?;
-        let mut errors = Errors::new();
-        errors.push(ExpectedFoundError::new(
-            "identifier",
-            format!("`{}`", token.fragment),
-            token,
-        ));
-        Err(nom::Err::Error(errors))
-    }
+    };
 }
 
-pub fn ident_path(input: LocatedSpan) -> IResult<IdentPath> {
-    let path = separated_nonempty_list(char('.'), identifier);
-    map_spanned(path, |span, idents| IdentPath::from((idents, span)))(input)
-}
-
-#[cfg(test)]
-mod tests {
-    use nom::combinator::all_consuming;
-
-    use super::*;
-    use crate::nix_token;
-
-    #[test]
-    fn comments() {
-        let string = LocatedSpan::new("# hello world\n    #    long indent");
-        let (_, single_line) = all_consuming(comment)(string).expect("single-line comment failed");
-        assert_eq!(single_line, Comment::from(" hello world\n    long indent"));
-
-        let string = LocatedSpan::new("/* foo\n   bar   \n   baz\n*/");
-        let (_, multi_line) = all_consuming(comment)(string).expect("multi-line comment failed");
-        assert_eq!(multi_line, Comment::from(" foo\n   bar   \n   baz"));
+define_tokens! {
+    eof { Eof, "<eof>" }
+    unknown {
+        returns: (String, Span, Error),
+        parse: Token::Unknown(ref text, ref span, ref err) => (text.clone(), *span, err.clone()),
+        expects: "unknown token",
     }
 
-    #[test]
-    fn spaces() {
-        let string = LocatedSpan::new(" \n\r\t# line comment\n/* block comment */stop here");
-        let (rest, _) = space(string).expect("all spaces failed");
-        assert_eq!(
-            rest,
-            LocatedSpan {
-                offset: 38,
-                line: 3,
-                fragment: "stop here",
-                extra: (),
-            }
-        );
-
-        let string = LocatedSpan::new("    # foo\n    /*\n  bar\n*/\n    # stop here\nbaz");
-        let (rest, _) = space_until_final_comment(string).expect("spaces till last comment failed");
-        assert_eq!(
-            rest,
-            LocatedSpan {
-                offset: 30,
-                line: 5,
-                fragment: "# stop here\nbaz",
-                extra: (),
-            }
-        );
-
-        let string = LocatedSpan::new(" \n\r\tbaz");
-        let (rest, _) = space_until_final_comment(string).expect("spaces without comments failed");
-        assert_eq!(
-            rest,
-            LocatedSpan {
-                offset: 4,
-                line: 2,
-                fragment: "baz",
-                extra: (),
-            }
-        );
+    comment {
+        returns: Comment,
+        parse: Token::Comment(ref text, ref span) => Comment::from((text.clone(), *span)),
+        expects: "comment",
+    }
+    identifier {
+        returns: Ident,
+        parse: Token::Identifier(ref ident, ref span) => Ident::from((ident.clone(), *span)),
+        expects: "identifier",
+    }
+    null {
+        returns: Literal,
+        parse: Token::Null(ref span) => Literal::from(((), *span)),
+        expects: "null",
+    }
+    boolean {
+        returns: Literal,
+        parse: Token::Boolean(ref value, ref span) => Literal::from((*value, *span)),
+        expects: "boolean",
+    }
+    float {
+        returns: Literal,
+        parse: Token::Float(ref value, ref span) => Literal::from((*value, *span)),
+        expects: "floating-point number",
     }
 
-    #[test]
-    fn identifiers() {
-        let string = LocatedSpan::new("fooBAR123-_'");
-        let (_, single) = all_consuming(identifier)(string).expect("single identifier failed");
-        assert_eq!(single, Ident::from("fooBAR123-_'"));
-
-        let string = LocatedSpan::new("let");
-        all_consuming(identifier)(string).expect_err("should reject keywords");
-
-        let string = LocatedSpan::new("foo.bar.baz");
-        let (_, path) = all_consuming(ident_path)(string).expect("identifier path failed");
-        assert_eq!(path, nix_token!(foo.bar.baz));
+    integer {
+        returns: Literal,
+        parse: Token::Integer(ref value, ref span) => Literal::from((*value, *span)),
+        expects: "integer",
     }
+    // interpolation => { Interpolation, "interpolation" },
+    path {
+        returns: Literal,
+        parse: Token::Path(ref value, ref span) => Literal::from((value.as_path(), *span)),
+        expects: "path literal",
+    }
+    path_template {
+        returns: Literal,
+        parse: Token::PathTemplate(ref value, ref span) => Literal::PathTemplate(value.clone(), *span),
+        expects: "path template",
+    }
+    // string => { String, "string" },
+    uri {
+        returns: Literal,
+        parse: Token::Uri(ref value, ref span) => Literal::from((value.clone(), *span)),
+        expects: "URI",
+    }
+
+    op_add { Add, "operator `+`" }
+    op_sub { Sub, "operator `-`" }
+    op_mul { Mul, "operator `*`" }
+    op_div { Div, "operator `/`" }
+    op_eq { IsEq, "operator `==`" }
+    op_neq { NotEq, "operator `!=`" }
+    op_lt { LessThan, "operator `<`" }
+    op_lte { LessThanEq, "operator `<=`" }
+    op_gt { GreaterThan, "operator `>`" }
+    op_gte { GreaterThanEq, "operator `>=`" }
+    op_and { LogicalAnd, "operator `&&`" }
+    op_or { LogicalOr, "operator `||`" }
+    op_concat { Concat, "operator `++`" }
+    op_update { Update, "operator `//`" }
+    op_question { Question, "operator `?`" }
+    op_imply { Imply, "operator `->`" }
+    op_not { Not, "unary operator `!`" }
+
+    keyword_assert { Assert, "keyword `assert`" }
+    keyword_else { Else, "keyword `else`" }
+    keyword_if { If, "keyword `if`" }
+    keyword_in { In, "keyword `in`" }
+    keyword_inherit { Inherit, "keyword `inherit`" }
+    keyword_let { Let, "keyword `let`" }
+    keyword_or { Or, "keyword `or`" }
+    keyword_rec { Rec, "keyword `rec`" }
+    keyword_then { Then, "keyword `then`" }
+    keyword_with { With, "keyword `with`" }
+
+    colon { Colon, "colon" }
+    comma { Comma, "comma" }
+    dot { Dot, "dot separator" }
+    eq { Eq, "equals sign" }
+    interpolate { Interpolate, "interpolation sign (`${}`)" }
+    brace_left { LBrace, "left brace" }
+    brace_right { RBrace, "right brace" }
+    bracket_left { LBracket, "left bracket" }
+    bracket_right { RBracket, "right bracket" }
+    paren_left { LParen, "left parentheses" }
+    paren_right { RParen, "right parentheses" }
+    quote_double { QuoteDouble, "double quote" }
+    quote_single { QuoteSingle, "multiline string open (`''`)" }
+    semi { Semi, "semicolon" }
 }

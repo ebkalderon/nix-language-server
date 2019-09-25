@@ -28,7 +28,7 @@ impl UnexpectedError {
 
 impl Display for UnexpectedError {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "unexpected token: `{}`", self.token)
+        write!(fmt, "unexpected token: {}", self.token)
     }
 }
 

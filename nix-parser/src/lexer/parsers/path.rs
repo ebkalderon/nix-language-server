@@ -1,8 +1,7 @@
 use std::path::PathBuf;
 
 use nom::bytes::complete::take_while1;
-use nom::character::{complete::char, is_alphanumeric};
-use nom::combinator::map;
+use nom::character::complete::{char, multispace0};
 use nom::sequence::delimited;
 use nom::Slice;
 use once_cell::sync::OnceCell;
@@ -22,6 +21,7 @@ pub fn path(input: LocatedSpan) -> IResult<Token> {
     if let Some(m) = path_match {
         let span = input.slice(m.start()..m.end());
         let remaining = input.slice(m.end()..);
+        let (remaining, _) = multispace0(remaining)?;
 
         if !span.fragment.ends_with('/') {
             let path = PathBuf::from(span.fragment);
@@ -48,7 +48,7 @@ fn home_path_regex<'a>() -> &'a Regex {
 }
 
 pub fn path_template(input: LocatedSpan) -> IResult<Token> {
-    let name = take_while1(|c: char| is_alphanumeric(c as u8) || "/._-+".contains(c));
+    let name = take_while1(|c: char| c.is_alphanumeric() || "/._-+".contains(c));
     let template = delimited(char('<'), name, char('>'));
     map_spanned(template, |span, text| {
         Token::PathTemplate(PathBuf::from(text.fragment), span)
@@ -61,98 +61,45 @@ mod tests {
 
     use super::*;
 
+    fn assert_path_eq(string: &str) {
+        let span = LocatedSpan::new(string);
+        match all_consuming(path)(span) {
+            Ok((_, Token::Path(value, _))) => assert_eq!(value, PathBuf::from(string)),
+            Ok((_, token)) => panic!("parsing path {:?} produced token: {:?}", string, token),
+            Err(err) => panic!("parsing path {:?} failed: {:?}", string, err),
+        }
+    }
+
+    fn assert_path_template_eq(string: &str, expected: &str) {
+        let span = LocatedSpan::new(string);
+        match all_consuming(path_template)(span) {
+            Ok((_, Token::PathTemplate(value, _))) => assert_eq!(value, PathBuf::from(expected)),
+            Ok((_, token)) => panic!("parsing template {:?} produced token: {:?}", string, token),
+            Err(err) => panic!("parsing template {:?} failed: {:?}", string, err),
+        }
+    }
+
     #[test]
     fn absolute_paths() {
-        let string = LocatedSpan::new("/.");
-        let (_, root) = all_consuming(path)(string).unwrap();
-        match root {
-            Token::Path(value, _) => assert_eq!(value.to_string_lossy(), "/."),
-            token => panic!("root path produced token: {:?}", token),
-        }
-
-        let string = LocatedSpan::new("/foo/bar");
-        let (_, simple_absolute) = all_consuming(path)(string).unwrap();
-        match simple_absolute {
-            Token::Path(value, _) => assert_eq!(value.to_string_lossy(), "/foo/bar"),
-            token => panic!("simple absolute path produced token: {:?}", token),
-        }
-
-        let string = LocatedSpan::new("/a/b.c/d+e/F_G/h-i/123");
-        let (_, complex_absolute) = all_consuming(path)(string).unwrap();
-        match complex_absolute {
-            Token::Path(value, _) => assert_eq!(value.to_string_lossy(), "/a/b.c/d+e/F_G/h-i/123"),
-            token => panic!("complex absolute path produced token: {:?}", token),
-        }
-
-        let string = LocatedSpan::new("~/foo/bar");
-        let (_, simple_home) = all_consuming(path)(string).unwrap();
-        match simple_home {
-            Token::Path(value, _) => assert_eq!(value.to_string_lossy(), "~/foo/bar"),
-            token => panic!("simple home path produced token: {:?}", token),
-        }
-
-        let string = LocatedSpan::new("~/a/b.c/d+e/F_G/h-i/123");
-        let (_, complex_home) = all_consuming(path)(string).unwrap();
-        match complex_home {
-            Token::Path(value, _) => assert_eq!(value.to_string_lossy(), "~/a/b.c/d+e/F_G/h-i/123"),
-            token => panic!("complex home path produced token: {:?}", token),
-        }
+        assert_path_eq("/.");
+        assert_path_eq("/foo/bar");
+        assert_path_eq("/a/b.c/d+e/F_G/h-i/123");
+        assert_path_eq("~/foo/bar");
+        assert_path_eq("~/a/b.c/d+e/F_G/h-i/123");
     }
 
     #[test]
     fn relative_paths() {
-        let string = LocatedSpan::new("./.");
-        let (_, current_dir) = all_consuming(path)(string).unwrap();
-        match current_dir {
-            Token::Path(value, _) => assert_eq!(value.to_string_lossy(), "./."),
-            token => panic!("current dir relative path produced token: {:?}", token),
-        }
-
-        let string = LocatedSpan::new("../.");
-        let (_, parent_dir) = all_consuming(path)(string).unwrap();
-        match parent_dir {
-            Token::Path(value, _) => assert_eq!(value.to_string_lossy(), "../."),
-            token => panic!("parent dir relative path produced token: {:?}", token),
-        }
-
-        let string = LocatedSpan::new("./foo/bar");
-        let (_, simple) = all_consuming(path)(string).unwrap();
-        match simple {
-            Token::Path(value, _) => assert_eq!(value.to_string_lossy(), "./foo/bar"),
-            token => panic!("simple relative path produced token: {:?}", token),
-        }
-
-        let string = LocatedSpan::new("./a/b.c/d+e/F_G/h-i/123");
-        let (_, complex) = all_consuming(path)(string).unwrap();
-        match complex {
-            Token::Path(value, _) => assert_eq!(value.to_string_lossy(), "./a/b.c/d+e/F_G/h-i/123"),
-            token => panic!("complex relative path produced token: {:?}", token),
-        }
-
-        let string = LocatedSpan::new("foo/bar");
-        let (_, no_prefix) = all_consuming(path)(string).unwrap();
-        match no_prefix {
-            Token::Path(value, _) => assert_eq!(value.to_string_lossy(), "foo/bar"),
-            token => panic!("no prefix relative path produced token: {:?}", token),
-        }
+        assert_path_eq("./.");
+        assert_path_eq("../.");
+        assert_path_eq("./foo/bar");
+        assert_path_eq("./a/b.c/d+e/F_G/h-i/123");
+        assert_path_eq("foo/bar");
     }
 
     #[test]
     fn path_templates() {
-        let string = LocatedSpan::new("<nixpkgs>");
-        let (_, nixpkgs) = all_consuming(path_template)(string).unwrap();
-        match nixpkgs {
-            Token::PathTemplate(value, _) => assert_eq!(value.to_string_lossy(), "nixpkgs"),
-            token => panic!("nixpkgs path template produced token: {:?}", token),
-        }
-
-        let string = LocatedSpan::new("<Foo.bar-baz_quux+123>");
-        let (_, complex) = all_consuming(path_template)(string).unwrap();
-        match complex {
-            Token::PathTemplate(value, _) => {
-                assert_eq!(value.to_string_lossy(), "Foo.bar-baz_quux+123")
-            }
-            token => panic!("complex path template produced token: {:?}", token),
-        }
+        assert_path_template_eq("<nixpkgs>", "nixpkgs");
+        assert_path_template_eq("<Foo.bar-baz_quux+123>", "Foo.bar-baz_quux+123");
     }
 }

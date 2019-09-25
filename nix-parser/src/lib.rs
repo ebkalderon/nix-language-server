@@ -26,3 +26,9 @@ impl ToSpan for Span {
         *self
     }
 }
+
+impl<'a, T: ToSpan> ToSpan for &'a T {
+    fn to_span(&self) -> Span {
+        (*self).to_span()
+    }
+}

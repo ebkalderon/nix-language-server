@@ -6,7 +6,7 @@ use nom::bytes::complete::take;
 use nom::character::complete::multispace0;
 use nom::combinator::{all_consuming, map};
 use nom::multi::many0;
-use nom::sequence::preceded;
+use nom::sequence::{preceded, terminated};
 
 use self::parsers::{
     comment, identifier, interpolation, keyword, literal, operator, punctuation, string,
@@ -21,6 +21,14 @@ mod util;
 
 type LocatedSpan<'a> = nom_locate::LocatedSpan<&'a str>;
 type IResult<'a, T> = nom::IResult<LocatedSpan<'a>, T, Errors>;
+
+impl<'a> ToSpan for LocatedSpan<'a> {
+    fn to_span(&self) -> Span {
+        let start = self.offset;
+        let end = start + self.fragment.len();
+        Span::new(start as u32, end as u32)
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Lexer {
@@ -37,18 +45,21 @@ impl Lexer {
                 panic!("unable to recover from incomplete input: {:?}", needed)
             }
             Ok((_, mut tokens)) => {
+                println!("received tokens: {:?}", tokens);
+                let end = input.fragment.len() as u32 - 1;
+                let eof_span = Span::new(end, end);
+
                 let only_comments = tokens.iter().all(|t| t.is_comment());
                 let errors = if tokens.is_empty() || only_comments {
                     let mut errors = Errors::new();
-                    let message = "Nix expressions cannot be empty".to_string();
+                    let message = "Nix expressions must resolve to a value".to_string();
                     errors.push(Error::Message(Span::initial(), message));
                     return Err(errors);
                 } else {
-                    check_delims_balanced(&tokens)
+                    check_delims_balanced(&tokens, eof_span)
                 };
 
-                let end = input.fragment.len() as u32;
-                tokens.push(Token::Eof(Span::new(end, end)));
+                tokens.push(Token::Eof(eof_span));
                 Ok(Lexer { tokens, errors })
             }
         }
@@ -66,11 +77,11 @@ impl Lexer {
 fn token(input: LocatedSpan) -> IResult<Token> {
     alt((
         comment,
+        literal,
         operator,
         string,
         interpolation,
         punctuation,
-        literal,
         keyword,
         identifier,
         unknown,
@@ -78,7 +89,8 @@ fn token(input: LocatedSpan) -> IResult<Token> {
 }
 
 fn unknown(input: LocatedSpan) -> IResult<Token> {
-    map(take(1usize), |span: LocatedSpan| {
+    let token = terminated(take(1usize), multispace0);
+    map(token, |span: LocatedSpan| {
         let error = UnexpectedError::new(format!("token `{}`", span.fragment), span.to_span());
         Token::Unknown(span.fragment.into(), span.to_span(), error.into())
     })(input)
@@ -98,7 +110,7 @@ mod tests {
     ${hello}
     world
   '';
-  ${blah = 12;
+  ${blah = 12};
 "#,
         )
         .unwrap();

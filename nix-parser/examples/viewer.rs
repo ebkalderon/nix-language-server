@@ -6,7 +6,8 @@ use codespan::Files;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use codespan_reporting::term::{emit, Config};
 use nix_parser::ast::SourceFile;
-use nix_parser::parser::{error::Errors, parse_source_file_partial};
+use nix_parser::error::Errors;
+use nix_parser::parser::parse_source_file_partial;
 
 fn main() {
     let mut expr = String::new();
@@ -47,6 +48,10 @@ fn partial(expr: &str) {
         println!("# Display:\n\n{}", expr);
     } else {
         eprintln!("No expression value produced");
+        if partial.has_errors() {
+            println!("{:?}", partial.errors());
+        }
+
         process::exit(1);
     }
 }

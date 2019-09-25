@@ -93,6 +93,8 @@ pub enum Expr {
     /// `foo one`
     FnApp(ExprFnApp),
 
+    /// An invalid unparseable expression.
+    Error(Span),
     /// Trap for halting the parser in place.
     Trap(Span),
 }
@@ -122,6 +124,7 @@ impl Display for Expr {
             Expr::FnDecl(ref e) => write!(fmt, "{}", e),
             Expr::FnApp(ref e) => write!(fmt, "{}", e),
 
+            Expr::Error(_) => write!(fmt, "<error>"),
             Expr::Trap(_) => write!(fmt, "trap"),
         }
     }
@@ -152,6 +155,7 @@ impl HasSpan for Expr {
             Expr::FnDecl(ref e) => e.span(),
             Expr::FnApp(ref e) => e.span(),
 
+            Expr::Error(ref e) => *e,
             Expr::Trap(ref e) => *e,
         }
     }

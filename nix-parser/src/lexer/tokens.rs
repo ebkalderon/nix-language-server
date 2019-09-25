@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Formatter, Result as FmtResult};
+use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::iter::Enumerate;
 use std::ops::{Range, RangeFrom, RangeFull, RangeTo};
 use std::path::PathBuf;
@@ -26,12 +26,23 @@ impl<'a> Tokens<'a> {
             end: tokens.len(),
         }
     }
+
+    pub fn current(&self) -> &Token {
+        &self.tokens[0]
+    }
 }
 
 impl<'a> Debug for Tokens<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         let slice = &self.tokens[self.start..self.end];
         fmt.debug_tuple(stringify!(Tokens)).field(&slice).finish()
+    }
+}
+
+impl<'a> Display for Tokens<'a> {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        let slice = &self.tokens[self.start..self.end];
+        fmt.debug_list().entries(slice).finish()
     }
 }
 
@@ -135,6 +146,22 @@ impl<'a> Slice<RangeFull> for Tokens<'a> {
             start: self.start,
             end: self.end,
         }
+    }
+}
+
+impl<'a> ToSpan for Tokens<'a> {
+    fn to_span(&self) -> Span {
+        let start = self
+            .tokens
+            .first()
+            .map(|t| t.to_span().start())
+            .unwrap_or_default();
+        let end = self
+            .tokens
+            .last()
+            .map(|t| t.to_span().end())
+            .unwrap_or_default();
+        Span::new(start, end)
     }
 }
 

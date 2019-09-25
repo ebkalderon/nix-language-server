@@ -8,7 +8,9 @@ use nom::combinator::{all_consuming, map};
 use nom::multi::many0;
 use nom::sequence::preceded;
 
-use self::parsers::{comment, identifier, keyword, literal, operator, punctuation, string};
+use self::parsers::{
+    comment, identifier, interpolation, keyword, literal, operator, punctuation, string,
+};
 use self::util::check_delims_balanced;
 use crate::error::{Error, Errors, UnexpectedError};
 use crate::ToSpan;
@@ -34,7 +36,7 @@ impl Lexer {
             Err(nom::Err::Incomplete(needed)) => {
                 panic!("unable to recover from incomplete input: {:?}", needed)
             }
-            Ok((_, tokens)) => {
+            Ok((_, mut tokens)) => {
                 let only_comments = tokens.iter().all(|t| t.is_comment());
                 let errors = if tokens.is_empty() || only_comments {
                     let mut errors = Errors::new();
@@ -45,6 +47,9 @@ impl Lexer {
                     check_delims_balanced(&tokens)
                 };
 
+                let end = input.fragment.len() as u32;
+                let span = Span::new(end - 1, end);
+                tokens.push(Token::Eof(span));
                 Ok(Lexer { tokens, errors })
             }
         }
@@ -64,6 +69,7 @@ fn token(input: LocatedSpan) -> IResult<Token> {
         comment,
         operator,
         string,
+        interpolation,
         punctuation,
         literal,
         keyword,
@@ -90,10 +96,11 @@ mod tests {
 {
   foo = ''
     hello
-    ${}
+    ${hello}
     world
   '';
-}"#,
+  ${blah = 12;
+"#,
         )
         .unwrap();
         println!("{:?}", lexer.tokens());

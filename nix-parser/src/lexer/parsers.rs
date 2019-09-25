@@ -98,14 +98,15 @@ pub fn interpolation(input: LocatedSpan) -> IResult<Token> {
             tokens.push(token);
         } else {
             let end = input.fragment.len();
-            let remaining = input.slice((end - 1)..end);
+            let remaining = input.slice(end..);
             let error = Error::Message(input.to_span(), "unterminated interpolation".to_string());
-            let unknown = Token::Unknown(input.fragment.into(), remaining.to_span(), error);
+            let unknown = Token::Unknown(input.fragment.into(), input.to_span(), error);
             return Ok((remaining, unknown));
         }
     }
 
     let span = Span::from(input.to_span().start()..remaining.to_span().end());
+    let (remaining, _) = multispace0(remaining)?;
     Ok((remaining, Token::Interpolation(tokens, span)))
 }
 

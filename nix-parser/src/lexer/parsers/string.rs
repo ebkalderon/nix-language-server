@@ -52,7 +52,7 @@ fn string_body<'a>(
                     tokens.push(token);
                 }
 
-                let span = Span::from(input.to_span().start()..remaining.to_span().end());
+                let span = Span::merge(input.to_span(), remaining.to_span());
                 fragments.push(StringFragment::Interpolation(tokens, span));
             } else {
                 let boundary = alt((tag(delimiter), recognize(punct_interpolate)));
@@ -70,7 +70,7 @@ fn string_body<'a>(
             }
         }
 
-        let span = Span::from(input.to_span().start()..remaining.to_span().end());
+        let span = Span::merge(input.to_span(), remaining.to_span());
         Ok((remaining, Token::String(fragments, span)))
     }
 }

@@ -107,7 +107,7 @@ pub fn interpolation(input: LocatedSpan) -> IResult<Token> {
         }
     }
 
-    let span = Span::from(input.to_span().start()..remaining.to_span().end());
+    let span = Span::merge(input.to_span(), remaining.to_span());
     Ok((remaining, Token::Interpolation(tokens, span)))
 }
 

@@ -45,7 +45,6 @@ impl Lexer {
                 panic!("unable to recover from incomplete input: {:?}", needed)
             }
             Ok((_, mut tokens)) => {
-                println!("received tokens: {:?}", tokens);
                 let end = input.fragment.len() as u32 - 1;
                 let eof_span = Span::new(end, end);
 
@@ -114,6 +113,5 @@ mod tests {
 "#,
         )
         .unwrap();
-        println!("{:?}", lexer.tokens());
     }
 }

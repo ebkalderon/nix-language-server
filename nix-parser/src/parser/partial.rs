@@ -2,12 +2,12 @@ use std::iter::FromIterator;
 
 use codespan::Span;
 use nom::bytes::complete::take;
-use nom::combinator::cut;
+use nom::combinator::{cut, not};
 use nom::multi::many_till;
 use nom::sequence::terminated;
 use nom::Slice;
 
-use super::IResult;
+use super::{tokens, IResult};
 use crate::error::{Error, Errors};
 use crate::lexer::Tokens;
 use crate::ToSpan;
@@ -330,16 +330,14 @@ where
                     partial.extend_errors(errors);
                     return Ok((input, partial));
                 }
-                Err(nom::Err::Error(_)) => match f(input) {
+                Err(nom::Err::Failure(_)) | Err(nom::Err::Error(_)) => match f(input) {
                     Err(nom::Err::Failure(err)) | Err(nom::Err::Error(err)) => {
-                        if let Ok((remainder, _)) = take::<_, _, Errors>(1usize)(input) {
+                        if tokens::eof(input).is_ok() {
+                            let partial: Partial<_> = partials.into_iter().collect();
+                            return Ok((input, partial));
+                        } else if let Ok((remainder, _)) = take::<_, _, Errors>(1usize)(input) {
                             errors.extend(err);
                             input = remainder;
-                        } else {
-                            let partial: Partial<_> = partials.into_iter().collect();
-                            let end = input.to_span().end().to_usize();
-                            let eof = input.slice(end..);
-                            return Ok((eof, partial));
                         }
                     }
                     Err(err) => return Err(err),

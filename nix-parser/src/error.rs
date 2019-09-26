@@ -4,6 +4,7 @@ pub use self::unclosed_delim::UnclosedDelimError;
 pub use self::unexpected::UnexpectedError;
 
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::iter::FromIterator;
 use std::slice::Iter;
 use std::vec::IntoIter;
 
@@ -87,6 +88,17 @@ impl Extend<Error> for Errors {
         I: IntoIterator<Item = Error>,
     {
         self.errors.extend(iter);
+    }
+}
+
+impl FromIterator<Error> for Errors {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = Error>,
+    {
+        Errors {
+            errors: iter.into_iter().collect(),
+        }
     }
 }
 

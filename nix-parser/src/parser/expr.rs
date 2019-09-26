@@ -5,7 +5,7 @@ use nom::combinator::{map, opt};
 use nom::multi::many0;
 use nom::sequence::{pair, preceded};
 
-use super::partial::{map_partial_spanned, pair_partial, Partial};
+use super::partial::{map_partial, map_partial_spanned, pair_partial, Partial};
 use super::{tokens, IResult};
 use crate::ast::{Expr, ExprFnApp, ExprUnary, UnaryOp};
 use crate::error::{Errors, UnexpectedError};
@@ -44,7 +44,10 @@ fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn atomic(input: Tokens) -> IResult<Partial<Expr>> {
-    alt((atomic::paren, atomic::literal))(input)
+    let paren = map_partial(atomic::paren, Expr::Paren);
+    let list = map_partial(atomic::list, Expr::List);
+    let literal = map_partial(atomic::literal, Expr::Literal);
+    alt((paren, list, literal))(input)
 }
 
 fn unknown(input: Tokens) -> IResult<Partial<Expr>> {

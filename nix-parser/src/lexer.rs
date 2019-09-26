@@ -42,7 +42,10 @@ impl Lexer {
         match all_consuming(preceded(multispace0, many0(token)))(input) {
             Err(nom::Err::Error(err)) | Err(nom::Err::Failure(err)) => Err(err),
             Err(nom::Err::Incomplete(needed)) => {
-                panic!("unable to recover from incomplete input: {:?}", needed)
+                let mut errors = Errors::new();
+                let message = format!("unable to recover from incomplete input: {:?}", needed);
+                errors.push(Error::Message(Span::initial(), message));
+                Err(errors)
             }
             Ok((_, mut tokens)) => {
                 let end = input.fragment.len() as u32 - 1;
@@ -55,7 +58,10 @@ impl Lexer {
                     errors.push(Error::Message(Span::initial(), message));
                     return Err(errors);
                 } else {
-                    check_delims_balanced(&tokens, eof_span)
+                    let (valid, mut errors) = filter_unexpected_tokens(tokens);
+                    tokens = valid;
+                    errors.extend(check_delims_balanced(&tokens, eof_span));
+                    errors
                 };
 
                 tokens.push(Token::Eof(eof_span));
@@ -95,4 +101,20 @@ fn unknown(input: LocatedSpan) -> IResult<Token> {
         let error = UnexpectedError::new(format!("token `{}`", span.fragment), span.to_span());
         Token::Unknown(span.fragment.into(), span.to_span(), error.into())
     })(input)
+}
+
+fn filter_unexpected_tokens(tokens: Vec<Token>) -> (Vec<Token>, Errors) {
+    // FIXME: Replace this with `Vec::drain_filter()` once stabilized.
+    let (invalid, valid): (Vec<_>, _) = tokens.into_iter().partition(|token| match token {
+        Token::Unknown(..) => true,
+        _ => false,
+    });
+    let errors: Errors = invalid
+        .into_iter()
+        .filter_map(|token| match token {
+            Token::Unknown(_, _, error) => Some(error),
+            _ => None,
+        })
+        .collect();
+    (valid, errors)
 }

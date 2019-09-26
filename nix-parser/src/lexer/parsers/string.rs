@@ -20,10 +20,10 @@ pub fn string(input: LocatedSpan) -> IResult<Token> {
 
 fn string_body<'a>(
     delimiter: &'a str,
-    trim_indent: bool,
+    should_trim_indent: bool,
 ) -> impl Fn(LocatedSpan<'a>) -> IResult<'a, Token> {
     move |input| {
-        let (input, _) = pair(tag(delimiter), cond(trim_indent, multispace0))(input)?;
+        let (input, _) = pair(tag(delimiter), cond(should_trim_indent, multispace0))(input)?;
 
         let mut remaining = input;
         let mut fragments = Vec::new();
@@ -59,7 +59,7 @@ fn string_body<'a>(
                 let (input, string) = recognize(many_till(anychar, peek(boundary)))(remaining)?;
                 remaining = input;
 
-                let (span, string) = if trim_indent {
+                let (span, string) = if should_trim_indent {
                     let lines: Vec<_> = split_lines_without_indentation(string).collect();
                     (string.to_span(), lines.join("\n"))
                 } else {

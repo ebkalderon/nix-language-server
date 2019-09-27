@@ -47,9 +47,11 @@ fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
 fn atomic(input: Tokens) -> IResult<Partial<Expr>> {
     let paren = map_partial(atomic::paren, Expr::Paren);
     let set = map_partial(atomic::set, Expr::Set);
+    let rec_set = map_partial(atomic::rec_set, Expr::Rec);
+    let let_set = map_partial(atomic::let_set, Expr::Let);
     let list = map_partial(atomic::list, Expr::List);
     let literal = map_partial(atomic::literal, Expr::Literal);
-    alt((paren, set, list, literal))(input)
+    alt((paren, set, rec_set, let_set, list, literal))(input)
 }
 
 fn unknown(input: Tokens) -> IResult<Partial<Expr>> {

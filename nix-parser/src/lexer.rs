@@ -48,7 +48,7 @@ impl Lexer {
                 Err(errors)
             }
             Ok((_, mut tokens)) => {
-                let end = input.fragment.len() as u32 - 1;
+                let end = input.fragment.len().saturating_sub(1) as u32;
                 let eof_span = Span::new(end, end);
 
                 let only_comments = tokens.iter().all(|t| t.is_comment());

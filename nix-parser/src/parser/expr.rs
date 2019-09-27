@@ -13,6 +13,7 @@ use crate::lexer::{Token, Tokens};
 use crate::{HasSpan, ToSpan};
 
 mod atomic;
+mod bind;
 
 pub fn expr(input: Tokens) -> IResult<Partial<Expr>> {
     preceded(many0(tokens::comment), unary)(input)
@@ -45,9 +46,10 @@ fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
 
 fn atomic(input: Tokens) -> IResult<Partial<Expr>> {
     let paren = map_partial(atomic::paren, Expr::Paren);
+    let set = map_partial(atomic::set, Expr::Set);
     let list = map_partial(atomic::list, Expr::List);
     let literal = map_partial(atomic::literal, Expr::Literal);
-    alt((paren, list, literal))(input)
+    alt((paren, set, list, literal))(input)
 }
 
 fn unknown(input: Tokens) -> IResult<Partial<Expr>> {

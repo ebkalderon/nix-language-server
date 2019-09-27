@@ -122,6 +122,7 @@ define_tokens! {
     keyword_then { Then, "keyword `then`" }
     keyword_with { With, "keyword `with`" }
 
+    at { At, "at symbol (`@`)" }
     colon { Colon, "colon" }
     comma { Comma, "comma" }
     dot { Dot, "dot separator" }

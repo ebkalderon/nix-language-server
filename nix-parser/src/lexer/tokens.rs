@@ -234,6 +234,7 @@ pub enum Token {
     With(Span),
 
     // Punctuation
+    At(Span),
     Colon(Span),
     Comma(Span),
     Dot(Span),
@@ -320,6 +321,7 @@ impl Token {
             Token::Then(_) => "keyword `then`".to_string(),
             Token::With(_) => "keyword `with`".to_string(),
 
+            Token::At(_) => "at symbol (`@`)".to_string(),
             Token::Colon(_) => "colon".to_string(),
             Token::Comma(_) => "comma".to_string(),
             Token::Dot(_) => "dot separator".to_string(),
@@ -393,6 +395,7 @@ impl Debug for Token {
             Token::Then(_) => fmt.write_str("Then"),
             Token::With(_) => fmt.write_str("With"),
 
+            Token::At(_) => fmt.write_str("At"),
             Token::Colon(_) => fmt.write_str("Colon"),
             Token::Comma(_) => fmt.write_str("Comma"),
             Token::Dot(_) => fmt.write_str("Dot"),
@@ -458,6 +461,7 @@ impl ToSpan for Token {
             Token::Then(ref span) => *span,
             Token::With(ref span) => *span,
 
+            Token::At(ref span) => *span,
             Token::Colon(ref span) => *span,
             Token::Comma(ref span) => *span,
             Token::Dot(ref span) => *span,

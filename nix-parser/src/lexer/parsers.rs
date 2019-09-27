@@ -188,6 +188,7 @@ macro_rules! define_punctuation {
 }
 
 define_punctuation! {
+    punct_token => At("@"),
     punct_colon => Colon(":"),
     punct_comma => Comma(","),
     punct_dot => Dot("."),

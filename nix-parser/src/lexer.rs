@@ -98,7 +98,7 @@ fn token(input: LocatedSpan) -> IResult<Token> {
 
 fn unknown(input: LocatedSpan) -> IResult<Token> {
     map(take(1usize), |span: LocatedSpan| {
-        let error = UnexpectedError::new(format!("token `{}`", span.fragment), span.to_span());
+        let error = UnexpectedError::new(format!("`{}`", span.fragment), span.to_span());
         Token::Unknown(span.fragment.into(), span.to_span(), error.into())
     })(input)
 }

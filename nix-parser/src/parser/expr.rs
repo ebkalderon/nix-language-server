@@ -1,13 +1,13 @@
 use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::take;
-use nom::combinator::{map, opt, peek};
+use nom::combinator::{map, opt};
 use nom::multi::many0;
 use nom::sequence::{pair, preceded};
 
 use super::partial::{expect_terminated, map_partial, map_partial_spanned, pair_partial, Partial};
 use super::{tokens, IResult};
-use crate::ast::{Expr, ExprFnApp, ExprUnary, UnaryOp};
+use crate::ast::{BinaryOp, Expr, ExprBinary, ExprFnApp, ExprIf, ExprUnary, UnaryOp};
 use crate::error::{Errors, UnexpectedError};
 use crate::lexer::{Token, Tokens};
 use crate::{HasSpan, ToSpan};
@@ -25,18 +25,53 @@ fn stmt(input: Tokens) -> IResult<Partial<Expr>> {
     let with = map_partial(stmt::with, Expr::With);
     let assert = map_partial(stmt::assert, Expr::Assert);
     let let_in = map_partial(stmt::let_in, Expr::LetIn);
-    alt((with, assert, let_in, unary))(input)
+    alt((with, assert, let_in, if_else))(input)
+}
+
+fn if_else(input: Tokens) -> IResult<Partial<Expr>> {
+    let found = "keyword `then`";
+    let cond = alt((expr, util::error_expr_if(tokens::keyword_then, found)));
+    let cond_then = expect_terminated(map_partial(cond, Box::new), tokens::keyword_then);
+    let if_cond_then = preceded(tokens::keyword_if, cond_then);
+
+    let found = "keyword `else`";
+    let body = alt((expr, util::error_expr_if(tokens::keyword_else, found)));
+    let body_else = expect_terminated(map_partial(body, Box::new), tokens::keyword_else);
+
+    let expr = alt((expr, util::error_expr_if(tokens::eof, "<eof>")));
+    let fallback = map_partial(expr, Box::new);
+    let block = pair_partial(if_cond_then, pair_partial(body_else, fallback));
+    let if_else = map_partial_spanned(block, |span, (cond, (body, fallback))| {
+        Expr::If(ExprIf::new(cond, body, fallback, span))
+    });
+
+    alt((if_else, imply))(input)
+}
+
+fn imply(input: Tokens) -> IResult<Partial<Expr>> {
+    let expr = pair(unary, many0(preceded(tokens::op_imply, unary)));
+    map(expr, |(first, rest)| {
+        rest.into_iter().fold(first, |lhs, rhs| {
+            lhs.flat_map(|lhs| {
+                rhs.map(|rhs| {
+                    let span = Span::merge(lhs.span(), rhs.span());
+                    let expr = ExprBinary::new(BinaryOp::Impl, Box::new(lhs), Box::new(rhs), span);
+                    Expr::Binary(expr)
+                })
+            })
+        })
+    })(input)
 }
 
 fn unary(input: Tokens) -> IResult<Partial<Expr>> {
     let neg = map(tokens::op_sub, |_| UnaryOp::Neg);
     let not = map(tokens::op_not, |_| UnaryOp::Not);
-    let unary = map(opt(alt((neg, not))), Partial::from);
-    let expr = pair_partial(unary, fn_app);
-    map_partial_spanned(expr, |span, (unary, expr)| match unary {
+    let unary = pair_partial(map(opt(alt((neg, not))), Partial::from), fn_app);
+    let expr = map_partial_spanned(unary, |span, (unary, expr)| match unary {
         Some(op) => Expr::Unary(ExprUnary::new(op, Box::new(expr), span)),
         None => expr,
-    })(input)
+    });
+    alt((expr, error))(input)
 }
 
 fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
@@ -63,7 +98,7 @@ fn atomic(input: Tokens) -> IResult<Partial<Expr>> {
     alt((paren, set, rec_set, let_set, list, literal))(input)
 }
 
-fn unknown(input: Tokens) -> IResult<Partial<Expr>> {
+fn error(input: Tokens) -> IResult<Partial<Expr>> {
     let (remaining, tokens) = take(1usize)(input)?;
     let mut errors = Errors::new();
     errors.push(UnexpectedError::new(

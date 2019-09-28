@@ -1,11 +1,11 @@
 use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::take;
-use nom::combinator::{map, opt};
+use nom::combinator::{map, opt, peek};
 use nom::multi::many0;
 use nom::sequence::{pair, preceded};
 
-use super::partial::{map_partial, map_partial_spanned, pair_partial, Partial};
+use super::partial::{expect_terminated, map_partial, map_partial_spanned, pair_partial, Partial};
 use super::{tokens, IResult};
 use crate::ast::{Expr, ExprFnApp, ExprUnary, UnaryOp};
 use crate::error::{Errors, UnexpectedError};
@@ -14,9 +14,18 @@ use crate::{HasSpan, ToSpan};
 
 mod atomic;
 mod bind;
+mod stmt;
+mod util;
 
 pub fn expr(input: Tokens) -> IResult<Partial<Expr>> {
-    preceded(many0(tokens::comment), unary)(input)
+    preceded(many0(tokens::comment), stmt)(input)
+}
+
+fn stmt(input: Tokens) -> IResult<Partial<Expr>> {
+    let with = map_partial(stmt::with, Expr::With);
+    let assert = map_partial(stmt::assert, Expr::Assert);
+    let let_in = map_partial(stmt::let_in, Expr::LetIn);
+    alt((with, assert, let_in, unary))(input)
 }
 
 fn unary(input: Tokens) -> IResult<Partial<Expr>> {

@@ -4,7 +4,7 @@ use nom::combinator::{map, peek};
 use nom::multi::many0;
 use nom::sequence::preceded;
 
-use super::expr;
+use super::{expr, util};
 use crate::ast::tokens::{Comment, Ident, IdentPath};
 use crate::ast::{Bind, BindInherit, BindInheritExpr, BindSimple, Expr};
 use crate::error::{Error, Errors, ExpectedFoundError};
@@ -26,7 +26,8 @@ fn simple(input: Tokens) -> IResult<Partial<BindSimple>> {
     let attr = map(tokens::identifier, |ident| {
         Partial::from(IdentPath::from((vec![ident.clone()], ident.span())))
     });
-    let error = error_expr_if(peek(alt((tokens::semi, tokens::brace_right))));
+    let found = "one of `;` or `}`";
+    let error = util::error_expr_if(peek(alt((tokens::semi, tokens::brace_right))), found);
 
     let lhs = expect_terminated(attr, tokens::eq);
     let rhs = map_partial(alt((expr, error)), Box::new);
@@ -44,7 +45,7 @@ fn inherit(input: Tokens) -> IResult<Partial<BindInherit>> {
 }
 
 fn inherit_expr(input: Tokens) -> IResult<Partial<BindInheritExpr>> {
-    let inner = alt((expr, error_expr_if(peek(tokens::paren_right))));
+    let inner = alt((expr, util::error_expr_if(peek(tokens::paren_right), "`}`")));
     let expr = expect_terminated(preceded(tokens::paren_left, inner), tokens::paren_right);
     let bind = preceded(tokens::keyword_inherit, pair_partial(expr, ident_sequence));
     map_partial_spanned(bind, |span, (expr, idents)| {
@@ -68,26 +69,5 @@ fn ident_sequence(input: Tokens) -> IResult<Partial<Vec<Ident>>> {
         Ok((remaining, Partial::with_errors(None, errors)))
     } else {
         Ok((remaining, Partial::from(idents)))
-    }
-}
-
-fn error_expr_if<'a, O, F>(parser: F) -> impl Fn(Tokens<'a>) -> IResult<Partial<Expr>>
-where
-    F: Fn(Tokens<'a>) -> IResult<O>,
-    O: ToSpan,
-{
-    move |input| match parser(input) {
-        Err(error) => Err(error),
-        Ok((remaining, token)) => {
-            let mut errors = Errors::new();
-            errors.push(ExpectedFoundError::new(
-                "expression",
-                "token",
-                token.to_span(),
-            ));
-            let expr = Expr::Error(token.to_span());
-            let partial = Partial::with_errors(Some(expr), errors);
-            Ok((remaining, partial))
-        }
     }
 }

@@ -154,10 +154,13 @@ macro_rules! define_operator {
 }
 
 define_operator! {
+    op_concat => Concat("++"),
     op_add => Add("+"),
+    op_imply => Imply("->"),
     op_sub => Sub("-"),
     op_mul => Mul("*"),
     op_div => Div("/"),
+    op_update => Update("//"),
     op_eq => IsEq("=="),
     op_neq => NotEq("!="),
     op_lt => LessThan("<"),
@@ -166,10 +169,7 @@ define_operator! {
     op_gte => GreaterThanEq(">="),
     op_and => LogicalAnd("&&"),
     op_or => LogicalOr("||"),
-    op_concat => Concat("++"),
-    op_update => Update("//"),
     op_question => Question("?"),
-    op_imply => Imply("->"),
     op_not => Not("!")
 }
 

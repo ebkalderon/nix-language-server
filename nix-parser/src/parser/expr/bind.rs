@@ -4,8 +4,8 @@ use nom::combinator::map;
 use nom::multi::many0;
 use nom::sequence::preceded;
 
-use super::{expr, util};
-use crate::ast::tokens::{Comment, Ident, IdentPath};
+use super::{attr, expr, util};
+use crate::ast::tokens::{Comment, Ident};
 use crate::ast::{Bind, BindInherit, BindInheritExpr, BindSimple};
 use crate::error::{Error, Errors, UnexpectedError};
 use crate::lexer::Tokens;
@@ -23,13 +23,9 @@ pub fn bind(input: Tokens) -> IResult<Partial<Bind>> {
 }
 
 fn simple(input: Tokens) -> IResult<Partial<BindSimple>> {
-    let attr = map(tokens::identifier, |ident| {
-        Partial::from(IdentPath::from((vec![ident.clone()], ident.span())))
-    });
     let found = "one of `;` or `}`";
     let error = util::error_expr_if(alt((tokens::semi, tokens::brace_right)), found);
-
-    let lhs = expect_terminated(attr, tokens::eq);
+    let lhs = expect_terminated(attr::attr_path, tokens::eq);
     let rhs = map_partial(alt((expr, error)), Box::new);
     let bind = pair_partial(final_comment, pair_partial(lhs, rhs));
 

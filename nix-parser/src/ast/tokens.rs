@@ -106,56 +106,6 @@ impl PartialOrd for Ident {
     }
 }
 
-#[derive(Clone, Debug, Eq)]
-pub struct IdentPath(Vec<Ident>, Span);
-
-impl Display for IdentPath {
-    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let idents: Vec<_> = self.0.iter().map(ToString::to_string).collect();
-        write!(fmt, "{}", idents.join("."))
-    }
-}
-
-impl<'a, T> From<Vec<T>> for IdentPath
-where
-    T: Into<Ident>,
-{
-    fn from(idents: Vec<T>) -> Self {
-        let elems = idents.into_iter().map(Into::into).collect();
-        IdentPath(elems, Span::initial())
-    }
-}
-
-impl<'a, T, U, S> From<(U, S)> for IdentPath
-where
-    T: Into<Ident>,
-    U: IntoIterator<Item = T>,
-    S: ToSpan,
-{
-    fn from((idents, span): (U, S)) -> Self {
-        let elems = idents.into_iter().map(Into::into).collect();
-        IdentPath(elems, span.to_span())
-    }
-}
-
-impl HasSpan for IdentPath {
-    fn span(&self) -> Span {
-        self.1
-    }
-}
-
-impl PartialEq for IdentPath {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl PartialOrd for IdentPath {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.0.partial_cmp(&other.0)
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum Literal {
     Null(Span),

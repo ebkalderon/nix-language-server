@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 
 use codespan::Span;
 
-use self::tokens::{Comment, Ident, IdentPath, Literal};
+use self::tokens::{Comment, Ident, Literal};
 use crate::HasSpan;
 
 pub mod tokens;
@@ -521,16 +521,16 @@ impl HasSpan for Bind {
 #[derive(Clone, Debug)]
 pub struct BindSimple {
     comment: Option<Comment>,
-    name: IdentPath,
+    attr: AttrPath,
     expr: Box<Expr>,
     span: Span,
 }
 
 impl BindSimple {
-    pub fn new(comment: Option<Comment>, name: IdentPath, expr: Box<Expr>, span: Span) -> Self {
+    pub fn new(comment: Option<Comment>, attr: AttrPath, expr: Box<Expr>, span: Span) -> Self {
         BindSimple {
             comment,
-            name,
+            attr,
             expr,
             span,
         }
@@ -540,8 +540,8 @@ impl BindSimple {
         self.comment.as_ref()
     }
 
-    pub fn name(&self) -> &IdentPath {
-        &self.name
+    pub fn attr(&self) -> &AttrPath {
+        &self.attr
     }
 
     pub fn expr(&self) -> &Expr {
@@ -552,9 +552,9 @@ impl BindSimple {
 impl Display for BindSimple {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         if let Some(ref comment) = self.comment {
-            write!(fmt, "{}{} = {};", comment, self.name, self.expr)
+            write!(fmt, "{}{} = {};", comment, self.attr, self.expr)
         } else {
-            write!(fmt, "{} = {};", self.name, self.expr)
+            write!(fmt, "{} = {};", self.attr, self.expr)
         }
     }
 }
@@ -567,7 +567,7 @@ impl HasSpan for BindSimple {
 
 impl PartialEq for BindSimple {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && self.expr == other.expr && self.comment == other.comment
+        self.attr == other.attr && self.expr == other.expr && self.comment == other.comment
     }
 }
 

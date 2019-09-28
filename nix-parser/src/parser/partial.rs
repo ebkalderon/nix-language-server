@@ -5,7 +5,7 @@ use nom::bytes::complete::take;
 use nom::combinator::{cut, not};
 use nom::multi::many_till;
 use nom::sequence::terminated;
-use nom::Slice;
+use nom::{InputLength, Slice};
 
 use super::{tokens, IResult};
 use crate::error::{Error, Errors};
@@ -273,7 +273,11 @@ where
 {
     move |input| {
         let (remainder, partial) = partial(input)?;
-        let span = Span::new(input.to_span().start(), remainder.to_span().start());
+        let span = if remainder.input_len() > 0 {
+            Span::new(input.to_span().start(), remainder.to_span().start())
+        } else {
+            input.to_span()
+        };
         Ok((remainder, partial.map(|p| f(span, p))))
     }
 }

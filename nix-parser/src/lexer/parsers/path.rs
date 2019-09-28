@@ -27,10 +27,10 @@ pub fn path(input: LocatedSpan) -> IResult<Token> {
             let path = PathBuf::from(span.fragment);
             Ok((remaining, Token::Path(path, span.to_span())))
         } else {
-            let mut errors = Errors::new();
-            let message = format!("paths cannot have trailing slashes");
-            errors.push(Error::Message(span.to_span(), message));
-            Err(nom::Err::Failure(errors))
+            let message = "paths cannot have trailing slashes".to_string();
+            let error = Error::Message(span.to_span(), message);
+            let token = Token::Unknown(span.to_string(), span.to_span(), error);
+            Ok((remaining, token))
         }
     } else {
         Err(nom::Err::Error(Errors::new()))

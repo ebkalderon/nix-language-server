@@ -11,14 +11,16 @@ use crate::parser::partial::{
 use crate::parser::{tokens, IResult};
 
 pub fn with(input: Tokens) -> IResult<Partial<ExprWith>> {
-    let scope = alt((expr, util::error_expr_if(peek(tokens::semi), "semicolon")));
+    let delims = alt((tokens::semi, tokens::eof));
+    let scope = alt((expr, util::error_expr_if(delims, "semicolon")));
     let with = expect_terminated(preceded(tokens::keyword_with, expr), tokens::semi);
     let stmt = pair_partial(map_partial(with, Box::new), map_partial(scope, Box::new));
     map_partial_spanned(stmt, |span, (with, body)| ExprWith::new(with, body, span))(input)
 }
 
 pub fn assert(input: Tokens) -> IResult<Partial<ExprAssert>> {
-    let cond = alt((expr, util::error_expr_if(peek(tokens::semi), "semicolon")));
+    let delims = alt((tokens::semi, tokens::eof));
+    let cond = alt((expr, util::error_expr_if(delims, "semicolon")));
     let assert = expect_terminated(preceded(tokens::keyword_assert, cond), tokens::semi);
     let stmt = pair_partial(map_partial(assert, Box::new), map_partial(expr, Box::new));
     map_partial_spanned(stmt, |span, (cond, body)| ExprAssert::new(cond, body, span))(input)

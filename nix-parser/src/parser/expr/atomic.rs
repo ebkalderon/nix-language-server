@@ -44,7 +44,7 @@ pub fn list(input: Tokens) -> IResult<Partial<ExprList>> {
 }
 
 pub fn string(input: Tokens) -> IResult<Partial<ExprString>> {
-    let (remaining, (fragments, span2)) = tokens::string(input)?;
+    let (remaining, (fragments, span)) = tokens::string(input)?;
     let mut parts = Vec::with_capacity(fragments.len());
 
     for frag in fragments {
@@ -61,10 +61,7 @@ pub fn string(input: Tokens) -> IResult<Partial<ExprString>> {
     }
 
     let partial: Partial<Vec<_>> = parts.into_iter().collect();
-    Ok((
-        remaining,
-        partial.map(|frags| ExprString::new(frags, span2)),
-    ))
+    Ok((remaining, partial.map(|frags| ExprString::new(frags, span))))
 }
 
 pub fn literal(input: Tokens) -> IResult<Partial<Literal>> {

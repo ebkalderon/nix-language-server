@@ -1,13 +1,13 @@
 use codespan::Span;
 use nom::branch::alt;
-use nom::combinator::{map, peek};
+use nom::combinator::map;
 use nom::multi::many0;
 use nom::sequence::preceded;
 
 use super::{expr, util};
 use crate::ast::tokens::{Comment, Ident, IdentPath};
-use crate::ast::{Bind, BindInherit, BindInheritExpr, BindSimple, Expr};
-use crate::error::{Error, Errors, ExpectedFoundError};
+use crate::ast::{Bind, BindInherit, BindInheritExpr, BindSimple};
+use crate::error::{Error, Errors, UnexpectedError};
 use crate::lexer::Tokens;
 use crate::parser::partial::{
     expect_terminated, map_partial, map_partial_spanned, pair_partial, Partial,
@@ -27,7 +27,7 @@ fn simple(input: Tokens) -> IResult<Partial<BindSimple>> {
         Partial::from(IdentPath::from((vec![ident.clone()], ident.span())))
     });
     let found = "one of `;` or `}`";
-    let error = util::error_expr_if(peek(alt((tokens::semi, tokens::brace_right))), found);
+    let error = util::error_expr_if(alt((tokens::semi, tokens::brace_right)), found);
 
     let lhs = expect_terminated(attr, tokens::eq);
     let rhs = map_partial(alt((expr, error)), Box::new);
@@ -45,7 +45,7 @@ fn inherit(input: Tokens) -> IResult<Partial<BindInherit>> {
 }
 
 fn inherit_expr(input: Tokens) -> IResult<Partial<BindInheritExpr>> {
-    let inner = alt((expr, util::error_expr_if(peek(tokens::paren_right), "`}`")));
+    let inner = alt((expr, util::error_expr_if(tokens::paren_right, "`}`")));
     let expr = expect_terminated(preceded(tokens::paren_left, inner), tokens::paren_right);
     let bind = preceded(tokens::keyword_inherit, pair_partial(expr, ident_sequence));
     map_partial_spanned(bind, |span, (expr, idents)| {

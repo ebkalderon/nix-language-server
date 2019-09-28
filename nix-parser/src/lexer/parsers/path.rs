@@ -14,9 +14,8 @@ use crate::ToSpan;
 
 pub fn path(input: LocatedSpan) -> IResult<Token> {
     let path_match = normal_path_regex()
-        .captures(input.fragment)
-        .or_else(|| home_path_regex().captures(input.fragment))
-        .and_then(|captures| captures.get(0));
+        .find(input.fragment)
+        .or_else(|| home_path_regex().find(input.fragment));
 
     if let Some(m) = path_match {
         let span = input.slice(m.start()..m.end());

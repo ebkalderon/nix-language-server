@@ -1,6 +1,6 @@
 use nom::combinator::peek;
 
-use crate::ast::Expr;
+use crate::ast::{Expr, ExprString, StringFragment};
 use crate::error::{Errors, ExpectedFoundError};
 use crate::lexer::{Token, Tokens};
 use crate::parser::partial::Partial;

@@ -4,7 +4,7 @@ use nom::bytes::complete::take;
 use super::IResult;
 use crate::ast::tokens::{Comment, Ident, Literal};
 use crate::error::{Error, Errors, ExpectedFoundError};
-use crate::lexer::{Token, Tokens};
+use crate::lexer::{StringFragment, Token, Tokens};
 use crate::ToSpan;
 
 macro_rules! define_tokens {
@@ -86,7 +86,11 @@ define_tokens! {
         parse: Token::PathTemplate(ref value, ref span) => Literal::PathTemplate(value.clone(), *span),
         expects: "path template",
     }
-    // string => { String, "string" },
+    string {
+        returns: (Vec<StringFragment>, Span),
+        parse: Token::String(ref frags, ref span) => (frags.clone(), *span),
+        expects: "string",
+    }
     uri {
         returns: Literal,
         parse: Token::Uri(ref value, ref span) => Literal::from((value.clone(), *span)),

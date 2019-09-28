@@ -23,6 +23,7 @@ fn string_body<'a>(
     should_trim_indent: bool,
 ) -> impl Fn(LocatedSpan<'a>) -> IResult<'a, Token> {
     move |input| {
+        let start = input;
         let (input, _) = pair(tag(delimiter), cond(should_trim_indent, multispace0))(input)?;
 
         let mut remaining = input;
@@ -70,7 +71,7 @@ fn string_body<'a>(
             }
         }
 
-        let span = Span::merge(input.to_span(), remaining.to_span());
+        let span = Span::merge(start.to_span(), remaining.to_span());
         Ok((remaining, Token::String(fragments, span)))
     }
 }

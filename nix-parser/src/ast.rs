@@ -56,11 +56,13 @@ pub enum Expr {
     /// string.
     Paren(ExprParen),
     /// `foo`
-    Attr(IdentPath),
+    Ident(Ident),
     /// `12`, `4.0`, `false`, `"foo"`, `''bar''`, `./foo/bar`, `null`, `http://www.example.com`
     Literal(Literal),
     /// `[1 2 3 4]`
     List(ExprList),
+    /// `"foo"`, `''bar''`, `"baz ${quux}"`
+    String(ExprString),
     /// `{ foo = "hello"; bar = 123; }`
     Set(ExprSet),
 
@@ -103,9 +105,10 @@ impl Display for Expr {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
             Expr::Paren(ref e) => write!(fmt, "{}", e),
-            Expr::Attr(ref e) => write!(fmt, "{}", e),
+            Expr::Ident(ref e) => write!(fmt, "{}", e),
             Expr::Literal(ref e) => write!(fmt, "{}", e),
             Expr::List(ref e) => write!(fmt, "{}", e),
+            Expr::String(ref e) => write!(fmt, "{}", e),
             Expr::Set(ref e) => write!(fmt, "{}", e),
 
             Expr::Unary(ref e) => write!(fmt, "{}", e),
@@ -134,9 +137,10 @@ impl HasSpan for Expr {
     fn span(&self) -> Span {
         match *self {
             Expr::Paren(ref e) => e.span(),
-            Expr::Attr(ref e) => e.span(),
+            Expr::Ident(ref e) => e.span(),
             Expr::Literal(ref e) => e.span(),
             Expr::List(ref e) => e.span(),
+            Expr::String(ref e) => e.span(),
             Expr::Set(ref e) => e.span(),
 
             Expr::Unary(ref e) => e.span(),
@@ -262,6 +266,69 @@ impl HasSpan for ExprSet {
 impl PartialEq for ExprSet {
     fn eq(&self, other: &Self) -> bool {
         self.binds == other.binds
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ExprString(Vec<StringFragment>, Span);
+
+impl ExprString {
+    pub fn new(fragments: Vec<StringFragment>, span: Span) -> Self {
+        ExprString(fragments, span)
+    }
+}
+
+impl Display for ExprString {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        let segments: Vec<_> = self.0.iter().map(ToString::to_string).collect();
+        write!(fmt, "{:?}", segments.concat())
+    }
+}
+
+impl HasSpan for ExprString {
+    fn span(&self) -> Span {
+        self.1
+    }
+}
+
+impl PartialEq for ExprString {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum StringFragment {
+    Literal(String, Span),
+    Interpolation(Box<Expr>, Span),
+}
+
+impl Display for StringFragment {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        match *self {
+            StringFragment::Literal(ref text, _) => write!(fmt, "{}", text),
+            StringFragment::Interpolation(ref expr, _) => write!(fmt, "${{{}}}", expr),
+        }
+    }
+}
+
+impl HasSpan for StringFragment {
+    fn span(&self) -> Span {
+        match *self {
+            StringFragment::Literal(_, ref span) => *span,
+            StringFragment::Interpolation(_, ref span) => *span,
+        }
+    }
+}
+
+impl PartialEq for StringFragment {
+    fn eq(&self, other: &Self) -> bool {
+        use StringFragment::*;
+        match (self, other) {
+            (Literal(ref lhs, _), Literal(ref rhs, _)) => lhs == rhs,
+            (Interpolation(ref lhs, _), Interpolation(ref rhs, _)) => lhs == rhs,
+            _ => false,
+        }
     }
 }
 
@@ -650,38 +717,74 @@ impl PartialEq for ExprRec {
 }
 
 #[derive(Clone, Debug)]
-pub enum AttrKey {
-    Ident(Ident),
-    String(String, Span),
-    Expr(Box<Expr>),
+pub struct AttrPath(Vec<AttrSegment>, Span);
+
+impl AttrPath {
+    pub fn new(segments: Vec<AttrSegment>) -> Self {
+        let span = segments
+            .first()
+            .map(|s| s.span())
+            .and_then(|first| segments.last().map(|s| (first, s.span())))
+            .map(|(first, second)| Span::merge(first, second))
+            .unwrap_or_default();
+
+        AttrPath(segments, span)
+    }
 }
 
-impl Display for AttrKey {
+impl Display for AttrPath {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        let segments: Vec<_> = self.0.iter().map(ToString::to_string).collect();
+        write!(fmt, "{}", segments.join("."))
+    }
+}
+
+impl HasSpan for AttrPath {
+    fn span(&self) -> Span {
+        self.1
+    }
+}
+
+impl PartialEq for AttrPath {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum AttrSegment {
+    Ident(Ident),
+    Interpolate(Box<Expr>, Span),
+    String(ExprString),
+}
+
+impl Display for AttrSegment {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
-            AttrKey::Ident(ref i) => write!(fmt, "{}", i),
-            AttrKey::String(ref s, _) => write!(fmt, "{}", s),
-            AttrKey::Expr(ref e) => write!(fmt, "{}", e),
+            AttrSegment::Ident(ref ident) => write!(fmt, "{}", ident),
+            AttrSegment::Interpolate(ref expr, _) => write!(fmt, "${{{}}}", expr),
+            AttrSegment::String(ref expr) => write!(fmt, "{}", expr),
         }
     }
 }
 
-impl HasSpan for AttrKey {
+impl HasSpan for AttrSegment {
     fn span(&self) -> Span {
         match *self {
-            AttrKey::Ident(ref i) => i.span(),
-            AttrKey::String(_, ref s) => *s,
-            AttrKey::Expr(ref e) => e.span(),
+            AttrSegment::Ident(ref ident) => ident.span(),
+            AttrSegment::Interpolate(_, ref span) => *span,
+            AttrSegment::String(ref expr) => expr.span(),
         }
     }
 }
 
-impl PartialEq for AttrKey {
+impl PartialEq for AttrSegment {
     fn eq(&self, other: &Self) -> bool {
+        use AttrSegment::*;
         match (self, other) {
-            (AttrKey::Ident(ref i1), AttrKey::Ident(ref i2)) => i1 == i2,
-            (AttrKey::String(ref s1, _), AttrKey::String(ref s2, _)) => s1 == s2,
-            (AttrKey::Expr(ref e1), AttrKey::Expr(ref e2)) => e1 == e2,
+            (Ident(ref lhs), Ident(ref rhs)) => lhs == rhs,
+            (Interpolate(ref lhs, _), Interpolate(ref rhs, _)) => lhs == rhs,
+            (String(ref lhs), String(ref rhs)) => lhs == rhs,
             _ => false,
         }
     }
@@ -690,13 +793,13 @@ impl PartialEq for AttrKey {
 #[derive(Clone, Debug)]
 pub struct ExprProj {
     base: Box<Expr>,
-    attr: AttrKey,
+    attr: AttrPath,
     fallback: Option<Box<Expr>>,
     span: Span,
 }
 
 impl ExprProj {
-    pub fn new(base: Box<Expr>, attr: AttrKey, fallback: Option<Box<Expr>>, span: Span) -> Self {
+    pub fn new(base: Box<Expr>, attr: AttrPath, fallback: Option<Box<Expr>>, span: Span) -> Self {
         ExprProj {
             base,
             attr,
@@ -709,7 +812,7 @@ impl ExprProj {
         &self.base
     }
 
-    pub fn attr(&self) -> &AttrKey {
+    pub fn attr(&self) -> &AttrPath {
         &self.attr
     }
 

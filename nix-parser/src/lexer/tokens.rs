@@ -19,7 +19,7 @@ pub struct Tokens<'a> {
 }
 
 impl<'a> Tokens<'a> {
-    pub(super) fn new(tokens: &'a [Token]) -> Self {
+    pub(crate) fn new(tokens: &'a [Token]) -> Self {
         Tokens {
             tokens,
             start: 0,

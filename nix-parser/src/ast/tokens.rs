@@ -164,7 +164,6 @@ pub enum Literal {
     Integer(i64, Span),
     Path(PathBuf, Span),
     PathTemplate(PathBuf, Span),
-    String(String, Span),
     Uri(Url, Span),
 }
 
@@ -177,7 +176,6 @@ impl Display for Literal {
             Literal::Integer(ref i, _) => write!(fmt, "{}", i),
             Literal::Path(ref p, _) => write!(fmt, "{}", p.to_string_lossy()),
             Literal::PathTemplate(ref p, _) => write!(fmt, "<{}>", p.to_string_lossy()),
-            Literal::String(ref s, _) => write!(fmt, "\"{}\"", s),
             Literal::Uri(ref u, _) => write!(fmt, "{}", u),
         }
     }
@@ -227,18 +225,6 @@ impl From<PathBuf> for Literal {
     }
 }
 
-impl<'a> From<&'a str> for Literal {
-    fn from(s: &'a str) -> Self {
-        Literal::String(s.to_owned(), Span::initial())
-    }
-}
-
-impl From<String> for Literal {
-    fn from(s: String) -> Self {
-        Literal::String(s, Span::initial())
-    }
-}
-
 impl<S: ToSpan> From<((), S)> for Literal {
     fn from((_, span): ((), S)) -> Self {
         Literal::Null(span.to_span())
@@ -275,18 +261,6 @@ impl<S: ToSpan> From<(PathBuf, S)> for Literal {
     }
 }
 
-impl<'a, S: ToSpan> From<(&'a str, S)> for Literal {
-    fn from((s, span): (&'a str, S)) -> Self {
-        Literal::String(s.to_owned(), span.to_span())
-    }
-}
-
-impl<S: ToSpan> From<(String, S)> for Literal {
-    fn from((s, span): (String, S)) -> Self {
-        Literal::String(s, span.to_span())
-    }
-}
-
 impl<S: ToSpan> From<(Url, S)> for Literal {
     fn from((uri, span): (Url, S)) -> Self {
         Literal::Uri(uri, span.to_span())
@@ -302,7 +276,6 @@ impl HasSpan for Literal {
             Literal::Integer(_, ref e) => *e,
             Literal::Path(_, ref e) => *e,
             Literal::PathTemplate(_, ref e) => *e,
-            Literal::String(_, ref e) => *e,
             Literal::Uri(_, ref e) => *e,
         }
     }
@@ -318,7 +291,6 @@ impl PartialEq for Literal {
             (Integer(ref i1, _), Integer(ref i2, _)) => i1 == i2,
             (Path(ref p1, _), Path(ref p2, _)) => p1 == p2,
             (PathTemplate(ref p1, _), PathTemplate(ref p2, _)) => p1 == p2,
-            (String(ref s1, _), String(ref s2, _)) => s1 == s2,
             (Uri(ref u1, _), Uri(ref u2, _)) => u1 == u2,
             _ => false,
         }
@@ -335,7 +307,6 @@ impl PartialOrd for Literal {
             (Integer(ref i1, _), Integer(ref i2, _)) => i1.partial_cmp(i2),
             (Path(ref p1, _), Path(ref p2, _)) => p1.partial_cmp(p2),
             (PathTemplate(ref p1, _), PathTemplate(ref p2, _)) => p1.partial_cmp(p2),
-            (String(ref s1, _), String(ref s2, _)) => s1.partial_cmp(s2),
             (Uri(ref u1, _), Uri(ref u2, _)) => u1.to_string().partial_cmp(&u2.to_string()),
             _ => None,
         }

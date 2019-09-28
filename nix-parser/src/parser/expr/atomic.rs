@@ -2,11 +2,15 @@ use nom::branch::alt;
 use nom::combinator::map;
 use nom::sequence::preceded;
 
-use super::{bind, expr, unary};
-use crate::ast::tokens::Literal;
-use crate::ast::{Bind, ExprLet, ExprList, ExprParen, ExprRec, ExprSet};
-use crate::lexer::Tokens;
-use crate::parser::partial::{expect_terminated, many_till_partial, map_partial_spanned, Partial};
+use super::{bind, expr, unary, util};
+use crate::ast::tokens::{Ident, Literal};
+use crate::ast::{
+    Bind, ExprLet, ExprList, ExprParen, ExprRec, ExprSet, ExprString, StringFragment,
+};
+use crate::lexer::{StringFragment as LexerFragment, Tokens};
+use crate::parser::partial::{
+    expect_terminated, many_till_partial, map_partial, map_partial_spanned, Partial,
+};
 use crate::parser::{tokens, IResult};
 
 pub fn paren(input: Tokens) -> IResult<Partial<ExprParen>> {
@@ -28,10 +32,39 @@ pub fn let_set(input: Tokens) -> IResult<Partial<ExprLet>> {
     map_partial_spanned(let_set, |span, binds| ExprLet::new(binds, span))(input)
 }
 
+fn set_binds(input: Tokens) -> IResult<Partial<Vec<Bind>>> {
+    let binds = many_till_partial(bind::bind, alt((tokens::brace_right, tokens::semi)));
+    expect_terminated(preceded(tokens::brace_left, binds), tokens::brace_right)(input)
+}
+
 pub fn list(input: Tokens) -> IResult<Partial<ExprList>> {
     let elems = many_till_partial(unary, tokens::bracket_right);
     let list = expect_terminated(preceded(tokens::bracket_left, elems), tokens::bracket_right);
     map_partial_spanned(list, |span, exprs| ExprList::new(exprs, span))(input)
+}
+
+pub fn string(input: Tokens) -> IResult<Partial<ExprString>> {
+    let (remaining, (fragments, span2)) = tokens::string(input)?;
+    let mut parts = Vec::with_capacity(fragments.len());
+
+    for frag in fragments {
+        match frag {
+            LexerFragment::Literal(text, span) => {
+                parts.push(Partial::from(StringFragment::Literal(text, span)));
+            }
+            LexerFragment::Interpolation(tokens, span) => {
+                let error = util::error_expr_if(tokens::brace_right, "right brace");
+                let (_, expr) = map_partial(alt((expr, error)), Box::new)(Tokens::new(&tokens))?;
+                parts.push(expr.map(|expr| StringFragment::Interpolation(expr, span)));
+            }
+        }
+    }
+
+    let partial: Partial<Vec<_>> = parts.into_iter().collect();
+    Ok((
+        remaining,
+        partial.map(|frags| ExprString::new(frags, span2)),
+    ))
 }
 
 pub fn literal(input: Tokens) -> IResult<Partial<Literal>> {
@@ -45,7 +78,6 @@ pub fn literal(input: Tokens) -> IResult<Partial<Literal>> {
     alt((boolean, null, float, integer, path, path_template, uri))(input)
 }
 
-fn set_binds(input: Tokens) -> IResult<Partial<Vec<Bind>>> {
-    let binds = many_till_partial(bind::bind, alt((tokens::brace_right, tokens::semi)));
-    expect_terminated(preceded(tokens::brace_left, binds), tokens::brace_right)(input)
+pub fn identifier(input: Tokens) -> IResult<Partial<Ident>> {
+    map(tokens::identifier, Partial::from)(input)
 }

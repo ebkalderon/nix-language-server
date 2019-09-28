@@ -7,14 +7,17 @@ use nom::combinator::{map, opt};
 use nom::multi::many0;
 use nom::sequence::{pair, preceded};
 
-use super::partial::{expect_terminated, map_partial, map_partial_spanned, pair_partial, Partial};
+use super::partial::{
+    expect_terminated, map_partial, map_partial_spanned, pair_partial, verify_full, Partial,
+};
 use super::{tokens, IResult};
-use crate::ast::{BinaryOp, Expr, ExprBinary, ExprFnApp, ExprIf, ExprUnary, UnaryOp};
+use crate::ast::{BinaryOp, Expr, ExprBinary, ExprFnApp, ExprIf, ExprProj, ExprUnary, UnaryOp};
 use crate::error::{Errors, UnexpectedError};
 use crate::lexer::{Token, Tokens};
 use crate::{HasSpan, ToSpan};
 
 mod atomic;
+mod attr;
 mod bind;
 mod stmt;
 mod util;
@@ -205,7 +208,7 @@ fn unary(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
-    map(pair(atomic, many0(atomic)), |(first, rest)| {
+    map(pair(proj, many0(proj)), |(first, rest)| {
         rest.into_iter().fold(first, |lhs, rhs| {
             lhs.flat_map(|lhs| {
                 rhs.map(|rhs| {
@@ -218,14 +221,28 @@ fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
     })(input)
 }
 
+fn proj(input: Tokens) -> IResult<Partial<Expr>> {
+    let path = preceded(tokens::dot, verify_full(attr::attr_path));
+    let expr = pair(atomic, opt(path));
+    map(expr, |(base, path)| match path {
+        None => base,
+        Some(path) => base.map(|base| {
+            let span = Span::merge(base.span(), path.span());
+            Expr::Proj(ExprProj::new(Box::new(base), path, None, span))
+        }),
+    })(input)
+}
+
 fn atomic(input: Tokens) -> IResult<Partial<Expr>> {
     let paren = map_partial(atomic::paren, Expr::Paren);
     let set = map_partial(atomic::set, Expr::Set);
     let rec_set = map_partial(atomic::rec_set, Expr::Rec);
     let let_set = map_partial(atomic::let_set, Expr::Let);
     let list = map_partial(atomic::list, Expr::List);
+    let string = map_partial(atomic::string, Expr::String);
     let literal = map_partial(atomic::literal, Expr::Literal);
-    alt((paren, set, rec_set, let_set, list, literal))(input)
+    let ident = map_partial(atomic::identifier, Expr::Ident);
+    alt((paren, set, rec_set, let_set, list, string, literal, ident))(input)
 }
 
 fn error(input: Tokens) -> IResult<Partial<Expr>> {

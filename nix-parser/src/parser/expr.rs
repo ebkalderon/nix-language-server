@@ -29,14 +29,10 @@ pub fn expr(input: Tokens) -> IResult<Partial<Expr>> {
 
 fn function(input: Tokens) -> IResult<Partial<Expr>> {
     let function = map_partial(func::fn_decl, Expr::FnDecl);
-    alt((function, stmt))(input)
-}
-
-fn stmt(input: Tokens) -> IResult<Partial<Expr>> {
     let with = map_partial(stmt::with, Expr::With);
     let assert = map_partial(stmt::assert, Expr::Assert);
     let let_in = map_partial(stmt::let_in, Expr::LetIn);
-    alt((with, assert, let_in, if_else))(input)
+    alt((function, with, assert, let_in, if_else))(input)
 }
 
 fn if_else(input: Tokens) -> IResult<Partial<Expr>> {

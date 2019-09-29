@@ -18,7 +18,7 @@ use self::number::{float, integer};
 use self::path::{path, path_template};
 use self::uri::uri;
 use super::util::{map_spanned, split_lines_without_indentation};
-use super::{token, IResult, LocatedSpan, Token};
+use super::{token, CommentKind, IResult, LocatedSpan, Token};
 use crate::error::Error;
 use crate::ToSpan;
 
@@ -30,7 +30,8 @@ mod uri;
 pub fn comment(input: LocatedSpan) -> IResult<Token> {
     let span = map(not_line_ending, |s: LocatedSpan| s.fragment);
     let rows = separated_nonempty_list(pair(line_ending, space0), preceded(char('#'), span));
-    let line_comment = map_spanned(rows, |span, r| Token::Comment(r.join("\n"), span.to_span()));
+    let text = map(rows, |rows| rows.join("\n"));
+    let line_comment = map_spanned(text, |span, t| Token::Comment(t, CommentKind::Line, span));
     alt((line_comment, block_comment))(input)
 }
 
@@ -44,9 +45,10 @@ fn block_comment(input: LocatedSpan) -> IResult<Token> {
 
     if let Some(m) = regex.find(input.fragment) {
         let span = input.slice(..m.start());
-        let rows: Vec<_> = split_lines_without_indentation(span).collect();
         let remaining = input.slice(m.end()..);
-        Ok((remaining, Token::Comment(rows.join("\n"), span.to_span())))
+        let rows: Vec<_> = split_lines_without_indentation(span).collect();
+        let comment = Token::Comment(rows.join("\n"), CommentKind::Block, span.to_span());
+        Ok((remaining, comment))
     } else {
         let end = input.fragment.len();
         let remaining = input.slice((end - 1)..end);

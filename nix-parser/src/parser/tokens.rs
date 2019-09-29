@@ -46,7 +46,7 @@ define_tokens! {
 
     comment {
         returns: Comment,
-        parse: Token::Comment(ref text, ref span) => Comment::from((text.clone(), *span)),
+        parse: Token::Comment(ref text, _, ref span) => Comment::from((text.clone(), *span)),
         expects: "comment",
     }
     identifier {

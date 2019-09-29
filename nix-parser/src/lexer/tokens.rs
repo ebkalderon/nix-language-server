@@ -165,6 +165,12 @@ impl<'a> ToSpan for Tokens<'a> {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CommentKind {
+    Line,
+    Block,
+}
+
 #[derive(Clone, PartialEq)]
 pub enum StringFragment {
     Literal(String, Span),
@@ -190,7 +196,7 @@ pub enum Token {
     Unknown(String, Span, Error),
 
     // Literals
-    Comment(String, Span),
+    Comment(String, CommentKind, Span),
     Identifier(String, Span),
     Null(Span),
     Boolean(bool, Span),
@@ -255,7 +261,7 @@ pub enum Token {
 impl Token {
     pub fn is_comment(&self) -> bool {
         match *self {
-            Token::Comment(_, _) => true,
+            Token::Comment(..) => true,
             _ => false,
         }
     }
@@ -281,7 +287,7 @@ impl Token {
             Token::Eof(_) => "<eof>".to_string(),
             Token::Unknown(ref text, _, _) => format!("token `{}`", text.escape_debug()),
 
-            Token::Comment(_, _) => "comment".to_string(),
+            Token::Comment(..) => "comment".to_string(),
             Token::Identifier(ref ident, _) => format!("identifier `{}`", ident),
             Token::Null(_) => "null literal".to_string(),
             Token::Boolean(_, _) => "boolean".to_string(),
@@ -352,7 +358,7 @@ impl Debug for Token {
                 .field(&errors)
                 .finish(),
 
-            Token::Comment(ref text, _) => fmt.debug_tuple("Comment").field(&text).finish(),
+            Token::Comment(ref text, ..) => fmt.debug_tuple("Comment").field(&text).finish(),
             Token::Identifier(ref text, _) => fmt.debug_tuple("Identifier").field(&text).finish(),
             Token::Null(_) => fmt.write_str("Null"),
             Token::Boolean(ref value, _) => fmt.debug_tuple("Boolean").field(&value).finish(),
@@ -423,7 +429,7 @@ impl ToSpan for Token {
             Token::Eof(ref span) => *span,
             Token::Unknown(_, ref span, _) => *span,
 
-            Token::Comment(_, ref span) => *span,
+            Token::Comment(_, _, ref span) => *span,
             Token::Identifier(_, ref span) => *span,
             Token::Null(ref span) => *span,
             Token::Boolean(_, ref span) => *span,

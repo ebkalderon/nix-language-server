@@ -1,4 +1,4 @@
-pub use self::tokens::{StringFragment, Token, Tokens};
+pub use self::tokens::{CommentKind, StringFragment, Token, Tokens};
 
 use codespan::Span;
 use nom::branch::alt;

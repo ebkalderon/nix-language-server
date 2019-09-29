@@ -74,7 +74,7 @@ fn string_body<'a>(
             }
         }
 
-        let span = Span::merge(start.to_span(), remaining.to_span());
+        let span = Span::new(start.to_span().start(), remaining.to_span().start());
         Ok((remaining, Token::String(fragments, span)))
     }
 }

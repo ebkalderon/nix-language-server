@@ -57,6 +57,8 @@ pub enum Expr {
     Paren(ExprParen),
     /// `foo`
     Ident(Ident),
+    /// `${foo}`
+    Interpolation(ExprInterpolation),
     /// `12`, `4.0`, `false`, `"foo"`, `''bar''`, `./foo/bar`, `null`, `http://www.example.com`
     Literal(Literal),
     /// `[1 2 3 4]`
@@ -106,6 +108,7 @@ impl Display for Expr {
         match *self {
             Expr::Paren(ref e) => write!(fmt, "{}", e),
             Expr::Ident(ref e) => write!(fmt, "{}", e),
+            Expr::Interpolation(ref e) => write!(fmt, "{}", e),
             Expr::Literal(ref e) => write!(fmt, "{}", e),
             Expr::List(ref e) => write!(fmt, "{}", e),
             Expr::String(ref e) => write!(fmt, "{}", e),
@@ -138,6 +141,7 @@ impl HasSpan for Expr {
         match *self {
             Expr::Paren(ref e) => e.span(),
             Expr::Ident(ref e) => e.span(),
+            Expr::Interpolation(ref e) => e.span(),
             Expr::Literal(ref e) => e.span(),
             Expr::List(ref e) => e.span(),
             Expr::String(ref e) => e.span(),
@@ -196,6 +200,40 @@ impl HasSpan for ExprParen {
 impl PartialEq for ExprParen {
     fn eq(&self, other: &Self) -> bool {
         self.expr == other.expr
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ExprInterpolation {
+    inner: Box<Expr>,
+    span: Span,
+}
+
+impl ExprInterpolation {
+    pub fn new(inner: Box<Expr>, span: Span) -> Self {
+        ExprInterpolation { inner, span }
+    }
+
+    pub fn inner(&self) -> &Expr {
+        &self.inner
+    }
+}
+
+impl Display for ExprInterpolation {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        write!(fmt, "${{{}}}", self.inner)
+    }
+}
+
+impl HasSpan for ExprInterpolation {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
+impl PartialEq for ExprInterpolation {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
     }
 }
 
@@ -300,14 +338,14 @@ impl PartialEq for ExprString {
 #[derive(Clone, Debug)]
 pub enum StringFragment {
     Literal(String, Span),
-    Interpolation(Box<Expr>, Span),
+    Interpolation(ExprInterpolation),
 }
 
 impl Display for StringFragment {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
             StringFragment::Literal(ref text, _) => write!(fmt, "{}", text),
-            StringFragment::Interpolation(ref expr, _) => write!(fmt, "${{{}}}", expr),
+            StringFragment::Interpolation(ref expr) => write!(fmt, "{}", expr),
         }
     }
 }
@@ -316,7 +354,7 @@ impl HasSpan for StringFragment {
     fn span(&self) -> Span {
         match *self {
             StringFragment::Literal(_, ref span) => *span,
-            StringFragment::Interpolation(_, ref span) => *span,
+            StringFragment::Interpolation(ref expr) => expr.span(),
         }
     }
 }
@@ -326,7 +364,7 @@ impl PartialEq for StringFragment {
         use StringFragment::*;
         match (self, other) {
             (Literal(ref lhs, _), Literal(ref rhs, _)) => lhs == rhs,
-            (Interpolation(ref lhs, _), Interpolation(ref rhs, _)) => lhs == rhs,
+            (Interpolation(ref lhs), Interpolation(ref rhs)) => lhs == rhs,
             _ => false,
         }
     }
@@ -754,7 +792,7 @@ impl PartialEq for AttrPath {
 #[derive(Clone, Debug)]
 pub enum AttrSegment {
     Ident(Ident),
-    Interpolate(Box<Expr>, Span),
+    Interpolation(ExprInterpolation),
     String(ExprString),
 }
 
@@ -762,7 +800,7 @@ impl Display for AttrSegment {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
             AttrSegment::Ident(ref ident) => write!(fmt, "{}", ident),
-            AttrSegment::Interpolate(ref expr, _) => write!(fmt, "${{{}}}", expr),
+            AttrSegment::Interpolation(ref expr) => write!(fmt, "{}", expr),
             AttrSegment::String(ref expr) => write!(fmt, "{}", expr),
         }
     }
@@ -772,7 +810,7 @@ impl HasSpan for AttrSegment {
     fn span(&self) -> Span {
         match *self {
             AttrSegment::Ident(ref ident) => ident.span(),
-            AttrSegment::Interpolate(_, ref span) => *span,
+            AttrSegment::Interpolation(ref expr) => expr.span(),
             AttrSegment::String(ref expr) => expr.span(),
         }
     }
@@ -783,7 +821,7 @@ impl PartialEq for AttrSegment {
         use AttrSegment::*;
         match (self, other) {
             (Ident(ref lhs), Ident(ref rhs)) => lhs == rhs,
-            (Interpolate(ref lhs, _), Interpolate(ref rhs, _)) => lhs == rhs,
+            (Interpolation(ref lhs), Interpolation(ref rhs)) => lhs == rhs,
             (String(ref lhs), String(ref rhs)) => lhs == rhs,
             _ => false,
         }

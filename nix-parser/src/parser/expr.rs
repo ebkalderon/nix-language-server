@@ -235,6 +235,7 @@ fn proj(input: Tokens) -> IResult<Partial<Expr>> {
 
 fn atomic(input: Tokens) -> IResult<Partial<Expr>> {
     let paren = map_partial(atomic::paren, Expr::Paren);
+    let inter = map_partial(atomic::interpolation, Expr::Interpolation);
     let set = map_partial(atomic::set, Expr::Set);
     let rec_set = map_partial(atomic::rec_set, Expr::Rec);
     let let_set = map_partial(atomic::let_set, Expr::Let);
@@ -242,7 +243,9 @@ fn atomic(input: Tokens) -> IResult<Partial<Expr>> {
     let string = map_partial(atomic::string, Expr::String);
     let literal = map_partial(atomic::literal, Expr::Literal);
     let ident = map_partial(atomic::identifier, Expr::Ident);
-    alt((paren, set, rec_set, let_set, list, string, literal, ident))(input)
+    alt((
+        paren, inter, set, rec_set, let_set, list, string, literal, ident,
+    ))(input)
 }
 
 fn error(input: Tokens) -> IResult<Partial<Expr>> {

@@ -75,7 +75,11 @@ define_tokens! {
         parse: Token::Integer(ref value, ref span) => Literal::from((*value, *span)),
         expects: "integer",
     }
-    // interpolation => { Interpolation, "interpolation" },
+    interpolation {
+        returns: (Vec<Token>, Span),
+        parse: Token::Interpolation(ref tokens, ref span) => (tokens.clone(), *span),
+        expects: "interpolation",
+    }
     path {
         returns: Literal,
         parse: Token::Path(ref value, ref span) => Literal::from((value.as_path(), *span)),

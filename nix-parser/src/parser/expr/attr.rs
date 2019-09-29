@@ -18,5 +18,6 @@ pub fn attr_path(input: Tokens) -> IResult<Partial<AttrPath>> {
 fn segment(input: Tokens) -> IResult<Partial<AttrSegment>> {
     let identifier = map_partial(atomic::identifier, AttrSegment::Ident);
     let string = map_partial(atomic::string, AttrSegment::String);
-    alt((identifier, string))(input)
+    let interpolation = map_partial(atomic::interpolation, AttrSegment::Interpolation);
+    alt((identifier, string, interpolation))(input)
 }

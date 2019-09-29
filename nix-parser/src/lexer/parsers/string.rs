@@ -8,7 +8,7 @@ use nom::sequence::{pair, terminated};
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-use super::punct_interpolate;
+use super::{punct_interpolate, punct_quote_double, punct_quote_single};
 use crate::error::Errors;
 use crate::lexer::util::split_lines_without_indentation;
 use crate::lexer::{token, IResult, LocatedSpan, StringFragment, Token};
@@ -17,24 +17,27 @@ use crate::ToSpan;
 static ESCAPE_CODES: Lazy<Regex> = Lazy::new(|| Regex::new(r#"\\(?P<code>[rnt$\\"])"#).unwrap());
 
 pub fn string(input: LocatedSpan) -> IResult<Token> {
-    let single = string_body("\"", false);
-    let multi = string_body("''", true);
+    let single = string_body(punct_quote_double, false);
+    let multi = string_body(punct_quote_single, true);
     alt((single, multi))(input)
 }
 
-fn string_body<'a>(
-    delimiter: &'a str,
+fn string_body<'a, F>(
+    delimiter: F,
     is_multiline: bool,
-) -> impl Fn(LocatedSpan<'a>) -> IResult<'a, Token> {
+) -> impl Fn(LocatedSpan<'a>) -> IResult<'a, Token>
+where
+    F: Fn(LocatedSpan<'a>) -> IResult<Token>,
+{
     move |input| {
         let start = input;
-        let (input, _) = pair(tag(delimiter), cond(is_multiline, multispace0))(input)?;
+        let (input, _) = pair(&delimiter, cond(is_multiline, multispace0))(input)?;
 
         let mut remaining = input;
         let mut fragments = Vec::new();
 
         loop {
-            if let Ok((input, _)) = tag::<_, _, Errors>(delimiter)(remaining) {
+            if let Ok((input, _)) = delimiter(remaining) {
                 remaining = input;
                 break;
             } else if let Ok((input, _)) = terminated(punct_interpolate, multispace0)(remaining) {
@@ -63,7 +66,7 @@ fn string_body<'a>(
                 let span = Span::merge(input.to_span(), remaining.to_span());
                 fragments.push(StringFragment::Interpolation(tokens, span));
             } else {
-                let boundary = alt((tag(delimiter), recognize(punct_interpolate)));
+                let boundary = alt((&delimiter, punct_interpolate));
                 let (input, string) = if is_multiline {
                     recognize(many_till(anychar, peek(boundary)))(remaining)?
                 } else {

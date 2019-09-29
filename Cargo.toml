@@ -17,5 +17,8 @@ structopt = "0.2.18"
 tokio = "0.1.22"
 tower-lsp = "0.3.1"
 
+[profile.release]
+lto = true
+
 [workspace]
 members = ["nix-parser"]

@@ -1,16 +1,23 @@
-# hello there
+# Source file comment
 
-{
-  hello.bar.baz = 12345;
-
-  blah = { foo = { thing = true; };  hello = true; };
-
-  # thing1
+with import <nixpkgs> {};
+let
+  # Comment on binding
   #
-  #   1. thing2
-  #   2. hello
-  broy = <hello/pkgs>;
-  inherit (foo) blah;
+  # Header
+  #
+  #   1. First
+  #   2. Second
+  set = { inherit (foo) test; foo.bar.baz = 12345; outer = { inner = true; }; };
 
-  foo = {};
-}
+  # Script for testing string interpolation
+  value = "here\nare\rsome\trandom\tescape\"codes\$";
+  script = pkgs.writeShellScriptBin "interpolationTest" ''
+    #!/bin/bash
+    echo '${value}'
+  '';
+in
+  stdenv.mkDerivation {
+    name = "interpolation-test";
+    buildInputs = [ script ];
+  }

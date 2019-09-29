@@ -19,11 +19,17 @@ use crate::{HasSpan, ToSpan};
 mod atomic;
 mod attr;
 mod bind;
+mod func;
 mod stmt;
 mod util;
 
 pub fn expr(input: Tokens) -> IResult<Partial<Expr>> {
-    preceded(many0(tokens::comment), stmt)(input)
+    preceded(many0(tokens::comment), function)(input)
+}
+
+fn function(input: Tokens) -> IResult<Partial<Expr>> {
+    let function = map_partial(func::fn_decl, Expr::FnDecl);
+    alt((function, stmt))(input)
 }
 
 fn stmt(input: Tokens) -> IResult<Partial<Expr>> {

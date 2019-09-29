@@ -1095,50 +1095,10 @@ impl PartialEq for ExprLetIn {
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum Formal {
-    Simple(Ident),
-    Default(Ident, Box<Expr>, Span),
-    Ellipsis(Span),
-}
-
-impl Display for Formal {
-    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        match *self {
-            Formal::Simple(ref name) => write!(fmt, "{}", name),
-            Formal::Default(ref name, ref default, _) => write!(fmt, "{} ? {}", name, default),
-            Formal::Ellipsis(_) => fmt.write_str("..."),
-        }
-    }
-}
-
-impl HasSpan for Formal {
-    fn span(&self) -> Span {
-        match *self {
-            Formal::Simple(ref i) => i.span(),
-            Formal::Default(_, _, ref s) => *s,
-            Formal::Ellipsis(ref s) => *s,
-        }
-    }
-}
-
-impl PartialEq for Formal {
-    fn eq(&self, other: &Self) -> bool {
-        use Formal::*;
-        match (self, other) {
-            (Simple(ref i1), Simple(ref i2)) => i1 == i2,
-            (Default(ref n1, ref d1, _), Default(ref n2, ref d2, _)) => n1 == n2 && d1 == d2,
-            (Ellipsis(_), Ellipsis(_)) => true,
-            _ => false,
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExprFnDecl {
-    Simple(SimpleFnDecl),
-    Formals(FormalsFnDecl),
-    FormalsExtra(FormalsExtraFnDecl),
+    Simple(FnDeclSimple),
+    Formals(FnDeclFormals),
 }
 
 impl Display for ExprFnDecl {
@@ -1146,7 +1106,6 @@ impl Display for ExprFnDecl {
         match *self {
             ExprFnDecl::Simple(ref s) => write!(fmt, "{}", s),
             ExprFnDecl::Formals(ref f) => write!(fmt, "{}", f),
-            ExprFnDecl::FormalsExtra(ref e) => write!(fmt, "{}", e),
         }
     }
 }
@@ -1156,21 +1115,20 @@ impl HasSpan for ExprFnDecl {
         match *self {
             ExprFnDecl::Simple(ref d) => d.span(),
             ExprFnDecl::Formals(ref d) => d.span(),
-            ExprFnDecl::FormalsExtra(ref d) => d.span(),
         }
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct SimpleFnDecl {
+pub struct FnDeclSimple {
     name: Ident,
     body: Box<Expr>,
     span: Span,
 }
 
-impl SimpleFnDecl {
+impl FnDeclSimple {
     pub fn new(name: Ident, body: Box<Expr>, span: Span) -> Self {
-        SimpleFnDecl { name, body, span }
+        FnDeclSimple { name, body, span }
     }
 
     pub fn name(&self) -> &Ident {
@@ -1182,133 +1140,126 @@ impl SimpleFnDecl {
     }
 }
 
-impl Display for SimpleFnDecl {
+impl Display for FnDeclSimple {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "{}: {}", self.name, self.body)
     }
 }
 
-impl HasSpan for SimpleFnDecl {
+impl HasSpan for FnDeclSimple {
     fn span(&self) -> Span {
         self.span
     }
 }
 
-impl PartialEq for SimpleFnDecl {
+impl PartialEq for FnDeclSimple {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name && self.body == other.body
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct FormalsFnDecl {
-    formals: Vec<Formal>,
-    body: Box<Expr>,
+pub struct Formal {
+    name: Ident,
+    default: Option<Box<Expr>>,
     span: Span,
 }
 
-impl FormalsFnDecl {
-    pub fn new(formals: Vec<Formal>, body: Box<Expr>, span: Span) -> Self {
-        FormalsFnDecl {
-            formals,
-            body,
+impl Formal {
+    pub fn new(name: Ident, default: Option<Box<Expr>>, span: Span) -> Self {
+        Formal {
+            name,
+            default,
             span,
         }
     }
 
-    pub fn formals(&self) -> &[Formal] {
-        &self.formals[..]
+    pub fn name(&self) -> &Ident {
+        &self.name
     }
 
-    pub fn body(&self) -> &Expr {
-        &self.body
+    pub fn default(&self) -> Option<&Expr> {
+        self.default.as_ref().map(|e| e.as_ref())
     }
 }
 
-impl Display for FormalsFnDecl {
+impl Display for Formal {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let formals: Vec<_> = self.formals.iter().map(ToString::to_string).collect();
-        write!(fmt, "{{{}}}: {}", formals.join(", "), self.body)
+        let default = self
+            .default
+            .as_ref()
+            .map(|e| format!(" ? {}", e))
+            .unwrap_or_default();
+        write!(fmt, "{}{}", self.name, default)
     }
 }
 
-impl HasSpan for FormalsFnDecl {
+impl HasSpan for Formal {
     fn span(&self) -> Span {
         self.span
     }
 }
 
-impl PartialEq for FormalsFnDecl {
+impl PartialEq for Formal {
     fn eq(&self, other: &Self) -> bool {
-        self.formals == other.formals && self.body == other.body
+        self.name == other.name && self.default == other.default
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct FormalsExtraFnDecl {
-    extra: Ident,
-    is_prefix: bool,
+pub struct FnDeclFormals {
     formals: Vec<Formal>,
+    ellipsis: Option<Span>,
+    extra: Option<Ident>,
     body: Box<Expr>,
     span: Span,
 }
 
-impl FormalsExtraFnDecl {
+impl FnDeclFormals {
     pub fn new(
-        extra: Ident,
-        is_prefix: bool,
         formals: Vec<Formal>,
+        ellipsis: Option<Span>,
+        extra: Option<Ident>,
         body: Box<Expr>,
         span: Span,
     ) -> Self {
-        FormalsExtraFnDecl {
-            extra,
-            is_prefix,
+        FnDeclFormals {
             formals,
+            ellipsis,
+            extra,
             body,
             span,
         }
     }
-
-    pub fn extra_args(&self) -> &Ident {
-        &self.extra
-    }
-
-    pub fn is_prefix(&self) -> bool {
-        self.is_prefix
-    }
-
-    pub fn formals(&self) -> &[Formal] {
-        &self.formals[..]
-    }
-
-    pub fn body(&self) -> &Expr {
-        &self.body
-    }
 }
 
-impl Display for FormalsExtraFnDecl {
+impl Display for FnDeclFormals {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let f: Vec<_> = self.formals.iter().map(ToString::to_string).collect();
-        if self.is_prefix {
-            write!(fmt, "{} @ {{{}}}: {}", self.extra, f.join(", "), self.body)
-        } else {
-            write!(fmt, "{{{}}} @ {}: {}", f.join(", "), self.extra, self.body)
-        }
+        let args: Vec<_> = self
+            .formals
+            .iter()
+            .map(ToString::to_string)
+            .chain(self.ellipsis.as_ref().map(|_| "...".to_string()))
+            .collect();
+        let extra = self
+            .extra
+            .as_ref()
+            .map(|ident| format!("@{}", ident))
+            .unwrap_or_default();
+        write!(fmt, "{{{}}}{}:", args.join(", "), extra)
     }
 }
 
-impl HasSpan for FormalsExtraFnDecl {
+impl HasSpan for FnDeclFormals {
     fn span(&self) -> Span {
         self.span
     }
 }
 
-impl PartialEq for FormalsExtraFnDecl {
+impl PartialEq for FnDeclFormals {
     fn eq(&self, other: &Self) -> bool {
-        self.extra == other.extra
-            && self.is_prefix == other.is_prefix
-            && self.formals == other.formals
+        self.formals == other.formals
+            && (self.ellipsis.is_some() && other.ellipsis.is_some())
             && self.body == other.body
     }
 }

@@ -1,7 +1,7 @@
 use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
-use nom::character::complete::{anychar, multispace0};
+use nom::character::complete::{anychar, multispace0, one_of};
 use nom::combinator::{cond, peek, recognize};
 use nom::multi::many_till;
 use nom::sequence::{pair, terminated};
@@ -20,11 +20,11 @@ pub fn string(input: LocatedSpan) -> IResult<Token> {
 
 fn string_body<'a>(
     delimiter: &'a str,
-    should_trim_indent: bool,
+    is_multiline: bool,
 ) -> impl Fn(LocatedSpan<'a>) -> IResult<'a, Token> {
     move |input| {
         let start = input;
-        let (input, _) = pair(tag(delimiter), cond(should_trim_indent, multispace0))(input)?;
+        let (input, _) = pair(tag(delimiter), cond(is_multiline, multispace0))(input)?;
 
         let mut remaining = input;
         let mut fragments = Vec::new();
@@ -60,10 +60,17 @@ fn string_body<'a>(
                 fragments.push(StringFragment::Interpolation(tokens, span));
             } else {
                 let boundary = alt((tag(delimiter), recognize(punct_interpolate)));
-                let (input, string) = recognize(many_till(anychar, peek(boundary)))(remaining)?;
+                let (input, string) = if is_multiline {
+                    recognize(many_till(anychar, peek(boundary)))(remaining)?
+                } else {
+                    let escape = recognize(pair(tag("\\"), one_of("\\$\"")));
+                    let skip_int = recognize(pair(tag("\\"), punct_interpolate));
+                    let chars = alt((skip_int, escape, recognize(anychar)));
+                    recognize(many_till(chars, peek(boundary)))(remaining)?
+                };
                 remaining = input;
 
-                let (span, string) = if should_trim_indent {
+                let (span, string) = if is_multiline {
                     let lines: Vec<_> = split_lines_without_indentation(string).collect();
                     (string.to_span(), lines.join("\n"))
                 } else {

@@ -1,6 +1,7 @@
 use nom::branch::alt;
 use nom::combinator::map;
-use nom::sequence::preceded;
+use nom::multi::many0;
+use nom::sequence::{pair, preceded, terminated};
 
 use super::{bind, expr, unary, util};
 use crate::ast::tokens::{Ident, Literal};
@@ -15,6 +16,7 @@ use crate::parser::partial::{
 use crate::parser::{tokens, IResult};
 
 pub fn paren(input: Tokens) -> IResult<Partial<ExprParen>> {
+    let expr = terminated(expr, many0(tokens::comment));
     let paren = expect_terminated(preceded(tokens::paren_left, expr), tokens::paren_right);
     map_partial_spanned(paren, |span, inner| ExprParen::new(Box::new(inner), span))(input)
 }
@@ -41,8 +43,10 @@ pub fn let_set(input: Tokens) -> IResult<Partial<ExprLet>> {
 }
 
 fn set_binds(input: Tokens) -> IResult<Partial<Vec<Bind>>> {
-    let binds = many_till_partial(bind::bind, alt((tokens::brace_right, tokens::semi)));
-    expect_terminated(preceded(tokens::brace_left, binds), tokens::brace_right)(input)
+    let term = alt((tokens::brace_right, tokens::semi));
+    let binds = many_till_partial(bind::bind, pair(many0(tokens::comment), term));
+    let set = terminated(binds, many0(tokens::comment));
+    expect_terminated(preceded(tokens::brace_left, set), tokens::brace_right)(input)
 }
 
 pub fn list(input: Tokens) -> IResult<Partial<ExprList>> {

@@ -5,12 +5,16 @@ use nom::character::complete::{anychar, multispace0, one_of};
 use nom::combinator::{cond, peek, recognize};
 use nom::multi::many_till;
 use nom::sequence::{pair, terminated};
+use once_cell::sync::Lazy;
+use regex::Regex;
 
 use super::punct_interpolate;
 use crate::error::Errors;
 use crate::lexer::util::split_lines_without_indentation;
 use crate::lexer::{token, IResult, LocatedSpan, StringFragment, Token};
 use crate::ToSpan;
+
+static ESCAPE_CODES: Lazy<Regex> = Lazy::new(|| Regex::new(r#"\\(?P<code>[rnt$\\"])"#).unwrap());
 
 pub fn string(input: LocatedSpan) -> IResult<Token> {
     let single = string_body("\"", false);
@@ -70,14 +74,14 @@ fn string_body<'a>(
                 };
                 remaining = input;
 
-                let (span, string) = if is_multiline {
+                let escaped = if is_multiline {
                     let lines: Vec<_> = split_lines_without_indentation(string).collect();
-                    (string.to_span(), lines.join("\n"))
+                    lines.join("\n")
                 } else {
-                    (string.to_span(), string.fragment.to_string())
+                    ESCAPE_CODES.replace_all(string.fragment, "$code").into()
                 };
 
-                fragments.push(StringFragment::Literal(string, span));
+                fragments.push(StringFragment::Literal(escaped, string.to_span()));
             }
         }
 

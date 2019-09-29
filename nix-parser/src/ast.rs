@@ -318,8 +318,10 @@ impl ExprString {
 
 impl Display for ExprString {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        // FIXME: Should record whether this string is a single or multi string so we can properly
+        // escape the string here.
         let segments: Vec<_> = self.0.iter().map(ToString::to_string).collect();
-        write!(fmt, "{:?}", segments.concat())
+        write!(fmt, "\"{}\"", segments.concat())
     }
 }
 

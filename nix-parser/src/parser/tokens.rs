@@ -129,6 +129,7 @@ define_tokens! {
     at { At, "at symbol (`@`)" }
     colon { Colon, "colon" }
     comma { Comma, "comma" }
+    ellipsis { Ellipsis, "ellipsis (`...`)" }
     dot { Dot, "dot separator" }
     eq { Eq, "equals sign" }
     interpolate { Interpolate, "interpolation sign (`${}`)" }

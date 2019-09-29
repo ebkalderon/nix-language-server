@@ -191,6 +191,7 @@ define_punctuation! {
     punct_token => At("@"),
     punct_colon => Colon(":"),
     punct_comma => Comma(","),
+    punct_ellipsis => Ellipsis("..."),
     punct_dot => Dot("."),
     punct_eq => Eq("="),
     punct_interpolate => Interpolate("${"),

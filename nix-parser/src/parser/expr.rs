@@ -246,7 +246,7 @@ fn atomic(input: Tokens) -> IResult<Partial<Expr>> {
     let literal = map_partial(atomic::literal, Expr::Literal);
     let ident = map_partial(atomic::identifier, Expr::Ident);
     alt((
-        paren, inter, set, rec_set, let_set, list, string, literal, ident,
+        ident, paren, set, list, string, inter, literal, rec_set, let_set,
     ))(input)
 }
 

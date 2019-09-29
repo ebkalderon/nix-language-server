@@ -214,7 +214,7 @@ fn unary(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
-    map(pair(proj, many0(proj)), |(first, rest)| {
+    map(pair(project, many0(project)), |(first, rest)| {
         rest.into_iter().fold(first, |lhs, rhs| {
             lhs.flat_map(|lhs| {
                 rhs.map(|rhs| {
@@ -227,7 +227,7 @@ fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
     })(input)
 }
 
-fn proj(input: Tokens) -> IResult<Partial<Expr>> {
+fn project(input: Tokens) -> IResult<Partial<Expr>> {
     let path = preceded(tokens::dot, verify_full(attr::attr_path));
     let expr = pair(atomic, opt(path));
     map(expr, |(base, path)| match path {

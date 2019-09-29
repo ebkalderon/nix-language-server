@@ -389,6 +389,6 @@ where
         partial
             .verify()
             .map(move |value| (input, value))
-            .map_err(nom::Err::Failure)
+            .map_err(nom::Err::Error)
     }
 }

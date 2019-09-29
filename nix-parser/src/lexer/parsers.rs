@@ -82,12 +82,12 @@ fn null(input: LocatedSpan) -> IResult<Token> {
 }
 
 pub fn interpolation(input: LocatedSpan) -> IResult<Token> {
-    let (mut remaining, _) = punct_interpolate(input)?;
+    let (mut remaining, _) = terminated(punct_interpolate, multispace0)(input)?;
 
     let mut tokens = Vec::new();
     let mut depth = 1;
     loop {
-        if let Ok((input, token)) = token(remaining) {
+        if let Ok((input, token)) = terminated(token, multispace0)(remaining) {
             remaining = input;
             match token {
                 Token::LBrace(_) => depth += 1,

@@ -39,7 +39,8 @@ pub struct Lexer {
 impl Lexer {
     pub fn new(s: &str) -> Result<Self, Errors> {
         let input = LocatedSpan::new(s);
-        match all_consuming(preceded(multispace0, many0(token)))(input) {
+        let tokens = many0(terminated(token, multispace0));
+        match all_consuming(preceded(multispace0, tokens))(input) {
             Err(nom::Err::Error(err)) | Err(nom::Err::Failure(err)) => Err(err),
             Err(nom::Err::Incomplete(needed)) => {
                 let mut errors = Errors::new();
@@ -80,20 +81,17 @@ impl Lexer {
 }
 
 fn token(input: LocatedSpan) -> IResult<Token> {
-    terminated(
-        alt((
-            comment,
-            literal,
-            operator,
-            string,
-            interpolation,
-            punctuation,
-            keyword,
-            identifier,
-            unknown,
-        )),
-        multispace0,
-    )(input)
+    alt((
+        comment,
+        literal,
+        operator,
+        string,
+        interpolation,
+        punctuation,
+        keyword,
+        identifier,
+        unknown,
+    ))(input)
 }
 
 fn unknown(input: LocatedSpan) -> IResult<Token> {

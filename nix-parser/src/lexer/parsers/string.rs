@@ -4,7 +4,7 @@ use nom::bytes::complete::tag;
 use nom::character::complete::{anychar, multispace0};
 use nom::combinator::{cond, peek, recognize};
 use nom::multi::many_till;
-use nom::sequence::pair;
+use nom::sequence::{pair, terminated};
 
 use super::punct_interpolate;
 use crate::error::Errors;
@@ -33,7 +33,7 @@ fn string_body<'a>(
             if let Ok((input, _)) = tag::<_, _, Errors>(delimiter)(remaining) {
                 remaining = input;
                 break;
-            } else if let Ok((input, _)) = punct_interpolate(remaining) {
+            } else if let Ok((input, _)) = terminated(punct_interpolate, multispace0)(remaining) {
                 remaining = input;
 
                 let mut tokens = Vec::new();
@@ -48,7 +48,10 @@ fn string_body<'a>(
                                 break;
                             }
                         }
-                        _ => {}
+                        _ => {
+                            let (input, _) = multispace0(remaining)?;
+                            remaining = input;
+                        }
                     }
                     tokens.push(token);
                 }

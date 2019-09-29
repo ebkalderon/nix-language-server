@@ -1,8 +1,11 @@
 use std::path::PathBuf;
 
-use nom::bytes::complete::take_while1;
-use nom::character::complete::{char, multispace0};
-use nom::sequence::delimited;
+use nom::branch::alt;
+use nom::bytes::complete::{take_while, take_while1};
+use nom::character::complete::char;
+use nom::combinator::{opt, recognize};
+use nom::multi::many1;
+use nom::sequence::{delimited, pair, tuple};
 use nom::Slice;
 use once_cell::sync::OnceCell;
 use regex::Regex;
@@ -20,7 +23,6 @@ pub fn path(input: LocatedSpan) -> IResult<Token> {
     if let Some(m) = path_match {
         let span = input.slice(m.start()..m.end());
         let remaining = input.slice(m.end()..);
-        let (remaining, _) = multispace0(remaining)?;
 
         if !span.fragment.ends_with('/') {
             let path = PathBuf::from(span.fragment);

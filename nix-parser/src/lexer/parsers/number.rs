@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use nom::character::complete::{digit1, multispace0};
+use nom::character::complete::digit1;
 use nom::combinator::map_res;
 use nom::error::ErrorKind;
 use nom::sequence::terminated;
@@ -22,7 +22,6 @@ pub fn float(input: LocatedSpan) -> IResult<Token> {
     if let Some(m) = regex.find(input.fragment) {
         let span = input.slice(m.start()..m.end());
         let remaining = input.slice(m.end()..);
-        let (remaining, _) = multispace0(remaining)?;
         let float = span.fragment.parse().expect("float parsing cannot fail");
         Ok((remaining, Token::Float(float, span.to_span())))
     } else {
@@ -37,9 +36,8 @@ pub fn float(input: LocatedSpan) -> IResult<Token> {
 }
 
 pub fn integer(input: LocatedSpan) -> IResult<Token> {
-    let int = terminated(digit1, multispace0);
-    let parsed = map_res(int, |s: LocatedSpan| i64::from_str(s.fragment));
-    map_spanned(parsed, |span, value| Token::Integer(value, span))(input)
+    let int = map_res(digit1, |s: LocatedSpan| i64::from_str(s.fragment));
+    map_spanned(int, |span, value| Token::Integer(value, span))(input)
 }
 
 #[cfg(test)]

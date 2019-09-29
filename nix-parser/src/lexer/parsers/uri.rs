@@ -1,5 +1,5 @@
 use nom::bytes::complete::{take_while, take_while1};
-use nom::character::complete::{anychar, char, multispace0};
+use nom::character::complete::{anychar, char};
 use nom::combinator::{map_res, recognize, verify};
 use nom::sequence::{pair, terminated, tuple};
 use url::Url;
@@ -13,7 +13,7 @@ pub fn uri(input: LocatedSpan) -> IResult<Token> {
     let scheme = pair(first, rest);
 
     let path = take_while1(|c: char| c.is_alphanumeric() || "%/?:@&=+$,-_.!~*'".contains(c));
-    let uri = terminated(recognize(tuple((scheme, char(':'), path))), multispace0);
+    let uri = recognize(tuple((scheme, char(':'), path)));
 
     let parsed = map_res(uri, |s: LocatedSpan| Url::parse(s.fragment));
     map_spanned(parsed, |span, uri| Token::Uri(uri, span))(input)

@@ -24,7 +24,7 @@
 ///     inherit foo;
 ///     root = ./foo/bar;
 ///     config.value = {
-///         first = "hello";
+///         first = true;
 ///         second = [1 2 -3];
 ///     };
 /// });
@@ -76,7 +76,7 @@ macro_rules! nix_token {
     };
 
     ($($path:ident).+) => {
-        IdentPath::from(vec![$(stringify!($path)),+])
+        AttrPath::new(vec![$(AttrSegment::Ident(Ident::from(stringify!($path)))),+])
     };
 
     ($literal:expr) => {
@@ -169,7 +169,7 @@ macro_rules! nix_bind {
     }};
 
     ($($name:ident).+ = $($expr:tt)+) => {{
-        let attr = IdentPath::from(vec![$(stringify!($name)),+]);
+        let attr = AttrPath::new(vec![$(AttrSegment::Ident(Ident::from(stringify!($name)))),+]);
         let expr = Box::new($crate::nix!($($expr)+));
         Bind::Simple(BindSimple::new(None, attr, expr, Default::default()))
     }};
@@ -313,11 +313,11 @@ macro_rules! atomic {
     };
 
     (_) => {
-        Expr::Attr(IdentPath::from(vec![$crate::nix_token!(_)]))
+        Expr::Ident($crate::nix_token!(_))
     };
 
-    ($($attr:ident).+) => {
-        Expr::Attr(IdentPath::from(vec![$(stringify!($attr)),+]))
+    ($attr:ident) => {
+        Expr::Attr($crate::nix_token!($attr))
     };
 
     ($literal:expr) => {

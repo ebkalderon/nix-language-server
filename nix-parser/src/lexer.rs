@@ -82,14 +82,14 @@ impl Lexer {
 
 fn token(input: LocatedSpan) -> IResult<Token> {
     alt((
-        comment,
         literal,
-        operator,
-        string,
-        interpolation,
-        punctuation,
         keyword,
         identifier,
+        string,
+        interpolation,
+        comment,
+        operator,
+        punctuation,
         unknown,
     ))(input)
 }

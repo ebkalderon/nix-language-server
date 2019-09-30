@@ -27,6 +27,7 @@ impl<'a> Tokens<'a> {
         }
     }
 
+    #[inline]
     pub fn current(&self) -> &Token {
         &self.tokens[0]
     }

@@ -1,19 +1,15 @@
 use codespan::Span;
 use nom::branch::alt;
-use nom::bytes::complete::tag;
-use nom::character::complete::{anychar, multispace0, one_of};
-use nom::combinator::{cond, peek, recognize};
+use nom::bytes::complete::{escaped_transform, is_not, tag};
+use nom::character::complete::{anychar, char, multispace0, one_of};
+use nom::combinator::{cond, map, peek, recognize};
 use nom::multi::many_till;
 use nom::sequence::{pair, terminated};
-use once_cell::sync::Lazy;
-use regex::Regex;
 
 use super::{punct_interpolate, punct_quote_double, punct_quote_single};
 use crate::lexer::util::split_lines_without_indentation;
 use crate::lexer::{token, IResult, LocatedSpan, StringFragment, Token};
 use crate::ToSpan;
-
-static ESCAPE_CODES: Lazy<Regex> = Lazy::new(|| Regex::new(r#"\\(?P<code>[rnt$\\"])"#).unwrap());
 
 pub fn string(input: LocatedSpan) -> IResult<Token> {
     let single = string_body(punct_quote_double, false);
@@ -75,8 +71,8 @@ where
                     let escape = recognize(pair(tag("\\"), one_of("\\\"$")));
                     let chars = alt((escape, recognize(anychar)));
                     let (input, string) = recognize(many_till(chars, peek(boundary)))(remaining)?;
+                    let (_, escaped) = escaped_transform(is_not("\\"), '\\', escape_codes)(string)?;
                     remaining = input;
-                    let escaped = ESCAPE_CODES.replace_all(string.fragment, "$code").into();
                     (escaped, string.to_span())
                 };
 
@@ -87,4 +83,13 @@ where
         let span = Span::new(start.to_span().start(), remaining.to_span().start());
         Ok((remaining, Token::String(fragments, span)))
     }
+}
+
+fn escape_codes(input: LocatedSpan) -> IResult<char> {
+    alt((
+        map(char('n'), |_| '\n'),
+        map(char('r'), |_| '\r'),
+        map(char('t'), |_| '\t'),
+        anychar,
+    ))(input)
 }

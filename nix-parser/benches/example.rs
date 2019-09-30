@@ -14,5 +14,10 @@ fn parse_example(b: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, parse_example);
+criterion_group! {
+    name = benches;
+    config = Criterion::default().sample_size(50);
+    targets = parse_example
+}
+
 criterion_main!(benches);

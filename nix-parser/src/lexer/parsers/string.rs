@@ -69,9 +69,8 @@ where
                 let (input, string) = if is_multiline {
                     recognize(many_till(anychar, peek(boundary)))(remaining)?
                 } else {
-                    let escape = recognize(pair(tag("\\"), one_of("\\$\"")));
-                    let skip_int = recognize(pair(tag("\\"), punct_interpolate));
-                    let chars = alt((skip_int, escape, recognize(anychar)));
+                    let escape = recognize(pair(tag("\\"), one_of("\\\"$")));
+                    let chars = alt((escape, recognize(anychar)));
                     recognize(many_till(chars, peek(boundary)))(remaining)?
                 };
                 remaining = input;

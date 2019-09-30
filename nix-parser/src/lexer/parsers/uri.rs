@@ -27,7 +27,6 @@ mod tests {
 
     fn assert_uri_eq(string: &str) {
         let span = LocatedSpan::new(string);
-        let (_, parsed) = all_consuming(uri)(span).unwrap();
         match all_consuming(uri)(span) {
             Ok((_, Token::Uri(value, _))) => assert_eq!(value, string.parse().unwrap()),
             Ok((_, token)) => panic!("parsing {:?} produced token: {:?}", string, token),

@@ -28,28 +28,27 @@ pub fn expr(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn function(input: Tokens) -> IResult<Partial<Expr>> {
-    let function = map_partial(func::fn_decl, Expr::FnDecl);
-    let with = map_partial(stmt::with, Expr::With);
-    let assert = map_partial(stmt::assert, Expr::Assert);
-    let let_in = map_partial(stmt::let_in, Expr::LetIn);
+    let function = map_partial(func::fn_decl, Expr::from);
+    let with = map_partial(stmt::with, Expr::from);
+    let assert = map_partial(stmt::assert, Expr::from);
+    let let_in = map_partial(stmt::let_in, Expr::from);
     alt((function, with, assert, let_in, if_else))(input)
 }
 
 fn if_else(input: Tokens) -> IResult<Partial<Expr>> {
     let found = "keyword `then`";
     let cond = alt((expr, util::error_expr_if(tokens::keyword_then, found)));
-    let cond_then = expect_terminated(map_partial(cond, Box::new), tokens::keyword_then);
+    let cond_then = expect_terminated(cond, tokens::keyword_then);
     let if_cond_then = preceded(tokens::keyword_if, cond_then);
 
     let found = "keyword `else`";
     let body = alt((expr, util::error_expr_if(tokens::keyword_else, found)));
-    let body_else = expect_terminated(map_partial(body, Box::new), tokens::keyword_else);
+    let body_else = expect_terminated(body, tokens::keyword_else);
 
     let expr = alt((expr, util::error_expr_if(tokens::eof, "<eof>")));
-    let fallback = map_partial(expr, Box::new);
-    let block = pair_partial(if_cond_then, pair_partial(body_else, fallback));
+    let block = pair_partial(if_cond_then, pair_partial(body_else, expr));
     let if_else = map_partial_spanned(block, |span, (cond, (body, fallback))| {
-        Expr::If(ExprIf::new(cond, body, fallback, span))
+        Expr::If(Box::new(ExprIf::new(cond, body, fallback, span)))
     });
 
     alt((if_else, imply))(input)
@@ -62,8 +61,7 @@ fn imply(input: Tokens) -> IResult<Partial<Expr>> {
             lhs.flat_map(|lhs| {
                 rhs.map(|rhs| {
                     let span = Span::merge(lhs.span(), rhs.span());
-                    let expr = ExprBinary::new(BinaryOp::Impl, Box::new(lhs), Box::new(rhs), span);
-                    Expr::Binary(expr)
+                    Expr::Binary(Box::new(ExprBinary::new(BinaryOp::Impl, lhs, rhs, span)))
                 })
             })
         })
@@ -77,8 +75,7 @@ fn and(input: Tokens) -> IResult<Partial<Expr>> {
             lhs.flat_map(|lhs| {
                 rhs.map(|rhs| {
                     let span = Span::merge(lhs.span(), rhs.span());
-                    let expr = ExprBinary::new(BinaryOp::And, Box::new(lhs), Box::new(rhs), span);
-                    Expr::Binary(expr)
+                    Expr::Binary(Box::new(ExprBinary::new(BinaryOp::And, lhs, rhs, span)))
                 })
             })
         })
@@ -92,8 +89,7 @@ fn or(input: Tokens) -> IResult<Partial<Expr>> {
             lhs.flat_map(|lhs| {
                 rhs.map(|rhs| {
                     let span = Span::merge(lhs.span(), rhs.span());
-                    let expr = ExprBinary::new(BinaryOp::Or, Box::new(lhs), Box::new(rhs), span);
-                    Expr::Binary(expr)
+                    Expr::Binary(Box::new(ExprBinary::new(BinaryOp::Or, lhs, rhs, span)))
                 })
             })
         })
@@ -109,8 +105,7 @@ fn equality(input: Tokens) -> IResult<Partial<Expr>> {
         Some((op, rhs)) => lhs.flat_map(|lhs| {
             rhs.map(|rhs| {
                 let span = Span::merge(lhs.span(), rhs.span());
-                let expr = ExprBinary::new(op, Box::new(lhs), Box::new(rhs), span);
-                Expr::Binary(expr)
+                Expr::Binary(Box::new(ExprBinary::new(op, lhs, rhs, span)))
             })
         }),
     })(input)
@@ -127,8 +122,7 @@ fn compare(input: Tokens) -> IResult<Partial<Expr>> {
         Some((op, rhs)) => lhs.flat_map(|lhs| {
             rhs.map(|rhs| {
                 let span = Span::merge(lhs.span(), rhs.span());
-                let expr = ExprBinary::new(op, Box::new(lhs), Box::new(rhs), span);
-                Expr::Binary(expr)
+                Expr::Binary(Box::new(ExprBinary::new(op, lhs, rhs, span)))
             })
         }),
     })(input)
@@ -142,8 +136,7 @@ fn update(input: Tokens) -> IResult<Partial<Expr>> {
             let last = exprs.pop().unwrap();
             exprs.into_iter().rev().fold(last, |lhs, rhs| {
                 let span = Span::merge(rhs.span(), lhs.span());
-                let expr = ExprBinary::new(BinaryOp::Update, Box::new(rhs), Box::new(lhs), span);
-                Expr::Binary(expr)
+                Expr::Binary(Box::new(ExprBinary::new(BinaryOp::Update, lhs, rhs, span)))
             })
         })
     })(input)
@@ -158,8 +151,7 @@ fn sum(input: Tokens) -> IResult<Partial<Expr>> {
             lhs.flat_map(|lhs| {
                 rhs.map(|rhs| {
                     let span = Span::merge(lhs.span(), rhs.span());
-                    let expr = ExprBinary::new(op, Box::new(lhs), Box::new(rhs), span);
-                    Expr::Binary(expr)
+                    Expr::Binary(Box::new(ExprBinary::new(op, lhs, rhs, span)))
                 })
             })
         })
@@ -175,8 +167,7 @@ fn product(input: Tokens) -> IResult<Partial<Expr>> {
             lhs.flat_map(|lhs| {
                 rhs.map(|rhs| {
                     let span = Span::merge(lhs.span(), rhs.span());
-                    let expr = ExprBinary::new(op, Box::new(lhs), Box::new(rhs), span);
-                    Expr::Binary(expr)
+                    Expr::Binary(Box::new(ExprBinary::new(op, lhs, rhs, span)))
                 })
             })
         })
@@ -191,8 +182,7 @@ fn concat(input: Tokens) -> IResult<Partial<Expr>> {
             let last = exprs.pop().unwrap();
             exprs.into_iter().rev().fold(last, |lhs, rhs| {
                 let span = Span::merge(rhs.span(), lhs.span());
-                let expr = ExprBinary::new(BinaryOp::Concat, Box::new(rhs), Box::new(lhs), span);
-                Expr::Binary(expr)
+                Expr::Binary(Box::new(ExprBinary::new(BinaryOp::Concat, lhs, rhs, span)))
             })
         })
     })(input)
@@ -203,7 +193,7 @@ fn unary(input: Tokens) -> IResult<Partial<Expr>> {
     let not = map(tokens::op_not, |_| UnaryOp::Not);
     let unary = pair_partial(map(opt(alt((neg, not))), Partial::from), fn_app);
     let expr = map_partial_spanned(unary, |span, (unary, expr)| match unary {
-        Some(op) => Expr::Unary(ExprUnary::new(op, Box::new(expr), span)),
+        Some(op) => Expr::Unary(Box::new(ExprUnary::new(op, expr, span))),
         None => expr,
     });
     alt((expr, error))(input)
@@ -215,8 +205,7 @@ fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
             lhs.flat_map(|lhs| {
                 rhs.map(|rhs| {
                     let span = Span::merge(lhs.span(), rhs.span());
-                    let expr = ExprFnApp::new(Box::new(lhs), Box::new(rhs), span);
-                    Expr::FnApp(expr)
+                    Expr::FnApp(Box::new(ExprFnApp::new(lhs, rhs, span)))
                 })
             })
         })
@@ -230,21 +219,21 @@ fn project(input: Tokens) -> IResult<Partial<Expr>> {
         None => base,
         Some(path) => base.map(|base| {
             let span = Span::merge(base.span(), path.span());
-            Expr::Proj(ExprProj::new(Box::new(base), path, None, span))
+            Expr::Proj(Box::new(ExprProj::new(base, path, None, span)))
         }),
     })(input)
 }
 
 fn atomic(input: Tokens) -> IResult<Partial<Expr>> {
-    let paren = map_partial(atomic::paren, Expr::Paren);
-    let inter = map_partial(atomic::interpolation, Expr::Interpolation);
-    let set = map_partial(atomic::set, Expr::Set);
-    let rec_set = map_partial(atomic::rec_set, Expr::Rec);
-    let let_set = map_partial(atomic::let_set, Expr::Let);
-    let list = map_partial(atomic::list, Expr::List);
-    let string = map_partial(atomic::string, Expr::String);
-    let literal = map_partial(atomic::literal, Expr::Literal);
-    let ident = map_partial(atomic::identifier, Expr::Ident);
+    let paren = map_partial(atomic::paren, Expr::from);
+    let inter = map_partial(atomic::interpolation, Expr::from);
+    let set = map_partial(atomic::set, Expr::from);
+    let rec_set = map_partial(atomic::rec_set, Expr::from);
+    let let_set = map_partial(atomic::let_set, Expr::from);
+    let list = map_partial(atomic::list, Expr::from);
+    let string = map_partial(atomic::string, Expr::from);
+    let literal = map_partial(atomic::literal, Expr::from);
+    let ident = map_partial(atomic::identifier, Expr::from);
     alt((
         ident, paren, set, list, string, inter, literal, rec_set, let_set,
     ))(input)

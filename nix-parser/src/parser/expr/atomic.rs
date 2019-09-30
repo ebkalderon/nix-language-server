@@ -10,21 +10,19 @@ use crate::ast::{
     StringFragment,
 };
 use crate::lexer::{StringFragment as LexerFragment, Tokens};
-use crate::parser::partial::{
-    expect_terminated, many_till_partial, map_partial, map_partial_spanned, Partial,
-};
+use crate::parser::partial::{expect_terminated, many_till_partial, map_partial_spanned, Partial};
 use crate::parser::{tokens, IResult};
 
 pub fn paren(input: Tokens) -> IResult<Partial<ExprParen>> {
     let expr = terminated(expr, many0(tokens::comment));
     let paren = expect_terminated(preceded(tokens::paren_left, expr), tokens::paren_right);
-    map_partial_spanned(paren, |span, inner| ExprParen::new(Box::new(inner), span))(input)
+    map_partial_spanned(paren, |span, inner| ExprParen::new(inner, span))(input)
 }
 
 pub fn interpolation(input: Tokens) -> IResult<Partial<ExprInterpolation>> {
     let (remaining, (tokens, span)) = tokens::interpolation(input)?;
     let error = util::error_expr_if(tokens::brace_right, "right brace");
-    let (_, expr) = map_partial(alt((expr, error)), Box::new)(Tokens::new(&tokens))?;
+    let (_, expr) = alt((expr, error))(Tokens::new(&tokens))?;
     Ok((remaining, expr.map(|e| ExprInterpolation::new(e, span))))
 }
 
@@ -66,7 +64,7 @@ pub fn string(input: Tokens) -> IResult<Partial<ExprString>> {
             }
             LexerFragment::Interpolation(tokens, span) => {
                 let error = util::error_expr_if(tokens::brace_right, "right brace");
-                let (_, expr) = map_partial(alt((expr, error)), Box::new)(Tokens::new(&tokens))?;
+                let (_, expr) = alt((expr, error))(Tokens::new(&tokens))?;
                 parts.push(
                     expr.map(|expr| {
                         StringFragment::Interpolation(ExprInterpolation::new(expr, span))

@@ -20,8 +20,7 @@ pub fn fn_decl(input: Tokens) -> IResult<Partial<ExprFnDecl>> {
 
 fn simple(input: Tokens) -> IResult<Partial<FnDeclSimple>> {
     let expr = alt((expr, util::error_expr_if(tokens::eof, "<eof>")));
-    let simple = pair_partial(identifier_arg, map_partial(expr, Box::new));
-    map_partial(simple, |(ident, body)| {
+    map_partial(pair_partial(identifier_arg, expr), |(ident, body)| {
         let span = Span::merge(ident.span(), body.span());
         FnDeclSimple::new(ident, body, span)
     })(input)

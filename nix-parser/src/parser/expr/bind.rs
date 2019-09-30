@@ -26,8 +26,7 @@ fn simple(input: Tokens) -> IResult<Partial<BindSimple>> {
     let found = "one of `;` or `}`";
     let error = util::error_expr_if(alt((tokens::semi, tokens::brace_right)), found);
     let lhs = expect_terminated(attr::attr_path, tokens::eq);
-    let rhs = map_partial(alt((expr, error)), Box::new);
-    let bind = pair_partial(final_comment, pair_partial(lhs, rhs));
+    let bind = pair_partial(final_comment, pair_partial(lhs, alt((expr, error))));
 
     map_partial(bind, move |(comment, (attr, expr))| {
         let span = Span::merge(attr.span(), expr.span());
@@ -45,7 +44,7 @@ fn inherit_expr(input: Tokens) -> IResult<Partial<BindInheritExpr>> {
     let expr = expect_terminated(preceded(tokens::paren_left, inner), tokens::paren_right);
     let bind = preceded(tokens::keyword_inherit, pair_partial(expr, ident_sequence));
     map_partial_spanned(bind, |span, (expr, idents)| {
-        BindInheritExpr::new(Box::new(expr), idents, span)
+        BindInheritExpr::new(expr, idents, span)
     })(input)
 }
 

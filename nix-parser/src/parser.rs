@@ -63,9 +63,8 @@ pub fn parse_source_file_partial(source: &str) -> Result<Partial<SourceFile>, Er
     let tokens = lexer.tokens();
     let errors = lexer.errors().clone();
 
-    let comment = map(opt(tokens::comment), Partial::from);
-    let expr = map_partial(expr::expr, Box::new);
-    let source_file = map_partial(pair_partial(comment, expr), |(c, e)| SourceFile::new(c, e));
+    let expr = pair_partial(map(opt(tokens::comment), Partial::from), expr::expr);
+    let source_file = map_partial(expr, |(comment, expr)| SourceFile::new(comment, expr));
     let mut partial = match all_consuming(terminated(source_file, tokens::eof))(tokens) {
         Ok((_, partial)) => partial,
         Err(nom::Err::Incomplete(_)) => panic!("file was incomplete"),

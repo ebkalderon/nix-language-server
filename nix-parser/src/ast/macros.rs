@@ -163,14 +163,14 @@ macro_rules! nix_bind {
     }};
 
     (inherit ($($expr:tt)+) $($names:ident)+) => {{
-        let expr = Box::new($crate::nix!($($expr)+));
+        let expr = $crate::nix!($($expr)+);
         let names = vec![$($crate::nix_token!($names)),+];
         Bind::InheritExpr(BindInheritExpr::new(expr, names, Default::default()))
     }};
 
     ($($name:ident).+ = $($expr:tt)+) => {{
         let attr = AttrPath::new(vec![$(AttrSegment::Ident(Ident::from(stringify!($name)))),+]);
-        let expr = Box::new($crate::nix!($($expr)+));
+        let expr = $crate::nix!($($expr)+);
         Bind::Simple(BindSimple::new(None, attr, expr, Default::default()))
     }};
 }
@@ -253,11 +253,11 @@ macro_rules! nix_expr {
 #[macro_export]
 macro_rules! unary {
     (@rule - $($expr:tt)+) => {
-        Expr::Unary(ExprUnary::new(UnaryOp::Neg, Box::new($crate::atomic!($($expr)+)), Default::default()))
+        Expr::Unary(Box::new(ExprUnary::new(UnaryOp::Neg, $crate::atomic!($($expr)+), Default::default())))
     };
 
     (@rule ! $($expr:tt)+) => {
-        Expr::Unary(ExprUnary::new(UnaryOp::Not, Box::new($crate::atomic!($($expr)+)), Default::default()))
+        Expr::Unary(Box::new(ExprUnary::new(UnaryOp::Not, $crate::atomic!($($expr)+), Default::default())))
     };
 
     (@rule $($expr:tt)+) => {

@@ -11,7 +11,6 @@ use std::vec::IntoIter;
 use codespan::{FileId, Span};
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use nom::error::{ErrorKind, ParseError};
-use nom::IResult;
 
 use crate::ToSpan;
 
@@ -213,34 +212,5 @@ impl ToDiagnostic for Error {
                 Diagnostic::new_error(msg.clone(), label)
             }
         }
-    }
-}
-
-/// Combinator which converts an underlying `nom` error, if any, into a custom parse error.
-pub fn map_err<I, O, P, F, E>(parser: P, op: F) -> impl Fn(I) -> IResult<I, O, Errors>
-where
-    P: Fn(I) -> IResult<I, O, Errors>,
-    F: Fn(Span, &str, ErrorKind) -> E,
-    E: Into<Error>,
-{
-    move |input| match parser(input) {
-        Ok(output) => Ok(output),
-        Err(nom::Err::Error(mut err)) => {
-            if let Some((span, frag, kind)) = err.last().and_then(|e| e.as_nom_error()) {
-                let new_err = op(span, frag, kind);
-                err.pop();
-                err.push(new_err);
-            }
-            Err(nom::Err::Error(err))
-        }
-        Err(nom::Err::Failure(mut err)) => {
-            if let Some((span, frag, kind)) = err.last().and_then(|e| e.as_nom_error()) {
-                let new_err = op(span, frag, kind);
-                err.pop();
-                err.push(new_err);
-            }
-            Err(nom::Err::Failure(err))
-        }
-        Err(err) => Err(err),
     }
 }

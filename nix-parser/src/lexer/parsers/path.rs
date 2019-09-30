@@ -37,12 +37,12 @@ pub fn path(input: LocatedSpan) -> IResult<Token> {
 
 fn normal_path_regex<'a>() -> &'a Regex {
     static PATH: OnceCell<Regex> = OnceCell::new();
-    PATH.get_or_init(|| Regex::new(r#"\A[a-zA-Z0-9\._\-\+]*(/[a-zA-Z0-9\._\-\+]+)+/?"#).unwrap())
+    PATH.get_or_init(|| Regex::new(r#"^[a-zA-Z0-9\._\-\+]*(/[a-zA-Z0-9\._\-\+]+)+/?"#).unwrap())
 }
 
 fn home_path_regex<'a>() -> &'a Regex {
     static PATH: OnceCell<Regex> = OnceCell::new();
-    PATH.get_or_init(|| Regex::new(r#"\A\~(/[a-zA-Z0-9\._\-\+]+)+/?"#).unwrap())
+    PATH.get_or_init(|| Regex::new(r#"^\~(/[a-zA-Z0-9\._\-\+]+)+/?"#).unwrap())
 }
 
 pub fn path_template(input: LocatedSpan) -> IResult<Token> {

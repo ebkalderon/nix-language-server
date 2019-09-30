@@ -15,7 +15,7 @@ use crate::ToSpan;
 pub fn float(input: LocatedSpan) -> IResult<Token> {
     static REGEX: OnceCell<Regex> = OnceCell::new();
     let regex = REGEX.get_or_init(|| {
-        Regex::from_str(r#"\A(([1-9][0-9]*\.[0-9]*)|(0?\.[0-9]+))([Ee][+-]?[0-9]+)?"#).unwrap()
+        Regex::from_str(r#"^(([1-9][0-9]*\.[0-9]*)|(0?\.[0-9]+))([Ee][+-]?[0-9]+)?"#).unwrap()
     });
 
     if let Some(m) = regex.find(input.fragment) {

@@ -48,19 +48,18 @@ impl Lexer {
                 errors.push(Error::Message(Span::initial(), message));
                 Err(errors)
             }
-            Ok((_, mut tokens)) => {
+            Ok((_, tokens)) => {
+                let (mut tokens, mut errors) = filter_unexpected_tokens(tokens);
+
                 let end = input.fragment.len().saturating_sub(1) as u32;
                 let eof_span = Span::new(end, end);
 
                 let only_comments = tokens.iter().all(|t| t.is_comment());
                 let errors = if tokens.is_empty() || only_comments {
-                    let mut errors = Errors::new();
                     let message = "Nix expressions must resolve to a value".to_string();
                     errors.push(Error::Message(Span::initial(), message));
                     return Err(errors);
                 } else {
-                    let (valid, mut errors) = filter_unexpected_tokens(tokens);
-                    tokens = valid;
                     errors.extend(check_delims_balanced(&tokens, eof_span));
                     errors
                 };

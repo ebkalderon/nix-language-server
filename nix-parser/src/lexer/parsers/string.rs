@@ -66,23 +66,21 @@ where
                 fragments.push(StringFragment::Interpolation(tokens, span));
             } else {
                 let boundary = alt((&delimiter, punct_interpolate));
-                let (input, string) = if is_multiline {
-                    recognize(many_till(anychar, peek(boundary)))(remaining)?
+                let (string, span) = if is_multiline {
+                    let (input, string) = recognize(many_till(anychar, peek(boundary)))(remaining)?;
+                    let lines: Vec<_> = split_lines_without_indentation(string).collect();
+                    remaining = input;
+                    (lines.join("\n"), string.to_span())
                 } else {
                     let escape = recognize(pair(tag("\\"), one_of("\\\"$")));
                     let chars = alt((escape, recognize(anychar)));
-                    recognize(many_till(chars, peek(boundary)))(remaining)?
-                };
-                remaining = input;
-
-                let escaped = if is_multiline {
-                    let lines: Vec<_> = split_lines_without_indentation(string).collect();
-                    lines.join("\n")
-                } else {
-                    ESCAPE_CODES.replace_all(string.fragment, "$code").into()
+                    let (input, string) = recognize(many_till(chars, peek(boundary)))(remaining)?;
+                    remaining = input;
+                    let escaped = ESCAPE_CODES.replace_all(string.fragment, "$code").into();
+                    (escaped, string.to_span())
                 };
 
-                fragments.push(StringFragment::Literal(escaped, string.to_span()));
+                fragments.push(StringFragment::Literal(string, span));
             }
         }
 

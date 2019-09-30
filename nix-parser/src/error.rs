@@ -203,7 +203,7 @@ impl ToDiagnostic for Error {
             Error::UnclosedDelim(ref e) => e.to_diagnostic(file),
             Error::Nom(ref span, ref _frag, ref kind) => {
                 let label = Label::new(file, *span, self.to_string());
-                let mut diag = Diagnostic::new_error(format!("nom error: {:?}", kind), label);
+                let mut diag = Diagnostic::new_bug(format!("nom error: {:?}", kind), label);
                 let note = "note: this indicates an unhandled case in the parser".to_string();
                 diag.notes.push(note);
                 diag

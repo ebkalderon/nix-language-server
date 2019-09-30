@@ -9,7 +9,6 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 use super::{punct_interpolate, punct_quote_double, punct_quote_single};
-use crate::error::Errors;
 use crate::lexer::util::split_lines_without_indentation;
 use crate::lexer::{token, IResult, LocatedSpan, StringFragment, Token};
 use crate::ToSpan;

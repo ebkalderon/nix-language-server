@@ -1,7 +1,7 @@
 use nom::bytes::complete::{take_while, take_while1};
 use nom::character::complete::{anychar, char};
 use nom::combinator::{map_res, recognize, verify};
-use nom::sequence::{pair, terminated, tuple};
+use nom::sequence::{pair, tuple};
 use url::Url;
 
 use crate::lexer::util::map_spanned;

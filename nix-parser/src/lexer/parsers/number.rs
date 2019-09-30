@@ -3,7 +3,6 @@ use std::str::FromStr;
 use nom::character::complete::digit1;
 use nom::combinator::map_res;
 use nom::error::ErrorKind;
-use nom::sequence::terminated;
 use nom::Slice;
 use once_cell::sync::OnceCell;
 use regex::Regex;

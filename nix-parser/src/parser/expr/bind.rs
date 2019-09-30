@@ -7,7 +7,7 @@ use nom::sequence::preceded;
 use super::{attr, expr, util};
 use crate::ast::tokens::{Comment, Ident};
 use crate::ast::{Bind, BindInherit, BindInheritExpr, BindSimple};
-use crate::error::{Error, Errors, UnexpectedError};
+use crate::error::{Error, Errors};
 use crate::lexer::Tokens;
 use crate::parser::partial::{
     expect_terminated, map_partial, map_partial_spanned, pair_partial, Partial,

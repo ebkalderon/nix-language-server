@@ -2,7 +2,6 @@ pub use self::partial::Partial;
 
 use std::str::FromStr;
 
-use codespan::Span;
 use nom::combinator::{all_consuming, map, opt};
 use nom::sequence::terminated;
 
@@ -10,7 +9,6 @@ use self::partial::{map_partial, pair_partial};
 use crate::ast::{Expr, SourceFile};
 use crate::error::Errors;
 use crate::lexer::{Lexer, Tokens};
-use crate::ToSpan;
 
 mod expr;
 mod partial;
@@ -79,18 +77,4 @@ pub fn parse_source_file_partial(source: &str) -> Result<Partial<SourceFile>, Er
 
     partial.extend_errors(errors);
     Ok(partial)
-}
-
-/// Combinator which behaves like `nom::combinator::map()`, except it also includes a `ByteSpan`
-/// based on the consumed input.
-fn map_spanned<'a, O1, O2, P, F>(parser: P, f: F) -> impl Fn(Tokens<'a>) -> IResult<O2>
-where
-    P: Fn(Tokens<'a>) -> IResult<O1>,
-    F: Fn(Span, O1) -> O2,
-{
-    move |input| {
-        let (remainder, value) = parser(input)?;
-        let span = Span::new(input.to_span().start(), remainder.to_span().start());
-        Ok((remainder, f(span, value)))
-    }
 }

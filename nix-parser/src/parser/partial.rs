@@ -2,10 +2,8 @@ use std::iter::FromIterator;
 
 use codespan::Span;
 use nom::bytes::complete::take;
-use nom::combinator::{cut, not};
-use nom::multi::many_till;
 use nom::sequence::terminated;
-use nom::{InputLength, Slice};
+use nom::InputLength;
 
 use super::{tokens, IResult};
 use crate::error::{Error, Errors};

@@ -1,20 +1,21 @@
 use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::take;
-use nom::combinator::map;
+use nom::multi::many0;
 use nom::sequence::terminated;
 
-use super::{attr, expr, util};
-use crate::ast::tokens::{Comment, Ident};
+use super::{expr, util};
+use crate::ast::tokens::Ident;
 use crate::ast::{ExprFnDecl, FnDeclFormals, FnDeclSimple, Formal};
-use crate::error::{Error, Errors, ExpectedFoundError};
+use crate::error::{Errors, ExpectedFoundError};
 use crate::lexer::Tokens;
-use crate::parser::partial::{expect_terminated, map_partial, pair_partial, Partial};
+use crate::parser::partial::{map_partial, pair_partial, Partial};
 use crate::parser::{tokens, IResult};
 use crate::{HasSpan, ToSpan};
 
 pub fn fn_decl(input: Tokens) -> IResult<Partial<ExprFnDecl>> {
-    map_partial(simple, ExprFnDecl::Simple)(input)
+    let simple = map_partial(simple, ExprFnDecl::Simple);
+    terminated(simple, many0(tokens::comment))(input)
 }
 
 fn simple(input: Tokens) -> IResult<Partial<FnDeclSimple>> {

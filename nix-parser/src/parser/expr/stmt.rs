@@ -1,6 +1,5 @@
 use nom::branch::alt;
-use nom::combinator::peek;
-use nom::sequence::{pair, preceded, tuple};
+use nom::sequence::preceded;
 
 use super::{bind, expr, util};
 use crate::ast::{ExprAssert, ExprLetIn, ExprWith};

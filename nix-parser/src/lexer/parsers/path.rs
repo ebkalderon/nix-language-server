@@ -1,11 +1,8 @@
 use std::path::PathBuf;
 
-use nom::branch::alt;
-use nom::bytes::complete::{take_while, take_while1};
+use nom::bytes::complete::take_while1;
 use nom::character::complete::char;
-use nom::combinator::{opt, recognize};
-use nom::multi::many1;
-use nom::sequence::{delimited, pair, tuple};
+use nom::sequence::delimited;
 use nom::Slice;
 use once_cell::sync::OnceCell;
 use regex::Regex;

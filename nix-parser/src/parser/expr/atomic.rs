@@ -60,16 +60,14 @@ pub fn string(input: Tokens) -> IResult<Partial<ExprString>> {
     for frag in fragments {
         match frag {
             LexerFragment::Literal(text, span) => {
-                parts.push(Partial::from(StringFragment::Literal(text, span)));
+                parts.push(Partial::from(StringFragment::Literal(text.clone(), *span)));
             }
             LexerFragment::Interpolation(tokens, span) => {
                 let error = util::error_expr_if(tokens::brace_right, "right brace");
-                let (_, expr) = alt((expr, error))(Tokens::new(&tokens))?;
-                parts.push(
-                    expr.map(|expr| {
-                        StringFragment::Interpolation(ExprInterpolation::new(expr, span))
-                    }),
-                );
+                let (_, expr) = alt((expr, error))(Tokens::new(tokens))?;
+                parts.push(expr.map(|expr| {
+                    StringFragment::Interpolation(ExprInterpolation::new(expr, *span))
+                }));
             }
         }
     }

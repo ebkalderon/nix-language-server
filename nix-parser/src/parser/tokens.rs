@@ -81,8 +81,8 @@ define_tokens! {
         expects: "integer",
     }
     interpolation {
-        returns: (Vec<Token>, Span),
-        parse: Token::Interpolation(ref tokens, ref span) => (tokens.clone(), *span),
+        returns: (&[Token], Span),
+        parse: Token::Interpolation(ref tokens, ref span) => (tokens.as_slice(), *span),
         expects: "interpolation",
     }
     path {
@@ -96,8 +96,8 @@ define_tokens! {
         expects: "path template",
     }
     string {
-        returns: (Vec<StringFragment>, Span),
-        parse: Token::String(ref frags, ref span) => (frags.clone(), *span),
+        returns: (&[StringFragment], Span),
+        parse: Token::String(ref frags, ref span) => (frags.as_slice(), *span),
         expects: "string",
     }
     uri {

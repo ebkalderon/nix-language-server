@@ -5,8 +5,8 @@ authors = ["Eyal Kalderon <ebkalderon@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-codespan = "0.4.1"
-codespan-lsp = "0.4.1"
+codespan = "0.5.0"
+codespan-lsp = "0.5.0"
 env_logger = "0.6.2"
 futures = "0.1.28"
 jsonrpc-core = "13.1"
@@ -15,7 +15,7 @@ nix-parser = { version = "0.1.0", path = "./nix-parser" }
 serde_json = "1.0.40"
 structopt = "0.2.18"
 tokio = "0.1.22"
-tower-lsp = "0.3.1"
+tower-lsp = "0.4.0"
 
 [profile.release]
 lto = true

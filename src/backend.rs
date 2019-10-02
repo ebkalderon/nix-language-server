@@ -39,10 +39,11 @@ impl LanguageServer for Nix {
     type ShutdownFuture = FutureResult<(), Error>;
     type SymbolFuture = FutureResult<Option<Vec<SymbolInformation>>, Error>;
     type ExecuteFuture = FutureResult<Option<Value>, Error>;
+    type CompletionFuture = FutureResult<Option<CompletionResponse>, Error>;
     type HoverFuture = BoxFuture<Option<Hover>>;
     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 
-    fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
@@ -75,6 +76,10 @@ impl LanguageServer for Nix {
     }
 
     fn execute_command(&self, _: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
+        future::ok(None)
+    }
+
+    fn completion(&self, _: CompletionParams) -> Self::CompletionFuture {
         future::ok(None)
     }
 

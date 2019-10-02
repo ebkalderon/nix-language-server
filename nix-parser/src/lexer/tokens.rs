@@ -1,25 +1,24 @@
+use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::iter::Enumerate;
 use std::ops::{Range, RangeFrom, RangeFull, RangeTo};
-use std::path::PathBuf;
 use std::slice;
 
 use codespan::Span;
 use nom::{InputIter, InputLength, InputTake, Slice};
-use url::Url;
 
 use crate::error::Error;
 use crate::ToSpan;
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct Tokens<'a> {
-    tokens: &'a [Token],
+    tokens: &'a [Token<'a>],
     start: usize,
     end: usize,
 }
 
 impl<'a> Tokens<'a> {
-    pub(crate) fn new(tokens: &'a [Token]) -> Self {
+    pub(crate) fn new(tokens: &'a [Token<'a>]) -> Self {
         Tokens {
             tokens,
             start: 0,
@@ -28,7 +27,7 @@ impl<'a> Tokens<'a> {
     }
 
     #[inline]
-    pub fn current(&self) -> &Token {
+    pub fn current(&self) -> &Token<'a> {
         &self.tokens[0]
     }
 }
@@ -82,9 +81,9 @@ impl<'a> InputTake for Tokens<'a> {
 }
 
 impl<'a> InputIter for Tokens<'a> {
-    type Item = &'a Token;
-    type Iter = Enumerate<slice::Iter<'a, Token>>;
-    type IterElem = slice::Iter<'a, Token>;
+    type Item = &'a Token<'a>;
+    type Iter = Enumerate<slice::Iter<'a, Token<'a>>>;
+    type IterElem = slice::Iter<'a, Token<'a>>;
 
     #[inline]
     fn iter_indices(&self) -> Self::Iter {
@@ -173,12 +172,12 @@ pub enum CommentKind {
 }
 
 #[derive(Clone, PartialEq)]
-pub enum StringFragment {
+pub enum StringFragment<'a> {
     Literal(String, Span),
-    Interpolation(Vec<Token>, Span),
+    Interpolation(Vec<Token<'a>>, Span),
 }
 
-impl Debug for StringFragment {
+impl<'a> Debug for StringFragment<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
             StringFragment::Literal(ref text, _) => {
@@ -192,22 +191,22 @@ impl Debug for StringFragment {
 }
 
 #[derive(Clone, PartialEq)]
-pub enum Token {
+pub enum Token<'a> {
     Eof(Span),
-    Unknown(String, Span, Error),
+    Unknown(Cow<'a, str>, Span, Error),
 
     // Literals
     Comment(String, CommentKind, Span),
-    Identifier(String, Span),
+    Identifier(Cow<'a, str>, Span),
     Null(Span),
     Boolean(bool, Span),
-    Float(f64, Span),
-    Integer(i64, Span),
-    Interpolation(Vec<Token>, Span),
-    Path(PathBuf, Span),
-    PathTemplate(PathBuf, Span),
-    String(Vec<StringFragment>, Span),
-    Uri(Url, Span),
+    Float(Cow<'a, str>, Span),
+    Integer(Cow<'a, str>, Span),
+    Interpolation(Vec<Token<'a>>, Span),
+    Path(Cow<'a, str>, Span),
+    PathTemplate(Cow<'a, str>, Span),
+    String(Vec<StringFragment<'a>>, Span),
+    Uri(Cow<'a, str>, Span),
 
     // Operators
     Add(Span),
@@ -259,7 +258,7 @@ pub enum Token {
     Semi(Span),
 }
 
-impl Token {
+impl<'a> Token<'a> {
     pub fn is_comment(&self) -> bool {
         match *self {
             Token::Comment(..) => true,
@@ -349,7 +348,7 @@ impl Token {
     }
 }
 
-impl Debug for Token {
+impl<'a> Debug for Token<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
             Token::Eof(_) => fmt.write_str("Eof"),
@@ -424,7 +423,7 @@ impl Debug for Token {
     }
 }
 
-impl ToSpan for Token {
+impl<'a> ToSpan for Token<'a> {
     fn to_span(&self) -> Span {
         match *self {
             Token::Eof(ref span) => *span,
@@ -491,7 +490,7 @@ impl ToSpan for Token {
     }
 }
 
-impl InputLength for Token {
+impl<'a> InputLength for Token<'a> {
     #[inline]
     fn input_len(&self) -> usize {
         1

@@ -1,8 +1,7 @@
 use nom::bytes::complete::{take_while, take_while1};
 use nom::character::complete::{anychar, char};
-use nom::combinator::{map_res, recognize, verify};
+use nom::combinator::{recognize, verify};
 use nom::sequence::{pair, tuple};
-use url::Url;
 
 use crate::lexer::util::map_spanned;
 use crate::lexer::{IResult, LocatedSpan, Token};
@@ -15,8 +14,7 @@ pub fn uri(input: LocatedSpan) -> IResult<Token> {
     let path = take_while1(|c: char| c.is_alphanumeric() || "%/?:@&=+$,-_.!~*'".contains(c));
     let uri = recognize(tuple((scheme, char(':'), path)));
 
-    let parsed = map_res(uri, |s: LocatedSpan| Url::parse(s.fragment));
-    map_spanned(parsed, |span, uri| Token::Uri(uri, span))(input)
+    map_spanned(uri, |span, uri| Token::Uri(uri.fragment.into(), span))(input)
 }
 
 #[cfg(test)]
@@ -28,7 +26,7 @@ mod tests {
     fn assert_uri_eq(string: &str) {
         let span = LocatedSpan::new(string);
         match all_consuming(uri)(span) {
-            Ok((_, Token::Uri(value, _))) => assert_eq!(value, string.parse().unwrap()),
+            Ok((_, Token::Uri(value, _))) => assert_eq!(value, string),
             Ok((_, token)) => panic!("parsing {:?} produced token: {:?}", string, token),
             Err(err) => panic!("parsing {:?} failed: {:?}", string, err),
         }

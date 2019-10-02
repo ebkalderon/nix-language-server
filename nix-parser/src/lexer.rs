@@ -31,13 +31,13 @@ impl<'a> ToSpan for LocatedSpan<'a> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Lexer {
-    tokens: Vec<Token>,
+pub struct Lexer<'a> {
+    tokens: Vec<Token<'a>>,
     errors: Errors,
 }
 
-impl Lexer {
-    pub fn new(s: &str) -> Result<Self, Errors> {
+impl<'a> Lexer<'a> {
+    pub fn new(s: &'a str) -> Result<Self, Errors> {
         let input = LocatedSpan::new(s);
         let tokens = many0(terminated(token, multispace0));
         match all_consuming(preceded(multispace0, tokens))(input) {

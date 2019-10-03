@@ -8,14 +8,14 @@ use nom::combinator::{all_consuming, map};
 use nom::multi::many0;
 use nom::sequence::{preceded, terminated};
 
-use self::parsers::{
+use self::lexers::{
     comment, identifier, interpolation, keyword, literal, operator, punctuation, string,
 };
 use self::util::check_delims_balanced;
 use crate::error::{Error, Errors, UnexpectedError};
 use crate::ToSpan;
 
-mod parsers;
+mod lexers;
 mod tokens;
 mod util;
 

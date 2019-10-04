@@ -1,21 +1,25 @@
 use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::take;
+use nom::combinator::{map, opt};
 use nom::multi::many0;
-use nom::sequence::terminated;
+use nom::sequence::{delimited, pair, preceded, terminated};
 
 use super::{expr, util};
 use crate::ast::tokens::Ident;
 use crate::ast::{ExprFnDecl, FnDeclFormals, FnDeclSimple, Formal};
 use crate::error::{Errors, ExpectedFoundError};
 use crate::lexer::Tokens;
-use crate::parser::partial::{map_partial, pair_partial, Partial};
+use crate::parser::partial::{
+    many_till_partial, map_partial, map_partial_spanned, pair_partial, verify_full, Partial,
+};
 use crate::parser::{tokens, IResult};
 use crate::{HasSpan, ToSpan};
 
 pub fn fn_decl(input: Tokens) -> IResult<Partial<ExprFnDecl>> {
     let simple = map_partial(simple, ExprFnDecl::Simple);
-    terminated(simple, many0(tokens::comment))(input)
+    let formals = map_partial(formals, ExprFnDecl::Formals);
+    terminated(alt((simple, formals)), many0(tokens::comment))(input)
 }
 
 fn simple(input: Tokens) -> IResult<Partial<FnDeclSimple>> {
@@ -23,6 +27,25 @@ fn simple(input: Tokens) -> IResult<Partial<FnDeclSimple>> {
     map_partial(pair_partial(identifier_arg, expr), |(ident, body)| {
         let span = Span::merge(ident.span(), body.span());
         FnDeclSimple::new(ident, body, span)
+    })(input)
+}
+
+fn formals(input: Tokens) -> IResult<Partial<FnDeclFormals>> {
+    let value = alt((expr, util::error_expr_if(tokens::comma, "comma")));
+    let default = opt(preceded(tokens::op_question, verify_full(value)));
+    let formal = map(pair(tokens::identifier, default), |(name, def)| {
+        let name_span = name.span();
+        let default_span = def.as_ref().map(|d| d.span()).unwrap_or(name_span);
+        Partial::from(Formal::new(name, def, Span::merge(name_span, default_span)))
+    });
+
+    let args = many_till_partial(terminated(formal, tokens::comma), tokens::brace_right);
+    let term = pair(tokens::brace_right, tokens::colon);
+    let formals = delimited(tokens::brace_left, args, term);
+
+    let expr = alt((expr, util::error_expr_if(tokens::eof, "<eof>")));
+    map_partial_spanned(pair_partial(formals, expr), |span, (formals, expr)| {
+        FnDeclFormals::new(formals, None, None, expr, span)
     })(input)
 }
 

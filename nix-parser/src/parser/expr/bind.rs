@@ -2,7 +2,7 @@ use codespan::Span;
 use nom::branch::alt;
 use nom::combinator::map;
 use nom::multi::many0;
-use nom::sequence::preceded;
+use nom::sequence::{pair, preceded};
 
 use super::{attr, expr, util};
 use crate::ast::tokens::{Comment, Ident};
@@ -44,14 +44,16 @@ fn simple(input: Tokens) -> IResult<Partial<BindSimple>> {
 }
 
 fn inherit(input: Tokens) -> IResult<Partial<BindInherit>> {
-    let bind = preceded(tokens::keyword_inherit, ident_sequence);
+    let keyword_inherit = pair(many0(tokens::comment), tokens::keyword_inherit);
+    let bind = preceded(keyword_inherit, ident_sequence);
     map_partial_spanned(bind, |span, idents| BindInherit::new(idents, span))(input)
 }
 
 fn inherit_expr(input: Tokens) -> IResult<Partial<BindInheritExpr>> {
+    let keyword_inherit = pair(many0(tokens::comment), tokens::keyword_inherit);
     let inner = alt((expr, util::error_expr_if(tokens::paren_right, "`}`")));
     let expr = expect_terminated(preceded(tokens::paren_left, inner), tokens::paren_right);
-    let bind = preceded(tokens::keyword_inherit, pair_partial(expr, ident_sequence));
+    let bind = preceded(keyword_inherit, pair_partial(expr, ident_sequence));
     map_partial_spanned(bind, |span, (expr, idents)| {
         BindInheritExpr::new(expr, idents, span)
     })(input)

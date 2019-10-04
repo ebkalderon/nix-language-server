@@ -7,7 +7,7 @@ use nom::sequence::preceded;
 use super::{attr, expr, util};
 use crate::ast::tokens::{Comment, Ident};
 use crate::ast::{Bind, BindInherit, BindInheritExpr, BindSimple};
-use crate::error::{Error, Errors};
+use crate::error::{Error, Errors, UnexpectedError};
 use crate::lexer::Tokens;
 use crate::parser::partial::{
     expect_terminated, map_partial, map_partial_spanned, pair_partial, Partial,
@@ -19,7 +19,16 @@ pub fn bind(input: Tokens) -> IResult<Partial<Bind>> {
     let inherit_expr = map_partial(inherit_expr, Bind::InheritExpr);
     let inherit = map_partial(inherit, Bind::Inherit);
     let simple = map_partial(simple, Bind::Simple);
-    expect_terminated(alt((inherit_expr, inherit, simple)), tokens::semi)(input)
+    match expect_terminated(alt((inherit_expr, inherit, simple)), tokens::semi)(input) {
+        Ok(output) => Ok(output),
+        Err(_) => {
+            let mut errors = Errors::new();
+            let description = input.current().description();
+            let span = input.current().to_span();
+            errors.push(UnexpectedError::new(description, span));
+            Err(nom::Err::Error(errors))
+        }
+    }
 }
 
 fn simple(input: Tokens) -> IResult<Partial<BindSimple>> {

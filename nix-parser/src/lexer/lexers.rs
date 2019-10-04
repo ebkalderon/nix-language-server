@@ -4,9 +4,8 @@ use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::{is_a, tag};
 use nom::character::complete::{
-    alpha1, alphanumeric1, char, line_ending, multispace0, not_line_ending, space0,
+    alpha1, alphanumeric1, char, line_ending, multispace0, not_line_ending, one_of, space0,
 };
-
 use nom::combinator::{map, not, peek, recognize};
 use nom::multi::{many0, many1, separated_nonempty_list};
 use nom::sequence::{pair, preceded, terminated, tuple};
@@ -122,7 +121,8 @@ macro_rules! define_keywords {
         $(
             fn $function(input: LocatedSpan) -> IResult<Token> {
                 let keyword = map(tag($keyword), |s: LocatedSpan| Token::$variant(s.to_span()));
-                terminated(keyword, peek(not(alpha1)))(input)
+                let boundary = alt((alphanumeric1, recognize(one_of("_-'"))));
+                terminated(keyword, peek(not(boundary)))(input)
             }
         )+
     };

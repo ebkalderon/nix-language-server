@@ -71,13 +71,13 @@ define_tokens! {
     }
     float {
         returns: Literal,
-        parse: Token::Float(ref value, ref span) => Literal::from((f64::from_str(&value).unwrap(), *span)),
+        parse: Token::Float(ref value, ref span) => Literal::from((lexical_core::parse::<f64>(value.as_bytes()).unwrap(), *span)),
         expects: "floating-point number",
     }
 
     integer {
         returns: Literal,
-        parse: Token::Integer(ref value, ref span) => Literal::from((i64::from_str(&value).unwrap(), *span)),
+        parse: Token::Integer(ref value, ref span) => Literal::from((lexical_core::parse::<i64>(value.as_bytes()).unwrap(), *span)),
         expects: "integer",
     }
     interpolation {

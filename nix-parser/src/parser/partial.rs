@@ -202,20 +202,6 @@ impl<T> FromIterator<Partial<T>> for Partial<Vec<T>> {
     }
 }
 
-// pub fn expect<'a, O, P>(parser: P) -> impl Fn(Tokens<'a>) -> IResult<Partial<O>>
-// where
-//     P: Fn(Tokens<'a>) -> IResult<O>,
-// {
-//     move |input| match parser(input) {
-//         Ok((remaining, partial)) => Ok((remaining, partial)),
-//         Err(nom::Err::Error(err)) => {
-//             let partial = Partial::with_errors(None, err);
-//             Ok((input, partial))
-//         }
-//         Err(err) => Err(err),
-//     }
-// }
-
 /// Combinator which runs the given partial parser and then expects on a terminator.
 ///
 /// If the terminator is missing, an unclosed delimiter error will be appended to the `Partial`,
@@ -279,33 +265,6 @@ where
         Ok((remainder, partial.map(|p| f(span, p))))
     }
 }
-
-///// Combinator for handling fallback cases for partial parsers.
-/////
-///// If the given partial parser succeeds, parsing continues like normal. If it fails, this
-///// combinator skips up to and including the location described by `skip_to` and appends `error` to
-///// the partial value.
-/////
-///// This combinator is useful for handling fallback cases where `partial` was given a totally
-///// invalid expression which it cannot recover from.
-//pub fn skip_if_err<'a, O1, O2, F, G>(
-//    partial: F,
-//    skip_to: G,
-//) -> impl Fn(Tokens<'a>) -> IResult<Partial<O1>>
-//where
-//    F: Fn(Tokens<'a>) -> IResult<Partial<O1>>,
-//    G: Fn(Tokens<'a>) -> IResult<O2>,
-//{
-//    move |input| match partial(input) {
-//        Ok((remaining, value)) => Ok((remaining, value)),
-//        Err(nom::Err::Failure(e)) | Err(nom::Err::Error(e)) => {
-//            let (remaining, failed) = recognize(many_till(anychar, &skip_to))(input)?;
-//            let partial = Partial::with_errors(None, e);
-//            Ok((remaining, partial))
-//        }
-//        Err(e) => Err(e),
-//    }
-//}
 
 /// Combinator which applies the partial parser `f` until the parser `g` produces a result,
 /// returning a `Partial<Vec<_>>` of the results of `f`.

@@ -2,7 +2,7 @@ use std::iter::FromIterator;
 
 use codespan::Span;
 use nom::bytes::complete::take;
-use nom::sequence::terminated;
+use nom::sequence::{preceded, terminated};
 use nom::InputLength;
 
 use super::{tokens, IResult};
@@ -374,6 +374,78 @@ where
         let (input, f) = first(input)?;
         let (remaining, g) = second(input)?;
         Ok((remaining, f.flat_map(|f| g.map(|g| (f, g)))))
+    }
+}
+
+/// Combinator which produces a list of partial elements `f` separated by parser `sep`.
+///
+/// This parser behaves like `nom::multi::separated_list`, except that it expects some terminator
+/// `term` at the end of the list so it knows when to soft-bail.
+///
+/// If the terminator is missing, an unclosed delimiter error will be appended to the `Partial`,
+/// and parsing will be allowed to continue as through the terminator existed.
+///
+/// This parser is essentially shorthand for:
+///
+/// ```rust,ignore
+/// let (remaining, (first, rest)) = pair(&f, many_till_partial(preceded(sep, &f), term))(input)?;
+/// let partial = first.flat_map(|f| rest.map(|r| std::iter::once(f).chain(r).collect()));
+/// ```
+pub fn separated_list_partial<'a, O1, O2, O3, F, G, H>(
+    sep: G,
+    term: H,
+    f: F,
+) -> impl Fn(Tokens<'a>) -> IResult<Partial<Vec<O1>>>
+where
+    F: Fn(Tokens<'a>) -> IResult<Partial<O1>>,
+    G: Fn(Tokens<'a>) -> IResult<O2>,
+    H: Fn(Tokens<'a>) -> IResult<O3>,
+{
+    move |input| {
+        let mut partials = Vec::new();
+        let mut errors = Errors::new();
+        let mut input = input.clone();
+
+        match f(input) {
+            Err(nom::Err::Error(_)) => return Ok((input, partials.into_iter().collect())),
+            Err(nom::Err::Failure(err)) => {
+                return Err(nom::Err::Error(err));
+            }
+            Err(err) => return Err(err),
+            Ok((remaining, partial)) => {
+                input = remaining;
+                partials.push(partial);
+            }
+        }
+
+        loop {
+            match term(input) {
+                Ok(_) => {
+                    let mut partial: Partial<_> = partials.into_iter().collect();
+                    partial.extend_errors(errors);
+                    return Ok((input, partial));
+                }
+                Err(nom::Err::Failure(_)) | Err(nom::Err::Error(_)) => {
+                    match preceded(&sep, &f)(input) {
+                        Err(nom::Err::Failure(err)) | Err(nom::Err::Error(err)) => {
+                            if tokens::eof(input).is_ok() {
+                                let partial: Partial<_> = partials.into_iter().collect();
+                                return Ok((input, partial));
+                            } else if let Ok((remainder, _)) = take::<_, _, Errors>(1usize)(input) {
+                                errors.extend(err);
+                                input = remainder;
+                            }
+                        }
+                        Err(err) => return Err(err),
+                        Ok((remainder, elem)) => {
+                            partials.push(elem);
+                            input = remainder;
+                        }
+                    }
+                }
+                Err(err) => return Err(err),
+            }
+        }
     }
 }
 

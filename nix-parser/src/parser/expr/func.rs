@@ -11,7 +11,7 @@ use crate::ast::{ExprFnDecl, FnDeclFormals, FnDeclSimple, Formal};
 use crate::error::{Errors, ExpectedFoundError};
 use crate::lexer::Tokens;
 use crate::parser::partial::{
-    many_till_partial, map_partial, map_partial_spanned, pair_partial, verify_full, Partial,
+    map_partial, map_partial_spanned, pair_partial, separated_list_partial, verify_full, Partial,
 };
 use crate::parser::{tokens, IResult};
 use crate::{HasSpan, ToSpan};
@@ -39,7 +39,8 @@ fn formals(input: Tokens) -> IResult<Partial<FnDeclFormals>> {
         Partial::from(Formal::new(name, def, Span::merge(name_span, default_span)))
     });
 
-    let args = many_till_partial(terminated(formal, tokens::comma), tokens::brace_right);
+    let term = pair(tokens::brace_right, tokens::colon);
+    let args = separated_list_partial(tokens::comma, term, formal);
     let term = pair(tokens::brace_right, tokens::colon);
     let formals = delimited(tokens::brace_left, args, term);
 

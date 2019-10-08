@@ -1356,7 +1356,7 @@ impl Display for FnDeclFormals {
             .as_ref()
             .map(|ident| format!("@{}", ident))
             .unwrap_or_default();
-        write!(fmt, "{{{}}}{}:", args.join(", "), extra)
+        write!(fmt, "{{{}}}{}: {}", args.join(", "), extra, self.body)
     }
 }
 

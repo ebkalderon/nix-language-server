@@ -1,6 +1,6 @@
+use std::i64;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::{f64, i64};
 
 use codespan::Span;
 use nom::bytes::complete::take;
@@ -77,7 +77,7 @@ define_tokens! {
 
     integer {
         returns: Literal,
-        parse: Token::Integer(ref value, ref span) => Literal::from((lexical_core::parse::<i64>(value.as_bytes()).unwrap(), *span)),
+        parse: Token::Integer(ref value, ref span) => Literal::from((i64::from_str(&value).unwrap(), *span)),
         expects: "integer",
     }
     interpolation {

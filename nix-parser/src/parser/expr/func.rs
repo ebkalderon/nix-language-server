@@ -39,8 +39,7 @@ fn formals(input: Tokens) -> IResult<Partial<FnDeclFormals>> {
         Partial::from(Formal::new(name, def, Span::merge(name_span, default_span)))
     });
 
-    let term = pair(tokens::brace_right, tokens::colon);
-    let args = separated_list_partial(tokens::comma, term, formal);
+    let args = separated_list_partial(tokens::comma, tokens::brace_right, formal);
     let term = pair(tokens::brace_right, tokens::colon);
     let formals = delimited(tokens::brace_left, args, term);
 

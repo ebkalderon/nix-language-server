@@ -7,6 +7,9 @@ use crate::parser::partial::Partial;
 use crate::parser::IResult;
 use crate::ToSpan;
 
+/// parser transformer that peeks for a reasonable termination token and
+/// provides designated grammatical hint `found` and hint for expected
+/// "expression" grammatical tokens
 pub fn error_expr_if<'a, O, F>(
     parser: F,
     found: &'a str,

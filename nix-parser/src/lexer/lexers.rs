@@ -95,7 +95,7 @@ pub fn interpolation(input: LocatedSpan) -> IResult<Token> {
         }
     }
 
-    let span = Span::merge(input.to_span(), remaining.to_span());
+    let span = Span::new(input.offset as u32, remaining.offset as u32);
     Ok((remaining, Token::Interpolation(tokens, span)))
 }
 

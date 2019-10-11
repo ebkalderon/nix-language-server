@@ -6,9 +6,10 @@ use nom::sequence::{pair, preceded, terminated};
 use super::{bind, expr, unary, util};
 use crate::ast::tokens::{Ident, Literal};
 use crate::ast::{
-    Bind, ExprInterpolation, ExprLet, ExprList, ExprParen, ExprRec, ExprSet, ExprString,
+    Bind, Expr, ExprInterpolation, ExprLet, ExprList, ExprParen, ExprRec, ExprSet, ExprString,
     StringFragment,
 };
+use crate::error::{Error, Errors};
 use crate::lexer::{StringFragment as LexerFragment, Tokens};
 use crate::parser::partial::{expect_terminated, many_till_partial, map_partial_spanned, Partial};
 use crate::parser::{tokens, IResult};
@@ -21,8 +22,15 @@ pub fn paren(input: Tokens) -> IResult<Partial<ExprParen>> {
 
 pub fn interpolation(input: Tokens) -> IResult<Partial<ExprInterpolation>> {
     let (remaining, (tokens, span)) = tokens::interpolation(input)?;
-    let error = util::error_expr_if(tokens::brace_right, "right brace");
-    let (_, expr) = alt((expr, error))(Tokens::new(&tokens))?;
+    let expr = if tokens.is_empty() {
+        let mut errors = Errors::new();
+        errors.push(Error::Message(span, "interpolation cannot be empty".into()));
+        Partial::with_errors(Some(Expr::Error(span)), errors)
+    } else {
+        let (_, expr) = expr(Tokens::new(&tokens))?;
+        expr
+    };
+
     Ok((remaining, expr.map(|e| ExprInterpolation::new(e, span))))
 }
 

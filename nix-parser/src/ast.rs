@@ -279,8 +279,17 @@ impl ExprList {
 
 impl Display for ExprList {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let elems: Vec<_> = self.elems.iter().map(ToString::to_string).collect();
-        write!(fmt, "[{}]", elems.join(" "))
+        write!(fmt, "[")?;
+
+        for (i, elem) in self.elems.iter().enumerate() {
+            if i == 0 {
+                write!(fmt, "{}", elem)?;
+            } else {
+                write!(fmt, ", {}", elem)?;
+            }
+        }
+
+        write!(fmt, "]")
     }
 }
 
@@ -320,8 +329,17 @@ impl ExprSet {
 
 impl Display for ExprSet {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let binds: Vec<_> = self.binds.iter().map(ToString::to_string).collect();
-        write!(fmt, "{{{}}}", binds.join(" "))
+        write!(fmt, "{{")?;
+
+        for (i, bind) in self.binds.iter().enumerate() {
+            if i == 0 {
+                write!(fmt, "{}", bind)?;
+            } else {
+                write!(fmt, " {}", bind)?;
+            }
+        }
+
+        write!(fmt, "}}")
     }
 }
 
@@ -354,10 +372,15 @@ impl ExprString {
 
 impl Display for ExprString {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        write!(fmt, "\"")?;
+
         // FIXME: Should record whether this string is a single or multi string so we can properly
         // escape the string here.
-        let segments: Vec<_> = self.0.iter().map(ToString::to_string).collect();
-        write!(fmt, "\"{}\"", segments.concat())
+        for segment in &self.0 {
+            write!(fmt, "{}", segment)?;
+        }
+
+        write!(fmt, "\"")
     }
 }
 
@@ -683,8 +706,17 @@ impl BindInherit {
 
 impl Display for BindInherit {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let names: Vec<_> = self.names.iter().map(ToString::to_string).collect();
-        write!(fmt, "inherit {};", names.join(" "))
+        write!(fmt, "inherit ")?;
+
+        for (i, name) in self.names.iter().enumerate() {
+            if i == 0 {
+                write!(fmt, "{}", name)?;
+            } else {
+                write!(fmt, " {}", name)?;
+            }
+        }
+
+        write!(fmt, ";")
     }
 }
 
@@ -723,8 +755,17 @@ impl BindInheritExpr {
 
 impl Display for BindInheritExpr {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let names: Vec<_> = self.names.iter().map(ToString::to_string).collect();
-        write!(fmt, "inherit ({}) {};", self.expr, names.join(" "))
+        write!(fmt, "inherit ({})", self.expr)?;
+
+        for (i, name) in self.names.iter().enumerate() {
+            if i == 0 {
+                write!(fmt, "{}", name)?;
+            } else {
+                write!(fmt, " {}", name)?;
+            }
+        }
+
+        write!(fmt, ";")
     }
 }
 
@@ -758,8 +799,17 @@ impl ExprLet {
 
 impl Display for ExprLet {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let binds: Vec<_> = self.binds.iter().map(ToString::to_string).collect();
-        write!(fmt, "let {{{}}}", binds.join(" "))
+        write!(fmt, "let {{")?;
+
+        for (i, bind) in self.binds.iter().enumerate() {
+            if i == 0 {
+                write!(fmt, "{}", bind)?;
+            } else {
+                write!(fmt, " {}", bind)?;
+            }
+        }
+
+        write!(fmt, "}}")
     }
 }
 
@@ -1176,8 +1226,17 @@ impl ExprLetIn {
 
 impl Display for ExprLetIn {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let binds: Vec<_> = self.binds.iter().map(ToString::to_string).collect();
-        write!(fmt, "let {} in {}", binds.join(" "), self.body)
+        write!(fmt, "let ")?;
+
+        for (i, bind) in self.binds.iter().enumerate() {
+            if i == 0 {
+                write!(fmt, "{}", bind)?;
+            } else {
+                write!(fmt, " {}", bind)?;
+            }
+        }
+
+        write!(fmt, "in {}", self.body)
     }
 }
 
@@ -1345,18 +1404,29 @@ impl FnDeclFormals {
 
 impl Display for FnDeclFormals {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let args: Vec<_> = self
-            .formals
-            .iter()
-            .map(ToString::to_string)
-            .chain(self.ellipsis.as_ref().map(|_| "...".to_string()))
-            .collect();
-        let extra = self
-            .extra
-            .as_ref()
-            .map(|ident| format!("@{}", ident))
-            .unwrap_or_default();
-        write!(fmt, "{{{}}}{}: {}", args.join(", "), extra, self.body)
+        if let Some(ref ident) = &self.extra {
+            write!(fmt, "{}@", ident)?;
+        }
+
+        write!(fmt, "{{")?;
+
+        for (i, formal) in self.formals.iter().enumerate() {
+            if i == 0 {
+                write!(fmt, "{}", formal)?;
+            } else {
+                write!(fmt, ", {}", formal)?;
+            }
+        }
+
+        if self.ellipsis.is_some() {
+            if self.formals.is_empty() {
+                write!(fmt, "...")?;
+            } else {
+                write!(fmt, ", ...")?;
+            }
+        }
+
+        write!(fmt, "}}: {}", self.body)
     }
 }
 

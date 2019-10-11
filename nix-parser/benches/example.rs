@@ -1,5 +1,6 @@
 use std::fs;
 use std::str::FromStr;
+use std::time::Duration;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use nix_parser::ast::SourceFile;
@@ -16,7 +17,7 @@ fn parse_example(b: &mut Criterion) {
 
 criterion_group! {
     name = benches;
-    config = Criterion::default().sample_size(50);
+    config = Criterion::default().measurement_time(Duration::from_secs(8));
     targets = parse_example
 }
 

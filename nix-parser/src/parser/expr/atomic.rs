@@ -48,8 +48,10 @@ fn set_binds(input: Tokens) -> IResult<Partial<Vec<Bind>>> {
 }
 
 pub fn list(input: Tokens) -> IResult<Partial<ExprList>> {
+    let unary = terminated(unary, many0(tokens::comment));
     let elems = many_till_partial(unary, tokens::bracket_right);
-    let list = expect_terminated(preceded(tokens::bracket_left, elems), tokens::bracket_right);
+    let inner = preceded(many0(tokens::comment), elems);
+    let list = expect_terminated(preceded(tokens::bracket_left, inner), tokens::bracket_right);
     map_partial_spanned(list, |span, exprs| ExprList::new(exprs, span))(input)
 }
 

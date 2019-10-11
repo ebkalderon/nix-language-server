@@ -133,12 +133,12 @@ where
 {
     fn from_error_kind(input: I, kind: ErrorKind) -> Self {
         Errors {
-            errors: vec![Error::Nom(input.to_span(), input.to_string(), kind)],
+            errors: vec![Error::Nom(input.to_span(), kind)],
         }
     }
 
     fn append(input: I, kind: ErrorKind, mut other: Self) -> Self {
-        other.push(Error::Nom(input.to_span(), input.to_string(), kind));
+        other.push(Error::Nom(input.to_span(), kind));
         other
     }
 }
@@ -149,17 +149,8 @@ pub enum Error {
     IncorrectDelim(IncorrectDelimError),
     UnclosedDelim(UnclosedDelimError),
     Unexpected(UnexpectedError),
-    Nom(Span, String, ErrorKind),
+    Nom(Span, ErrorKind),
     Message(Span, String),
-}
-
-impl Error {
-    pub fn as_nom_error(&self) -> Option<(Span, &str, ErrorKind)> {
-        match *self {
-            Error::Nom(ref span, ref frag, ref kind) => Some((*span, frag, *kind)),
-            _ => None,
-        }
-    }
 }
 
 impl Display for Error {
@@ -169,7 +160,7 @@ impl Display for Error {
             Error::IncorrectDelim(ref e) => write!(fmt, "{}", e),
             Error::UnclosedDelim(ref e) => write!(fmt, "{}", e),
             Error::Unexpected(ref e) => write!(fmt, "{}", e),
-            Error::Nom(_, ref frag, ref e) => write!(fmt, "nom error: (\"{}\", {:?})", frag, e),
+            Error::Nom(_, ref e) => write!(fmt, "nom error: {:?}", e),
             Error::Message(_, ref e) => write!(fmt, "{}", e),
         }
     }
@@ -208,7 +199,7 @@ impl ToDiagnostic for Error {
             Error::IncorrectDelim(ref e) => e.to_diagnostic(file),
             Error::Unexpected(ref e) => e.to_diagnostic(file),
             Error::UnclosedDelim(ref e) => e.to_diagnostic(file),
-            Error::Nom(ref span, ref _frag, ref kind) => {
+            Error::Nom(ref span, ref kind) => {
                 let label = Label::new(file, *span, self.to_string());
                 let mut diag = Diagnostic::new_bug(format!("nom error: {:?}", kind), label);
                 let note = "note: this indicates an unhandled case in the parser".to_string();

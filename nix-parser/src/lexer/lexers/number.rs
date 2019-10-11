@@ -24,11 +24,7 @@ pub fn float(input: LocatedSpan) -> IResult<Token> {
         Ok((remaining, Token::Float(float, span.to_span())))
     } else {
         let mut errors = Errors::new();
-        errors.push(Error::Nom(
-            input.to_span(),
-            input.fragment.into(),
-            ErrorKind::Float,
-        ));
+        errors.push(Error::Nom(input.to_span(), ErrorKind::Float));
         Err(nom::Err::Error(errors))
     }
 }

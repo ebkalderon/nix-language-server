@@ -8,7 +8,7 @@ use url::Url;
 
 use super::IResult;
 use crate::ast::tokens::{Comment, Ident, Literal};
-use crate::error::{Error, Errors, ExpectedFoundError};
+use crate::error::{Errors, ExpectedFoundError};
 use crate::lexer::{StringFragment, Token, Tokens};
 use crate::ToSpan;
 
@@ -43,11 +43,6 @@ macro_rules! define_tokens {
 
 define_tokens! {
     eof { Eof, "<eof>" }
-    unknown {
-        returns: (String, Span, Error),
-        parse: Token::Unknown(ref text, ref span, ref err) => (text.to_owned().into(), *span, err.clone()),
-        expects: "unknown token",
-    }
 
     comment {
         returns: Comment,

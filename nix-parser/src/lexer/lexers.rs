@@ -4,9 +4,9 @@ use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::{is_a, tag};
 use nom::character::complete::{
-    alpha1, alphanumeric1, char, line_ending, multispace0, not_line_ending, one_of, space0,
+    alphanumeric1, anychar, char, line_ending, multispace0, not_line_ending, space0,
 };
-use nom::combinator::{map, not, peek, recognize};
+use nom::combinator::{map, peek, recognize, verify};
 use nom::multi::{many0, many1, separated_nonempty_list};
 use nom::sequence::{pair, preceded, terminated, tuple};
 use nom::Slice;
@@ -57,27 +57,14 @@ fn block_comment(input: LocatedSpan) -> IResult<Token> {
     }
 }
 
-pub fn identifier(input: LocatedSpan) -> IResult<Token> {
-    let first = alt((alpha1, is_a("_")));
-    let rest = alt((alphanumeric1, is_a("_-'")));
-    let ident = recognize(pair(first, many0(rest)));
-    map_spanned(ident, |span, ident| {
-        Token::Identifier(ident.fragment.into(), span)
-    })(input)
-}
-
 pub fn literal(input: LocatedSpan) -> IResult<Token> {
-    alt((boolean, null, path, float, integer, path_template, uri))(input)
+    alt((boolean, path, float, integer, path_template, uri))(input)
 }
 
 fn boolean(input: LocatedSpan) -> IResult<Token> {
     let true_val = map_spanned(tag("true"), |span, _| Token::Boolean(true, span));
     let false_val = map_spanned(tag("false"), |span, _| Token::Boolean(false, span));
     alt((true_val, false_val))(input)
-}
-
-fn null(input: LocatedSpan) -> IResult<Token> {
-    map_spanned(tag("null"), |span, _| Token::Null(span))(input)
 }
 
 pub fn interpolation(input: LocatedSpan) -> IResult<Token> {
@@ -112,33 +99,32 @@ pub fn interpolation(input: LocatedSpan) -> IResult<Token> {
     Ok((remaining, Token::Interpolation(tokens, span)))
 }
 
-macro_rules! define_keywords {
-    ($($function:ident => $variant:ident ( $keyword:expr )),+) => {
-        pub fn keyword(input: LocatedSpan) -> IResult<Token> {
-            alt(($($function),+))(input)
+macro_rules! define_identifiers {
+    ($($variant:ident ( $keyword:expr )),+) => {
+        pub fn identifier(input: LocatedSpan) -> IResult<Token> {
+            let first = verify(anychar, |c: &char| c.is_alphabetic() || *c == '_');
+            let rest = alt((alphanumeric1, is_a("_-'")));
+            let ident = recognize(pair(first, many0(rest)));
+            map_spanned(ident, |span, ident| match ident.fragment {
+                $($keyword => Token::$variant(span),)+
+                frag => Token::Identifier(frag.into(), span),
+            })(input)
         }
-
-        $(
-            fn $function(input: LocatedSpan) -> IResult<Token> {
-                let keyword = map(tag($keyword), |s: LocatedSpan| Token::$variant(s.to_span()));
-                let boundary = alt((alphanumeric1, recognize(one_of("_-'"))));
-                terminated(keyword, peek(not(boundary)))(input)
-            }
-        )+
     };
 }
 
-define_keywords! {
-    keyword_assert => Assert("assert"),
-    keyword_else => Else("else"),
-    keyword_if => If("if"),
-    keyword_in => In("in"),
-    keyword_inherit => Inherit("inherit"),
-    keyword_let => Let("let"),
-    keyword_or => Or("or"),
-    keyword_rec => Rec("rec"),
-    keyword_then => Then("then"),
-    keyword_with => With("with")
+define_identifiers! {
+    Assert("assert"),
+    Else("else"),
+    If("if"),
+    In("in"),
+    Inherit("inherit"),
+    Let("let"),
+    Null("null"),
+    Or("or"),
+    Rec("rec"),
+    Then("then"),
+    With("with")
 }
 
 macro_rules! define_operator {

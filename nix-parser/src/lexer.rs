@@ -8,9 +8,7 @@ use nom::combinator::{all_consuming, map};
 use nom::multi::many0;
 use nom::sequence::{preceded, terminated};
 
-use self::lexers::{
-    comment, identifier, interpolation, keyword, literal, operator, punctuation, string,
-};
+use self::lexers::{comment, identifier, interpolation, literal, operator, punctuation, string};
 use self::util::check_delims_balanced;
 use crate::error::{Error, Errors, UnexpectedError};
 use crate::ToSpan;
@@ -82,13 +80,12 @@ impl<'a> Lexer<'a> {
 fn token(input: LocatedSpan) -> IResult<Token> {
     alt((
         literal,
-        keyword,
         identifier,
         string,
         interpolation,
         comment,
-        operator,
         punctuation,
+        operator,
         unknown,
     ))(input)
 }

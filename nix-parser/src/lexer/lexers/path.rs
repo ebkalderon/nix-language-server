@@ -1,5 +1,6 @@
 use nom::bytes::complete::take_while1;
 use nom::character::complete::char;
+use nom::error::ErrorKind;
 use nom::sequence::delimited;
 use nom::Slice;
 use once_cell::sync::OnceCell;
@@ -28,7 +29,9 @@ pub fn path(input: LocatedSpan) -> IResult<Token> {
             Ok((remaining, token))
         }
     } else {
-        Err(nom::Err::Error(Errors::new()))
+        let mut errors = Errors::new();
+        errors.push(Error::Nom(input.to_span(), ErrorKind::RegexpFind));
+        Err(nom::Err::Error(errors))
     }
 }
 

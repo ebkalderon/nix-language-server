@@ -285,7 +285,7 @@ impl<'a> Token<'a> {
     pub fn description(&self) -> String {
         match *self {
             Token::Eof(_) => "<eof>".to_string(),
-            Token::Unknown(ref text, _, _) => format!("token `{}`", text.escape_debug()),
+            Token::Unknown(ref text, _, _) => format!("`{}`", text.escape_debug()),
 
             Token::Comment(..) => "comment".to_string(),
             Token::Identifier(ref ident, _) => format!("identifier `{}`", ident),

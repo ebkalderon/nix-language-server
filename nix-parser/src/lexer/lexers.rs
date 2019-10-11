@@ -2,10 +2,8 @@ pub use self::string::string;
 
 use codespan::Span;
 use nom::branch::alt;
-use nom::bytes::complete::{is_a, tag};
-use nom::character::complete::{
-    alphanumeric1, anychar, char, line_ending, multispace0, not_line_ending, space0,
-};
+use nom::bytes::complete::{tag, take_while};
+use nom::character::complete::{anychar, char, line_ending, multispace0, not_line_ending, space0};
 use nom::combinator::{map, peek, recognize, verify};
 use nom::multi::{many0, many1, separated_nonempty_list};
 use nom::sequence::{pair, preceded, terminated, tuple};
@@ -103,8 +101,8 @@ macro_rules! define_identifiers {
     ($($variant:ident ( $keyword:expr )),+) => {
         pub fn identifier(input: LocatedSpan) -> IResult<Token> {
             let first = verify(anychar, |c: &char| c.is_alphabetic() || *c == '_');
-            let rest = alt((alphanumeric1, is_a("_-'")));
-            let ident = recognize(pair(first, many0(rest)));
+            let rest = take_while(|c: char| c.is_alphanumeric() || "_-'".contains(c));
+            let ident = recognize(pair(first, rest));
             map_spanned(ident, |span, ident| match ident.fragment {
                 $($keyword => Token::$variant(span),)+
                 frag => Token::Identifier(frag.into(), span),

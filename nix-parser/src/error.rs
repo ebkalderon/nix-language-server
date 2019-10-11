@@ -198,8 +198,8 @@ impl ToDiagnostic for Error {
         match *self {
             Error::ExpectedFound(ref e) => e.to_diagnostic(file),
             Error::IncorrectDelim(ref e) => e.to_diagnostic(file),
-            Error::Unexpected(ref e) => e.to_diagnostic(file),
             Error::UnclosedDelim(ref e) => e.to_diagnostic(file),
+            Error::Unexpected(ref e) => e.to_diagnostic(file),
             Error::Nom(ref span, ref kind) => {
                 let label = Label::new(file, *span, self.to_string());
                 let note = "note: this indicates an unhandled case in the parser".to_string();

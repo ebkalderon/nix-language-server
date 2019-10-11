@@ -176,8 +176,7 @@ macro_rules! define_punctuation {
 }
 
 define_punctuation! {
-    punct_token => At("@"),
-    punct_colon => Colon(":"),
+    punct_quote_semi => Semi(";"),
     punct_comma => Comma(","),
     punct_ellipsis => Ellipsis("..."),
     punct_dot => Dot("."),
@@ -189,7 +188,8 @@ define_punctuation! {
     punct_right_bracket => RBracket("]"),
     punct_left_paren => LParen("("),
     punct_right_paren => RParen(")"),
+    punct_colon => Colon(":"),
+    punct_token => At("@"),
     punct_quote_double => QuoteDouble("\""),
-    punct_quote_single => QuoteSingle("''"),
-    punct_quote_semi => Semi(";")
+    punct_quote_single => QuoteSingle("''")
 }

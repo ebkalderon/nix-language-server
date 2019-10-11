@@ -39,6 +39,7 @@ impl Errors {
         self.errors.is_empty()
     }
 
+    #[inline]
     pub fn push<E>(&mut self, error: E)
     where
         E: Into<Error>,

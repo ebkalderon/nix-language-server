@@ -29,10 +29,12 @@ pub struct Errors {
 }
 
 impl Errors {
+    #[inline]
     pub fn new() -> Self {
         Errors { errors: Vec::new() }
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.errors.is_empty()
     }
@@ -44,14 +46,17 @@ impl Errors {
         self.errors.push(error.into());
     }
 
+    #[inline]
     pub fn pop(&mut self) -> Option<Error> {
         self.errors.pop()
     }
 
+    #[inline]
     pub fn last(&mut self) -> Option<&Error> {
         self.errors.last()
     }
 
+    #[inline]
     pub fn iter(&self) -> Iter<Error> {
         self.errors.iter()
     }
@@ -62,6 +67,7 @@ impl Errors {
 }
 
 impl Default for Errors {
+    #[inline]
     fn default() -> Self {
         Errors::new()
     }
@@ -105,6 +111,7 @@ impl IntoIterator for Errors {
     type Item = Error;
     type IntoIter = IntoIter<Self::Item>;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.errors.into_iter()
     }
@@ -114,6 +121,7 @@ impl<'a> IntoIterator for &'a Errors {
     type Item = &'a Error;
     type IntoIter = Iter<'a, Error>;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.errors.iter()
     }
@@ -124,9 +132,9 @@ where
     I: ToSpan + ToString,
 {
     fn from_error_kind(input: I, kind: ErrorKind) -> Self {
-        let mut errors = Errors::new();
-        errors.push(Error::Nom(input.to_span(), input.to_string(), kind));
-        errors
+        Errors {
+            errors: vec![Error::Nom(input.to_span(), input.to_string(), kind)],
+        }
     }
 
     fn append(input: I, kind: ErrorKind, mut other: Self) -> Self {

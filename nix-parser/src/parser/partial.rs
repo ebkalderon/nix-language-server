@@ -18,6 +18,7 @@ pub struct Partial<T> {
 
 impl<T> Partial<T> {
     /// Constructs a new `Partial<T>` with the given initial value.
+    #[inline]
     pub fn new(value: Option<T>) -> Self {
         Partial {
             value,
@@ -26,6 +27,7 @@ impl<T> Partial<T> {
     }
 
     /// Constructs a new `Partial<T>` with the given initial value and a stack of errors.
+    #[inline]
     pub fn with_errors(value: Option<T>, errors: Errors) -> Self {
         Partial { value, errors }
     }
@@ -36,6 +38,7 @@ impl<T> Partial<T> {
     }
 
     /// Returns the errors associated with the partial value, if any.
+    #[inline]
     pub fn errors(&self) -> Option<Errors> {
         if self.has_errors() {
             Some(self.errors.clone())
@@ -50,6 +53,7 @@ impl<T> Partial<T> {
     }
 
     /// Returns the contained partial value, if any.
+    #[inline]
     pub fn value(&self) -> Option<&T> {
         self.value.as_ref()
     }

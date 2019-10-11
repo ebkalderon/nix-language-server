@@ -80,7 +80,7 @@ where
             }
         }
 
-        let span = Span::new(start.to_span().start(), remaining.to_span().start());
+        let span = Span::new(start.offset as u32, remaining.offset as u32);
         Ok((remaining, Token::String(fragments, span)))
     }
 }

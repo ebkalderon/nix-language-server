@@ -73,6 +73,7 @@ impl<T> Partial<T> {
     /// # Ok(())
     /// # }
     /// ```
+    #[inline]
     pub fn map<U, F>(self, f: F) -> Partial<U>
     where
         F: FnOnce(T) -> U,
@@ -86,6 +87,7 @@ impl<T> Partial<T> {
     /// Calls `f` if there exists a contained value, otherwise returns the stored errors instead.
     ///
     /// Any errors produced by `f` are appended to the errors already inside `self`.
+    #[inline]
     pub fn flat_map<U, F>(mut self, f: F) -> Partial<U>
     where
         F: FnOnce(T) -> Partial<U>,
@@ -129,6 +131,7 @@ impl<T> Partial<T> {
     /// let partial: Partial<u32> = Partial::new(None);
     /// assert!(partial.verify().is_err());
     /// ```
+    #[inline]
     pub fn verify(self) -> Result<T, Errors> {
         match self.value {
             Some(_) if self.has_errors() => Err(self.errors),

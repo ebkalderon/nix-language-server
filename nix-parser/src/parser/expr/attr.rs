@@ -12,7 +12,7 @@ use crate::parser::{tokens, IResult};
 
 pub fn attr_path(input: Tokens) -> IResult<Partial<AttrPath>> {
     let path = separated_nonempty_list(tokens::dot, segment);
-    map_partial(map(path, Partial::from_iter), |segs| AttrPath::new(segs))(input)
+    map_partial(map(path, Partial::from_iter), AttrPath::new)(input)
 }
 
 fn segment(input: Tokens) -> IResult<Partial<AttrSegment>> {

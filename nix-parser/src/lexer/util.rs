@@ -64,7 +64,7 @@ pub fn check_delims_balanced(tokens: &[Token], eof_span: Span) -> Errors {
 
 pub fn split_lines_without_indentation(input: LocatedSpan) -> impl Iterator<Item = &str> {
     let indent_level = input.get_column();
-    input.fragment.split("\n").map(move |row| {
+    input.fragment.split('\n').map(move |row| {
         let trim_start = row
             .char_indices()
             .take_while(|(i, c)| c.is_whitespace() && *i < indent_level)

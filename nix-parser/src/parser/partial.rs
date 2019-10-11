@@ -289,7 +289,7 @@ where
     move |input| {
         let mut partials = Vec::new();
         let mut errors = Errors::new();
-        let mut input = input.clone();
+        let mut input = input;
 
         loop {
             match g(input) {
@@ -370,7 +370,7 @@ where
     move |input| {
         let mut partials = Vec::new();
         let mut errors = Errors::new();
-        let mut input = input.clone();
+        let mut input = input;
 
         match f(input) {
             Err(nom::Err::Error(_)) => return Ok((input, partials.into_iter().collect())),

@@ -14,7 +14,7 @@ impl Display for Comment {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         self.0
             .lines()
-            .try_for_each(|line| write!(fmt, "#{}\n", line))
+            .try_for_each(|line| writeln!(fmt, "#{}", line))
     }
 }
 
@@ -136,7 +136,7 @@ impl<T: Into<Literal>> From<Option<T>> for Literal {
     fn from(value: Option<T>) -> Self {
         value
             .map(Into::into)
-            .unwrap_or(Literal::Null(Span::initial()))
+            .unwrap_or_else(|| Literal::Null(Span::initial()))
     }
 }
 

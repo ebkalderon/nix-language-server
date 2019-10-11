@@ -3,7 +3,7 @@ use nom::combinator::map;
 use nom::multi::many0;
 use nom::sequence::{pair, preceded, terminated};
 
-use super::{bind, expr, unary, util};
+use super::{bind, expr, unary};
 use crate::ast::tokens::{Ident, Literal};
 use crate::ast::{
     Bind, Expr, ExprInterpolation, ExprLet, ExprList, ExprParen, ExprRec, ExprSet, ExprString,
@@ -73,8 +73,16 @@ pub fn string(input: Tokens) -> IResult<Partial<ExprString>> {
                 parts.push(Partial::from(StringFragment::Literal(text.clone(), *span)));
             }
             LexerFragment::Interpolation(tokens, span) => {
-                let error = util::error_expr_if(tokens::brace_right, "right brace");
-                let (_, expr) = alt((expr, error))(Tokens::new(tokens))?;
+                let expr = if tokens.is_empty() {
+                    let mut errors = Errors::new();
+                    let message = "interpolation cannot be empty".to_string();
+                    errors.push(Error::Message(*span, message));
+                    Partial::with_errors(Some(Expr::Error(*span)), errors)
+                } else {
+                    let (_, expr) = expr(Tokens::new(&tokens))?;
+                    expr
+                };
+
                 parts.push(expr.map(|expr| {
                     StringFragment::Interpolation(ExprInterpolation::new(expr, *span))
                 }));

@@ -36,6 +36,7 @@ where
                 remaining = input;
                 break;
             } else if let Ok((input, _)) = terminated(punct_interpolate, multispace0)(remaining) {
+                let start = remaining;
                 remaining = input;
 
                 let mut tokens = Vec::new();
@@ -58,7 +59,7 @@ where
                     tokens.push(token);
                 }
 
-                let span = Span::merge(input.to_span(), remaining.to_span());
+                let span = Span::new(start.offset as u32, remaining.offset as u32);
                 fragments.push(StringFragment::Interpolation(tokens, span));
             } else {
                 let boundary = alt((&delimiter, punct_interpolate));

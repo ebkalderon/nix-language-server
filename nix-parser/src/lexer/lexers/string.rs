@@ -44,7 +44,7 @@ where
                 while let Ok((input, token)) = token(remaining) {
                     remaining = input;
                     match token {
-                        Token::LBrace(_) => depth += 1,
+                        Token::LBrace(_) | Token::Interpolate(_) => depth += 1,
                         Token::RBrace(_) => {
                             depth -= 1;
                             if depth == 0 {

@@ -37,15 +37,15 @@ fn function(input: Tokens) -> IResult<Partial<Expr>> {
 
 fn if_else(input: Tokens) -> IResult<Partial<Expr>> {
     let found = "keyword `then`";
-    let cond = alt((expr, util::error_expr_if(tokens::keyword_then, found)));
+    let cond = alt((util::error_expr_if(tokens::keyword_then, found), expr));
     let cond_then = expect_terminated(cond, tokens::keyword_then);
     let if_cond_then = preceded(tokens::keyword_if, cond_then);
 
     let found = "keyword `else`";
-    let body = alt((expr, util::error_expr_if(tokens::keyword_else, found)));
+    let body = alt((util::error_expr_if(tokens::keyword_else, found), expr));
     let body_else = expect_terminated(body, tokens::keyword_else);
 
-    let expr = alt((expr, util::error_expr_if(tokens::eof, "<eof>")));
+    let expr = alt((util::error_expr_if(tokens::eof, "<eof>"), expr));
     let block = pair_partial(if_cond_then, pair_partial(body_else, expr));
     let if_else = map_partial_spanned(block, |span, (cond, (body, fallback))| {
         Expr::If(Box::new(ExprIf::new(cond, body, fallback, span)))

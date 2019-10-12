@@ -2,6 +2,7 @@
 ; Use UTF-8 encoding
 ;
 end-of-line = %x0A / %x0D.0A
+ellipsis = %x2E.2E.2E ; ...
 comment-line = %x23 chars end-of-line
 single-quote = %x27 ; '
 double-quote = %x22 ; "
@@ -76,11 +77,26 @@ expr =
     with expr semicolon ; backtrack
   / assert expr semicolon ; backtrack
   / let set-bindings in expr ; backtrack
-  ; function
-  / left-curly-bracket formal-args right-curly-bracket [ at ident ] colon expr ; backtrack
-  / ident at left-curly-bracket formal-args right-curly-bracket colon expr ; backtrack
+  / fn-decl
+
+  ; expression with operators at lowest precedences
   / logic-imply-expr
   / sum-expr
+
+; function
+; the following non-terminal is an alias in the sense that
+; it should be "inlined" in all references to it, and thus
+; backtracking is "inlined" in the parsing logic of the
+; upper level non-terminals, instead of producing fatal
+; parser error
+fn-decl =
+    left-curly-bracket formal-args right-curly-bracket [ at ident ] colon expr ; backtrack
+  / ident at left-curly-bracket formal-args right-curly-bracket colon expr ; backtrack
+  / ident colon expr ; backtrack to upper level non-terminals
+
+formal-args =
+    ellipsis
+  / ident [ question expr ] comma [ formal-args ]
 
 logic-imply-expr = logic-expr logic-imply (logic-imply-expr / logic-expr)
 

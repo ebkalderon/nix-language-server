@@ -746,6 +746,9 @@ macro_rules! project {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! atomic {
+    (antiquote!($antiquote:expr)) => {
+        ($antiquote)
+    };
     (($($expr:tt)+)) => {
         Expr::from(ExprParen::new($crate::nix_expr!($($expr)+), Default::default()))
     };

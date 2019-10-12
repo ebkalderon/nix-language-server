@@ -31,6 +31,37 @@ fn simple(input: Tokens) -> IResult<Partial<FnDeclSimple>> {
 }
 
 fn formals(input: Tokens) -> IResult<Partial<FnDeclFormals>> {
+    // Definition:
+    // a leading token sequence B of a non-terminal A is a production rule of B
+    // such that if a non-terminal C satisfies the condition that all words in its
+    // language L(C) has a prefix as a word in L(B), then L(A) = L(C), ie. A and C
+    // produces the same set of words.
+    // Note: unfortunately computing a leading token sequence of any non-terminal in any grammar
+    // is undecidable, but luckily we know one for this.
+
+    // Quickly look for a leading token sequence, because recovery with partial
+    // parsing result may produces invalid parsing tree on the rest of the tokens
+    // if there is no sequence of valid leading tokens
+
+    // According to the grammar, the leading token sequence will be
+    // left-curly-bracket ( right-curly-bracket colon / ellipsis / ident ( question / comma / right-curly-bracket ))
+    fn ignore<T>(_: T) {}
+    preceded(
+        tokens::brace_left,
+        alt((
+            map(preceded(tokens::brace_right, tokens::colon), ignore),
+            map(tokens::ellipsis, ignore),
+            preceded(
+                tokens::identifier,
+                alt((
+                    map(tokens::op_question, ignore),
+                    map(tokens::comma, ignore),
+                    map(tokens::brace_right, ignore),
+                )),
+            ),
+        )),
+    )(input)?;
+
     let value = alt((expr, util::error_expr_if(tokens::comma)));
     let default = opt(preceded(tokens::op_question, verify_full(value)));
     let formal = map(pair(tokens::identifier, default), |(name, def)| {
@@ -59,5 +90,20 @@ fn identifier_arg(input: Tokens) -> IResult<Partial<Ident>> {
         let mut errors = Errors::new();
         errors.push(ExpectedFoundError::new("identifier", found, span));
         Ok((remaining, Partial::with_errors(None, errors)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::lexer::Lexer;
+
+    #[test]
+    fn formal_args() {
+        let source = r#"{foo}:foo"#;
+        let lexer = Lexer::new(source).unwrap();
+        let tokens = lexer.tokens();
+        formals(tokens).unwrap();
     }
 }

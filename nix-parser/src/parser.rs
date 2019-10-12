@@ -16,6 +16,9 @@ mod expr;
 mod partial;
 mod tokens;
 
+#[cfg(test)]
+mod tests;
+
 type IResult<'a, T> = nom::IResult<Tokens<'a>, T, Errors>;
 
 impl FromStr for Expr {

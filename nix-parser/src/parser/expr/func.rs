@@ -23,7 +23,7 @@ pub fn fn_decl(input: Tokens) -> IResult<Partial<ExprFnDecl>> {
 }
 
 fn simple(input: Tokens) -> IResult<Partial<FnDeclSimple>> {
-    let expr = alt((expr, util::error_expr_if(tokens::eof, "<eof>")));
+    let expr = alt((expr, util::error_expr_if(tokens::eof)));
     map_partial(pair_partial(identifier_arg, expr), |(ident, body)| {
         let span = Span::merge(ident.span(), body.span());
         FnDeclSimple::new(ident, body, span)
@@ -31,7 +31,7 @@ fn simple(input: Tokens) -> IResult<Partial<FnDeclSimple>> {
 }
 
 fn formals(input: Tokens) -> IResult<Partial<FnDeclFormals>> {
-    let value = alt((expr, util::error_expr_if(tokens::comma, "comma")));
+    let value = alt((expr, util::error_expr_if(tokens::comma)));
     let default = opt(preceded(tokens::op_question, verify_full(value)));
     let formal = map(pair(tokens::identifier, default), |(name, def)| {
         let name_span = name.span();
@@ -43,7 +43,7 @@ fn formals(input: Tokens) -> IResult<Partial<FnDeclFormals>> {
     let term = pair(tokens::brace_right, tokens::colon);
     let formals = delimited(tokens::brace_left, args, term);
 
-    let expr = alt((expr, util::error_expr_if(tokens::eof, "<eof>")));
+    let expr = alt((expr, util::error_expr_if(tokens::eof)));
     map_partial_spanned(pair_partial(formals, expr), |span, (formals, expr)| {
         FnDeclFormals::new(formals, None, None, expr, span)
     })(input)

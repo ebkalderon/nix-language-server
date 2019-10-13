@@ -1,4 +1,5 @@
-use nom::combinator::peek;
+use codespan::Span;
+use nom::combinator::{peek, recognize};
 
 use crate::ast::Expr;
 use crate::error::{Errors, ExpectedFoundError};
@@ -7,20 +8,17 @@ use crate::parser::partial::Partial;
 use crate::parser::IResult;
 use crate::ToSpan;
 
-pub fn error_expr_if<'a, O, F>(
-    parser: F,
-    found: &'a str,
-) -> impl Fn(Tokens<'a>) -> IResult<Partial<Expr>>
+pub fn error_expr_if<'a, F>(token: F) -> impl Fn(Tokens<'a>) -> IResult<Partial<Expr>>
 where
-    F: Fn(Tokens<'a>) -> IResult<O>,
-    O: ToSpan,
+    F: Fn(Tokens<'a>) -> IResult<Span>,
 {
-    move |input| match peek(&parser)(input) {
+    move |input| match peek(recognize(&token))(input) {
         Err(error) => Err(error),
-        Ok((remaining, token)) => {
-            let span = token.to_span();
+        Ok((remaining, tokens)) => {
+            let desc = tokens.current().description();
+            let span = tokens.current().to_span();
             let mut errors = Errors::new();
-            errors.push(ExpectedFoundError::new("expression", found, span));
+            errors.push(ExpectedFoundError::new("expression", desc, span));
             let expr = Partial::with_errors(Some(Expr::Error(span)), errors);
             Ok((remaining, expr))
         }

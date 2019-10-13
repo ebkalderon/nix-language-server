@@ -11,7 +11,7 @@ use crate::parser::{tokens, IResult};
 
 pub fn with(input: Tokens) -> IResult<Partial<ExprWith>> {
     let delims = alt((tokens::semi, tokens::eof));
-    let scope = alt((expr, util::error_expr_if(delims, "semicolon")));
+    let scope = alt((expr, util::error_expr_if(delims)));
     let with = expect_terminated(preceded(tokens::keyword_with, expr), tokens::semi);
     let stmt = pair_partial(with, scope);
     map_partial_spanned(stmt, |span, (with, body)| ExprWith::new(with, body, span))(input)
@@ -19,7 +19,7 @@ pub fn with(input: Tokens) -> IResult<Partial<ExprWith>> {
 
 pub fn assert(input: Tokens) -> IResult<Partial<ExprAssert>> {
     let delims = alt((tokens::semi, tokens::eof));
-    let cond = alt((expr, util::error_expr_if(delims, "semicolon")));
+    let cond = alt((expr, util::error_expr_if(delims)));
     let assert = expect_terminated(preceded(tokens::keyword_assert, cond), tokens::semi);
     let stmt = pair_partial(assert, expr);
     map_partial_spanned(stmt, |span, (cond, body)| ExprAssert::new(cond, body, span))(input)

@@ -37,16 +37,14 @@ fn function(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn if_else(input: Tokens) -> IResult<Partial<Expr>> {
-    let found = "keyword `then`";
-    let cond = alt((util::error_expr_if(tokens::keyword_then, found), expr));
+    let cond = alt((util::error_expr_if(tokens::keyword_then), expr));
     let cond_then = expect_terminated(cond, tokens::keyword_then);
     let if_cond_then = preceded(tokens::keyword_if, cond_then);
 
-    let found = "keyword `else`";
-    let body = alt((util::error_expr_if(tokens::keyword_else, found), expr));
+    let body = alt((util::error_expr_if(tokens::keyword_else), expr));
     let body_else = expect_terminated(body, tokens::keyword_else);
 
-    let expr = alt((util::error_expr_if(tokens::eof, "<eof>"), expr));
+    let expr = alt((util::error_expr_if(tokens::eof), expr));
     let block = pair_partial(if_cond_then, pair_partial(body_else, expr));
     let if_else = map_partial_spanned(block, |span, (cond, (body, fallback))| {
         Expr::If(Box::new(ExprIf::new(cond, body, fallback, span)))
@@ -56,7 +54,8 @@ fn if_else(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn imply(input: Tokens) -> IResult<Partial<Expr>> {
-    let expr = pair(and, many0(preceded(tokens::op_imply, and)));
+    let rhs = alt((and, util::error_expr_if(tokens::eof)));
+    let expr = pair(and, many0(preceded(tokens::op_imply, rhs)));
     map(expr, |(first, rest)| {
         rest.into_iter().fold(first, |lhs, rhs| {
             lhs.flat_map(|lhs| {
@@ -70,7 +69,8 @@ fn imply(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn and(input: Tokens) -> IResult<Partial<Expr>> {
-    let expr = pair(or, many0(preceded(tokens::op_and, or)));
+    let rhs = alt((or, util::error_expr_if(tokens::eof)));
+    let expr = pair(or, many0(preceded(tokens::op_and, rhs)));
     map(expr, |(first, rest)| {
         rest.into_iter().fold(first, |lhs, rhs| {
             lhs.flat_map(|lhs| {
@@ -84,7 +84,8 @@ fn and(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn or(input: Tokens) -> IResult<Partial<Expr>> {
-    let expr = pair(equality, many0(preceded(tokens::op_or, equality)));
+    let rhs = alt((equality, util::error_expr_if(tokens::eof)));
+    let expr = pair(equality, many0(preceded(tokens::op_or, rhs)));
     map(expr, |(first, rest)| {
         rest.into_iter().fold(first, |lhs, rhs| {
             lhs.flat_map(|lhs| {
@@ -100,7 +101,8 @@ fn or(input: Tokens) -> IResult<Partial<Expr>> {
 fn equality(input: Tokens) -> IResult<Partial<Expr>> {
     let eq = map(tokens::op_eq, |_| BinaryOp::Eq);
     let neq = map(tokens::op_neq, |_| BinaryOp::NotEq);
-    let expr = pair(compare, opt(pair(alt((eq, neq)), compare)));
+    let rhs = alt((compare, util::error_expr_if(tokens::eof)));
+    let expr = pair(compare, opt(pair(alt((eq, neq)), rhs)));
     map(expr, |(lhs, op)| match op {
         None => lhs,
         Some((op, rhs)) => lhs.flat_map(|lhs| {
@@ -117,7 +119,9 @@ fn compare(input: Tokens) -> IResult<Partial<Expr>> {
     let lt = map(tokens::op_lt, |_| BinaryOp::LessThan);
     let gte = map(tokens::op_gte, |_| BinaryOp::GreaterThanEq);
     let gt = map(tokens::op_gt, |_| BinaryOp::GreaterThan);
-    let expr = pair(update, opt(pair(alt((lte, lt, gte, gt)), update)));
+
+    let rhs = alt((update, util::error_expr_if(tokens::eof)));
+    let expr = pair(update, opt(pair(alt((lte, lt, gte, gt)), rhs)));
     map(expr, |(lhs, op)| match op {
         None => lhs,
         Some((op, rhs)) => lhs.flat_map(|lhs| {
@@ -130,7 +134,8 @@ fn compare(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn update(input: Tokens) -> IResult<Partial<Expr>> {
-    let expr = pair(sum, many0(preceded(tokens::op_update, sum)));
+    let rhs = alt((sum, util::error_expr_if(tokens::eof)));
+    let expr = pair(sum, many0(preceded(tokens::op_update, rhs)));
     map(expr, |(first, rest)| {
         let exprs = Partial::from_iter(iter::once(first).chain(rest));
         exprs.map(|mut exprs| {
@@ -146,7 +151,8 @@ fn update(input: Tokens) -> IResult<Partial<Expr>> {
 fn sum(input: Tokens) -> IResult<Partial<Expr>> {
     let add = map(tokens::op_add, |_| BinaryOp::Add);
     let sub = map(tokens::op_sub, |_| BinaryOp::Sub);
-    let expr = pair(product, many0(pair(alt((add, sub)), product)));
+    let rhs = alt((product, util::error_expr_if(tokens::eof)));
+    let expr = pair(product, many0(pair(alt((add, sub)), rhs)));
     map(expr, |(first, rest)| {
         rest.into_iter().fold(first, |lhs, (op, rhs)| {
             lhs.flat_map(|lhs| {
@@ -162,7 +168,8 @@ fn sum(input: Tokens) -> IResult<Partial<Expr>> {
 fn product(input: Tokens) -> IResult<Partial<Expr>> {
     let mul = map(tokens::op_mul, |_| BinaryOp::Mul);
     let div = map(tokens::op_div, |_| BinaryOp::Div);
-    let expr = pair(concat, many0(pair(alt((mul, div)), concat)));
+    let rhs = alt((concat, util::error_expr_if(tokens::eof)));
+    let expr = pair(concat, many0(pair(alt((mul, div)), rhs)));
     map(expr, |(first, rest)| {
         rest.into_iter().fold(first, |lhs, (op, rhs)| {
             lhs.flat_map(|lhs| {
@@ -217,7 +224,7 @@ fn project(input: Tokens) -> IResult<Partial<Expr>> {
     let (input, atomic) = atomic(input)?;
 
     if let Ok((remaining, _)) = tokens::dot(input) {
-        let default = alt((project, error, util::error_expr_if(tokens::eof, "<eof>")));
+        let default = alt((project, error, util::error_expr_if(tokens::eof)));
         let or_default = opt_partial(preceded(tokens::keyword_or, default));
 
         let (remaining, path) = pair_partial(attr::attr_path, or_default)(remaining)?;

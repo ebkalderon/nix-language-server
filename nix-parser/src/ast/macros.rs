@@ -90,10 +90,23 @@ macro_rules! nix_token {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! nix_formals {
+    (@formals (_ ? $($default:tt)+) , $($rest:tt)*) => {{
+        let name = $crate::nix_token!(_);
+        let default = $crate::nix!($($default)+);
+        let formal = Formal::new(name, Some(default), Default::default());
+        ::std::iter::once(formal).chain($crate::nix_formals!($($rest)*))
+    }};
+
     (@formals ($name:ident ? $($default:tt)+) , $($rest:tt)*) => {{
         let name = $crate::nix_token!($name);
         let default = $crate::nix!($($default)+);
         let formal = Formal::new(name, Some(default), Default::default());
+        ::std::iter::once(formal).chain($crate::nix_formals!($($rest)*))
+    }};
+
+    (@formals (_) , $($rest:tt)*) => {{
+        let name = $crate::nix_token!(_);
+        let formal = Formal::new(name, None, Default::default());
         ::std::iter::once(formal).chain($crate::nix_formals!($($rest)*))
     }};
 
@@ -103,10 +116,23 @@ macro_rules! nix_formals {
         ::std::iter::once(formal).chain($crate::nix_formals!($($rest)*))
     }};
 
+    (@formals (_ ? $($default:tt)+)) => {{
+        let name = $crate::nix_token!(_);
+        let default = $crate::nix!($($default)+);
+        let formal = Formal::new(name, Some(default), Default::default());
+        ::std::iter::once(formal)
+    }};
+
     (@formals ($name:ident ? $($default:tt)+)) => {{
         let name = $crate::nix_token!($name);
         let default = $crate::nix!($($default)+);
         let formal = Formal::new(name, Some(default), Default::default());
+        ::std::iter::once(formal)
+    }};
+
+    (@formals (_)) => {{
+        let name = $crate::nix_token!(_);
+        let formal = Formal::new(name, None, Default::default());
         ::std::iter::once(formal)
     }};
 
@@ -325,6 +351,13 @@ macro_rules! nix_expr {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! function {
+    (@rule (_:) $($rest:tt)+) => {{
+        let name = $crate::nix_token!(_);
+        let body = $crate::nix!($($rest)+);
+        let simple = FnDeclSimple::new(name, body, Default::default());
+        Expr::from(ExprFnDecl::Simple(simple))
+    }};
+
     (@rule ($arg:ident:) $($rest:tt)+) => {{
         let name = $crate::nix_token!($arg);
         let body = $crate::nix!($($rest)+);

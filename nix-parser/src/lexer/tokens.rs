@@ -505,3 +505,79 @@ impl<'a> InputLength for Token<'a> {
         1
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn offset() {
+        let tokens = [
+            Token::LBrace(Span::default()),
+            Token::Identifier(Cow::from("foo"), Span::default()),
+            Token::RBrace(Span::default()),
+            Token::Colon(Span::default()),
+            Token::Integer(Cow::from("42"), Span::default()),
+            Token::Eof(Span::default()),
+        ];
+
+        let a = Tokens::new(&tokens[..]);
+        let b = Tokens::new(&tokens[2..]);
+        let c = Tokens::new(&tokens[..4]);
+        let d = Tokens::new(&tokens[3..5]);
+
+        assert_eq!(a.offset(&b), 2);
+        assert_eq!(a.offset(&c), 0);
+        assert_eq!(a.offset(&d), 3);
+    }
+
+    #[test]
+    fn slice() {
+        let tokens = [
+            Token::Let(Span::default()),
+            Token::Identifier(Cow::from("foo"), Span::default()),
+            Token::Eq(Span::default()),
+            Token::Path(Cow::from("./."), Span::default()),
+            Token::Semi(Span::default()),
+            Token::In(Span::default()),
+            Token::Identifier(Cow::from("foo"), Span::default()),
+            Token::Eof(Span::default()),
+        ];
+
+        let full = Tokens::new(&tokens[..]);
+        let range_bounded = Tokens {
+            tokens: &tokens[1..3],
+            start: 1,
+            end: 3,
+        };
+        let range_from = Tokens {
+            tokens: &tokens[4..],
+            start: 4,
+            end: 8,
+        };
+        let range_to = Tokens {
+            tokens: &tokens[..2],
+            start: 0,
+            end: 2,
+        };
+
+        assert_eq!(full.slice(..), full);
+        assert_eq!(full.slice(1..3), range_bounded);
+        assert_eq!(full.slice(4..), range_from);
+        assert_eq!(full.slice(..2), range_to);
+    }
+
+    #[test]
+    fn to_span() {
+        let tokens = [
+            Token::Integer(Cow::from("12"), Span::new(0, 2)),
+            Token::Add(Span::new(3, 4)),
+            Token::Integer(Cow::from("3"), Span::new(5, 6)),
+            Token::Eof(Span::new(6, 6)),
+        ];
+
+        let a = Tokens::new(&tokens[..]);
+        assert_eq!(a.current().to_span(), Span::new(0, 2));
+        assert_eq!(a.to_span(), Span::new(0, 6));
+    }
+}

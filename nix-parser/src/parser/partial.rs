@@ -2,6 +2,7 @@ use std::iter::FromIterator;
 
 use codespan::Span;
 use nom::bytes::complete::take;
+use nom::combinator::opt;
 use nom::sequence::{preceded, terminated};
 use nom::InputLength;
 
@@ -232,7 +233,7 @@ where
     }
 }
 
-/// Combinator which behaves like `nom::combinator::map()`, except it is a shorthand for:
+/// Combinator which behaves like `nom::combinator::map`, except it is a shorthand for:
 ///
 /// ```rust,ignore
 /// map(partial, |partial| partial.map(&f))
@@ -316,6 +317,39 @@ where
                 },
                 Err(err) => return Err(err),
             }
+        }
+    }
+}
+
+/// Combinator which returns `None` if the given partial parser fails.
+///
+/// This combinator behaves like `nom::combinator::opt`, except it also transposes the result from
+/// `Option<Partial<O>>` to `Partial<Option<O>>`. This transposition allows you to utilize the
+/// behavior of `opt` while remaining compatible with other partial combinators like
+/// `pair_partial()` and `map_partial()`.
+///
+/// # Examples
+///
+/// `opt_partial()` is especially handy when combined with `pair_partial()` to create partial
+/// parsers with predicates that trigger based on some non-partial condition. For example, compare
+/// this regular `nom` parser with its partial equivalent:
+///
+/// ```rust,ignore
+/// // Regular version
+/// pair(f, opt(preceded(sep, g)))
+///
+/// // Partial version
+/// pair_partial(f, opt_partial(preceded(sep, g)))
+/// ```
+pub fn opt_partial<'a, O, F>(f: F) -> impl Fn(Tokens<'a>) -> IResult<Partial<Option<O>>>
+where
+    F: Fn(Tokens<'a>) -> IResult<Partial<O>>,
+{
+    move |input| {
+        let (remaining, value) = opt(&f)(input)?;
+        match value {
+            Some(partial) => Ok((remaining, partial.map(Some))),
+            None => Ok((remaining, Partial::new(Some(None)))),
         }
     }
 }

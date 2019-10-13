@@ -8,9 +8,10 @@ use nom::multi::many0;
 use nom::sequence::{pair, preceded};
 
 use super::partial::{
-    expect_terminated, map_partial, map_partial_spanned, pair_partial, verify_full, Partial,
+    expect_terminated, map_partial, map_partial_spanned, opt_partial, pair_partial, Partial,
 };
 use super::{tokens, IResult};
+use crate::ast::tokens::Ident;
 use crate::ast::{BinaryOp, Expr, ExprBinary, ExprFnApp, ExprIf, ExprProj, ExprUnary, UnaryOp};
 use crate::error::{Errors, UnexpectedError};
 use crate::lexer::{Token, Tokens};
@@ -213,15 +214,35 @@ fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn project(input: Tokens) -> IResult<Partial<Expr>> {
-    let path = preceded(tokens::dot, verify_full(attr::attr_path));
-    let expr = pair(atomic, opt(path));
-    map(expr, |(base, path)| match path {
-        None => base,
-        Some(path) => base.map(|base| {
-            let span = Span::merge(base.span(), path.span());
-            Expr::Proj(Box::new(ExprProj::new(base, path, None, span)))
-        }),
-    })(input)
+    let (input, atomic) = atomic(input)?;
+
+    if let Ok((remaining, _)) = tokens::dot(input) {
+        let default = alt((project, error, util::error_expr_if(tokens::eof, "<eof>")));
+        let or_default = opt_partial(preceded(tokens::keyword_or, default));
+
+        let (remaining, path) = pair_partial(attr::attr_path, or_default)(remaining)?;
+        let proj = atomic.flat_map(|atomic| {
+            path.map(|(path, default)| {
+                let span = Span::merge(atomic.span(), path.span());
+                match default {
+                    Some(expr) => Expr::from(ExprProj::new(atomic, path, Some(expr), span)),
+                    None => Expr::from(ExprProj::new(atomic, path, None, span)),
+                }
+            })
+        });
+
+        Ok((remaining, proj))
+    } else if let Ok((remaining, or_span)) = tokens::keyword_or(input) {
+        let expr = atomic.map(|atomic| {
+            let arg = Expr::Ident(Ident::from(("or", or_span)));
+            let span = Span::merge(atomic.span(), or_span);
+            Expr::from(ExprFnApp::new(atomic, arg, span))
+        });
+
+        Ok((remaining, expr))
+    } else {
+        Ok((input, atomic))
+    }
 }
 
 fn atomic(input: Tokens) -> IResult<Partial<Expr>> {

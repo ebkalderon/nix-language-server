@@ -78,13 +78,11 @@ pub enum Expr {
     Let(ExprLet),
     /// `rec { foo = "bar"; }`
     Rec(ExprRec),
-    /// `x.y`
+    /// `x.y`, `x.y or "true"`
     Proj(Box<ExprProj>),
 
     /// `if true then "success" else "failure"`
     If(Box<ExprIf>),
-    /// `foo.bar or "failed"`
-    Or(Box<ExprOr>),
     /// `assert true != false; true`
     Assert(Box<ExprAssert>),
     /// `with foo; foo.attr`
@@ -122,7 +120,6 @@ impl Display for Expr {
             Expr::Proj(ref e) => write!(fmt, "{}", e),
 
             Expr::If(ref e) => write!(fmt, "{}", e),
-            Expr::Or(ref e) => write!(fmt, "{}", e),
             Expr::Assert(ref e) => write!(fmt, "{}", e),
             Expr::With(ref e) => write!(fmt, "{}", e),
 
@@ -167,7 +164,6 @@ impl HasSpan for Expr {
             Expr::Proj(ref e) => e.span(),
 
             Expr::If(ref e) => e.span(),
-            Expr::Or(ref e) => e.span(),
             Expr::Assert(ref e) => e.span(),
             Expr::With(ref e) => e.span(),
 
@@ -1087,55 +1083,6 @@ impl From<ExprIf> for Expr {
 impl PartialEq for ExprIf {
     fn eq(&self, other: &Self) -> bool {
         self.cond == other.cond && self.body == other.body && self.fallback == other.fallback
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct ExprOr {
-    expr: Expr,
-    fallback: Expr,
-    span: Span,
-}
-
-impl ExprOr {
-    pub fn new(expr: Expr, fallback: Expr, span: Span) -> Self {
-        ExprOr {
-            expr,
-            fallback,
-            span,
-        }
-    }
-
-    pub fn expr(&self) -> &Expr {
-        &self.expr
-    }
-
-    pub fn fallback(&self) -> &Expr {
-        &self.fallback
-    }
-}
-
-impl Display for ExprOr {
-    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "{} or {}", self.expr, self.fallback)
-    }
-}
-
-impl HasSpan for ExprOr {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
-impl From<ExprOr> for Expr {
-    fn from(e: ExprOr) -> Expr {
-        Expr::Or(Box::new(e))
-    }
-}
-
-impl PartialEq for ExprOr {
-    fn eq(&self, other: &Self) -> bool {
-        self.expr == other.expr && self.fallback == other.fallback
     }
 }
 

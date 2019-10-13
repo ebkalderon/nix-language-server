@@ -5,7 +5,7 @@ use std::ops::{Range, RangeFrom, RangeFull, RangeTo};
 use std::slice;
 
 use codespan::Span;
-use nom::{InputIter, InputLength, InputTake, Slice};
+use nom::{InputIter, InputLength, InputTake, Offset, Slice};
 
 use crate::error::Error;
 use crate::ToSpan;
@@ -43,6 +43,15 @@ impl<'a> Display for Tokens<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         let slice = &self.tokens[self.start..self.end];
         fmt.debug_list().entries(slice).finish()
+    }
+}
+
+impl<'a> Offset for Tokens<'a> {
+    fn offset(&self, second: &Self) -> usize {
+        const TOKEN_LEN: usize = std::mem::size_of::<Token>();
+        let first = self.tokens.as_ptr();
+        let second = second.tokens.as_ptr();
+        (second as usize - first as usize) / TOKEN_LEN
     }
 }
 

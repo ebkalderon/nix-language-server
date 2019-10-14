@@ -1,34 +1,24 @@
-use std::str::FromStr;
+use nom::branch::alt;
+use nom::character::complete::{char, digit0, digit1, one_of};
+use nom::combinator::{map, opt, recognize};
+use nom::sequence::{pair, tuple};
 
-use nom::character::complete::digit1;
-use nom::error::ErrorKind;
-use nom::Slice;
-use once_cell::sync::OnceCell;
-use regex::Regex;
-
-use crate::error::{Error, Errors};
 use crate::lexer::util::map_spanned;
 use crate::lexer::{IResult, LocatedSpan, Token};
 use crate::ToSpan;
 
+#[cfg_attr(feature = "profile", flamer::flame)]
 pub fn float(input: LocatedSpan) -> IResult<Token> {
-    static REGEX: OnceCell<Regex> = OnceCell::new();
-    let regex = REGEX.get_or_init(|| {
-        Regex::from_str(r#"^(([1-9][0-9]*\.[0-9]*)|(0?\.[0-9]+))([Ee][+-]?[0-9]+)?"#).unwrap()
-    });
-
-    if let Some(m) = regex.find(input.fragment) {
-        let span = input.slice(m.start()..m.end());
-        let remaining = input.slice(m.end()..);
-        let float = span.fragment.into();
-        Ok((remaining, Token::Float(float, span.to_span())))
-    } else {
-        let mut errors = Errors::new();
-        errors.push(Error::Nom(input.to_span(), ErrorKind::Float));
-        Err(nom::Err::Error(errors))
-    }
+    let first = recognize(tuple((one_of("123456789"), digit0, char('.'), digit0)));
+    let second = recognize(tuple((opt(char('0')), char('.'), digit1)));
+    let suffix = opt(tuple((one_of("Ee"), opt(one_of("+-")), digit1)));
+    let float = recognize(pair(alt((first, second)), suffix));
+    map(float, |span: LocatedSpan| {
+        Token::Float(span.fragment.into(), span.to_span())
+    })(input)
 }
 
+#[cfg_attr(feature = "profile", flamer::flame)]
 pub fn integer(input: LocatedSpan) -> IResult<Token> {
     map_spanned(digit1, |span, value| {
         Token::Integer(value.fragment.into(), span)

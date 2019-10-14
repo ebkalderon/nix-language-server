@@ -1,34 +1,91 @@
 use codespan::Span;
 use nom::bytes::complete::take;
+use nom::error::ErrorKind;
 
 use super::IResult;
 use crate::ast::tokens::{Comment, Ident};
-use crate::error::{Errors, ExpectedFoundError};
+use crate::error::{Error, Errors, ExpectedFoundError};
 use crate::lexer::{StringFragment, Token, Tokens};
 use crate::ToSpan;
 
-macro_rules! define_tokens {
-    ($($function:ident { $($inner:tt)+ })+) => {
-        $(define_tokens!(@token $function { $($inner)+ });)+
+pub fn comment(input: Tokens) -> IResult<Comment> {
+    let (remaining, tokens) = take(1usize)(input)?;
+    match tokens.current() {
+        Token::Comment(text, _, span) => Ok((remaining, Comment::from((text.as_str(), *span)))),
+        token => {
+            let mut errors = Errors::new();
+            errors.push(Error::Nom(token.to_span(), ErrorKind::Tag));
+            Err(nom::Err::Error(errors))
+        }
+    }
+}
+
+pub fn identifier(input: Tokens) -> IResult<Ident> {
+    let (remaining, tokens) = take(1usize)(input)?;
+    match tokens.current() {
+        Token::Identifier(text, span) => Ok((remaining, Ident::from((text.to_string(), *span)))),
+        token => {
+            let mut errors = Errors::new();
+            let expected = "identifier";
+            let found = token.description();
+            errors.push(ExpectedFoundError::new(expected, found, token.to_span()));
+            Err(nom::Err::Error(errors))
+        }
+    }
+}
+
+pub fn interpolation(input: Tokens) -> IResult<(&[Token], Span)> {
+    let (remaining, tokens) = take(1usize)(input)?;
+    match tokens.current() {
+        Token::Interpolation(tokens, span) => Ok((remaining, (&tokens[..], *span))),
+        token => {
+            let mut errors = Errors::new();
+            errors.push(Error::Nom(token.to_span(), ErrorKind::Tag));
+            Err(nom::Err::Error(errors))
+        }
+    }
+}
+
+pub fn string(input: Tokens) -> IResult<(&[StringFragment], Span)> {
+    let (remaining, tokens) = take(1usize)(input)?;
+    match tokens.current() {
+        Token::String(ref frags, ref span) => Ok((remaining, (&frags[..], *span))),
+        token => {
+            let mut errors = Errors::new();
+            errors.push(Error::Nom(token.to_span(), ErrorKind::Tag));
+            Err(nom::Err::Error(errors))
+        }
+    }
+}
+
+macro_rules! define_simple_tokens {
+    ($($function:ident => $name:ident $(( $expected:expr ))? ),+) => {
+        $(define_simple_tokens!(@token $function => $name $(($expected))?);)+
     };
 
-    (@token $function:ident { $variant:ident, $expects:expr }) => {
-        define_tokens!(@token $function {
-            returns: Span,
-            parse: Token::$variant(ref span) => *span,
-            expects: $expects,
-        });
-    };
-
-    (@token $function:ident { returns: $ret:ty, parse: $variant:pat => $value:expr, expects: $expects:expr, }) => {
-        pub fn $function(input: Tokens) -> IResult<$ret> {
+    (@token $function:ident => $variant:ident) => {
+        pub fn $function(input: Tokens) -> IResult<Span> {
             let (remaining, tokens) = take(1usize)(input)?;
             match tokens.current() {
-                $variant => Ok((remaining, $value)),
+                Token::$variant(span) => Ok((remaining, *span)),
+                token => {
+                    let mut errors = Errors::new();
+                    errors.push(Error::Nom(token.to_span(), ErrorKind::Tag));
+                    Err(nom::Err::Error(errors))
+                }
+            }
+        }
+    };
+
+    (@token $function:ident => $variant:ident ( $expected:expr )) => {
+        pub fn $function(input: Tokens) -> IResult<Span> {
+            let (remaining, tokens) = take(1usize)(input)?;
+            match tokens.current() {
+                Token::$variant(span) => Ok((remaining, *span)),
                 token => {
                     let mut errors = Errors::new();
                     let found = token.description();
-                    errors.push(ExpectedFoundError::new($expects, found, token.to_span()));
+                    errors.push(ExpectedFoundError::new($expected, found, token.to_span()));
                     Err(nom::Err::Error(errors))
                 }
             }
@@ -36,73 +93,49 @@ macro_rules! define_tokens {
     };
 }
 
-define_tokens! {
-    eof { Eof, "<eof>" }
+define_simple_tokens! {
+    eof => Eof("<eof>"),
 
-    comment {
-        returns: Comment,
-        parse: Token::Comment(ref text, _, ref span) => Comment::from((text.clone(), *span)),
-        expects: "comment",
-    }
-    identifier {
-        returns: Ident,
-        parse: Token::Identifier(ref ident, ref span) => Ident::from((ident.clone(), *span)),
-        expects: "identifier",
-    }
-    interpolation {
-        returns: (&[Token], Span),
-        parse: Token::Interpolation(ref tokens, ref span) => (tokens.as_slice(), *span),
-        expects: "interpolation",
-    }
-    string {
-        returns: (&[StringFragment], Span),
-        parse: Token::String(ref frags, ref span) => (frags.as_slice(), *span),
-        expects: "string",
-    }
+    keyword_assert => Assert("keyword `assert`"),
+    keyword_else => Else("keyword `else`"),
+    keyword_if => If("keyword `if`"),
+    keyword_in => In("keyword `in`"),
+    keyword_inherit => Inherit("keyword `inherit`"),
+    keyword_let => Let("keyword `let`"),
+    keyword_or => Or("keyword `or`"),
+    keyword_rec => Rec("keyword `rec`"),
+    keyword_then => Then("keyword `then`"),
+    keyword_with => With("keyword `with`"),
 
-    op_add { Add, "operator `+`" }
-    op_sub { Sub, "operator `-`" }
-    op_mul { Mul, "operator `*`" }
-    op_div { Div, "operator `/`" }
-    op_eq { IsEq, "operator `==`" }
-    op_neq { NotEq, "operator `!=`" }
-    op_lt { LessThan, "operator `<`" }
-    op_lte { LessThanEq, "operator `<=`" }
-    op_gt { GreaterThan, "operator `>`" }
-    op_gte { GreaterThanEq, "operator `>=`" }
-    op_and { LogicalAnd, "operator `&&`" }
-    op_or { LogicalOr, "operator `||`" }
-    op_concat { Concat, "operator `++`" }
-    op_update { Update, "operator `//`" }
-    op_question { Question, "operator `?`" }
-    op_imply { Imply, "operator `->`" }
-    op_not { Not, "unary operator `!`" }
+    op_add => Add,
+    op_sub => Sub,
+    op_mul => Mul,
+    op_div => Div,
+    op_eq => IsEq,
+    op_neq => NotEq,
+    op_lt => LessThan,
+    op_lte => LessThanEq,
+    op_gt => GreaterThan,
+    op_gte => GreaterThanEq,
+    op_and => LogicalAnd,
+    op_or => LogicalOr,
+    op_concat => Concat,
+    op_update => Update,
+    op_question => Question,
+    op_imply => Imply,
+    op_not => Not,
 
-    keyword_assert { Assert, "keyword `assert`" }
-    keyword_else { Else, "keyword `else`" }
-    keyword_if { If, "keyword `if`" }
-    keyword_in { In, "keyword `in`" }
-    keyword_inherit { Inherit, "keyword `inherit`" }
-    keyword_let { Let, "keyword `let`" }
-    keyword_or { Or, "keyword `or`" }
-    keyword_rec { Rec, "keyword `rec`" }
-    keyword_then { Then, "keyword `then`" }
-    keyword_with { With, "keyword `with`" }
-
-    at { At, "at symbol (`@`)" }
-    colon { Colon, "colon" }
-    comma { Comma, "comma" }
-    ellipsis { Ellipsis, "ellipsis (`...`)" }
-    dot { Dot, "dot separator" }
-    eq { Eq, "equals sign" }
-    interpolate { Interpolate, "interpolation sign (`${}`)" }
-    brace_left { LBrace, "left brace" }
-    brace_right { RBrace, "right brace" }
-    bracket_left { LBracket, "left bracket" }
-    bracket_right { RBracket, "right bracket" }
-    paren_left { LParen, "left parentheses" }
-    paren_right { RParen, "right parentheses" }
-    quote_double { QuoteDouble, "double quote" }
-    quote_single { QuoteSingle, "multiline string open (`''`)" }
-    semi { Semi, "semicolon" }
+    at => At("at symbol (`@`)"),
+    colon => Colon("colon"),
+    comma => Comma("comma"),
+    ellipsis => Ellipsis("ellipsis (`...`)"),
+    dot => Dot("dot separator"),
+    eq => Eq("equals sign"),
+    brace_left => LBrace("left brace"),
+    brace_right => RBrace("right brace"),
+    bracket_left => LBracket("left bracket"),
+    bracket_right => RBracket("right bracket"),
+    paren_left => LParen("left parentheses"),
+    paren_right => RParen("right parentheses"),
+    semi => Semi("semicolon")
 }

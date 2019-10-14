@@ -103,7 +103,7 @@ impl FromIterator<Error> for Errors {
         I: IntoIterator<Item = Error>,
     {
         Errors {
-            errors: iter.into_iter().collect(),
+            errors: Vec::from_iter(iter),
         }
     }
 }

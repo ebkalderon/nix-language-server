@@ -1,29 +1,21 @@
-use std::str::FromStr;
-
-use nom::character::complete::digit1;
-use nom::combinator::map;
-use nom::error::ErrorKind;
-use nom::Slice;
-use once_cell::sync::OnceCell;
-use regex::Regex;
+use nom::branch::alt;
+use nom::bytes::complete::is_a;
+use nom::character::complete::{char, digit0, digit1, one_of};
+use nom::combinator::{map, opt, recognize};
+use nom::sequence::{pair, tuple};
 
 use crate::lexer::{IResult, LocatedSpan, Token};
 use crate::ToSpan;
 
 pub fn float(input: LocatedSpan) -> IResult<Token> {
-    static REGEX: OnceCell<Regex> = OnceCell::new();
-    let regex = REGEX.get_or_init(|| {
-        Regex::from_str(r#"^(([1-9][0-9]*\.[0-9]*)|(0?\.[0-9]+))([Ee][+-]?[0-9]+)?"#).unwrap()
-    });
-
-    if let Some(m) = regex.find(input.fragment) {
-        let span = input.slice(m.start()..m.end());
-        let remaining = input.slice(m.end()..);
-        let float = span.fragment.into();
-        Ok((remaining, Token::Float(float, span.to_span())))
-    } else {
-        Err(nom::Err::Error((input, ErrorKind::Float)))
-    }
+    let first = pair(is_a("123456789"), digit0);
+    let positive = map(tuple((first, char('.'), digit0)), |_| ());
+    let fraction = map(tuple((opt(char('0')), char('.'), digit1)), |_| ());
+    let exp = tuple((one_of("Ee"), opt(one_of("+-")), digit1));
+    let float = recognize(pair(alt((positive, fraction)), opt(exp)));
+    map(float, |span: LocatedSpan| {
+        Token::Float(span.fragment.into(), span.to_span())
+    })(input)
 }
 
 pub fn integer(input: LocatedSpan) -> IResult<Token> {

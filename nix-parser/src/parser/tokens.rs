@@ -1,13 +1,8 @@
-use std::i64;
-use std::path::PathBuf;
-use std::str::FromStr;
-
 use codespan::Span;
 use nom::bytes::complete::take;
-use url::Url;
 
 use super::IResult;
-use crate::ast::tokens::{Comment, Ident, Literal};
+use crate::ast::tokens::{Comment, Ident};
 use crate::error::{Errors, ExpectedFoundError};
 use crate::lexer::{StringFragment, Token, Tokens};
 use crate::ToSpan;
@@ -54,51 +49,15 @@ define_tokens! {
         parse: Token::Identifier(ref ident, ref span) => Ident::from((ident.clone(), *span)),
         expects: "identifier",
     }
-    null {
-        returns: Literal,
-        parse: Token::Null(ref span) => Literal::from(((), *span)),
-        expects: "null",
-    }
-    boolean {
-        returns: Literal,
-        parse: Token::Boolean(ref value, ref span) => Literal::from((*value, *span)),
-        expects: "boolean",
-    }
-    float {
-        returns: Literal,
-        parse: Token::Float(ref value, ref span) => Literal::from((lexical_core::parse::<f64>(value.as_bytes()).unwrap(), *span)),
-        expects: "floating-point number",
-    }
-
-    integer {
-        returns: Literal,
-        parse: Token::Integer(ref value, ref span) => Literal::from((i64::from_str(&value).unwrap(), *span)),
-        expects: "integer",
-    }
     interpolation {
         returns: (&[Token], Span),
         parse: Token::Interpolation(ref tokens, ref span) => (tokens.as_slice(), *span),
         expects: "interpolation",
     }
-    path {
-        returns: Literal,
-        parse: Token::Path(ref value, ref span) => Literal::from((PathBuf::from(value.to_string()), *span)),
-        expects: "path literal",
-    }
-    path_template {
-        returns: Literal,
-        parse: Token::PathTemplate(ref value, ref span) => Literal::PathTemplate(value.to_string().into(), *span),
-        expects: "path template",
-    }
     string {
         returns: (&[StringFragment], Span),
         parse: Token::String(ref frags, ref span) => (frags.as_slice(), *span),
         expects: "string",
-    }
-    uri {
-        returns: Literal,
-        parse: Token::Uri(ref value, ref span) => Literal::from((Url::from_str(&value).unwrap(), *span)),
-        expects: "URI",
     }
 
     op_add { Add, "operator `+`" }

@@ -1,5 +1,9 @@
+use std::path::PathBuf;
+
 use nom::branch::alt;
+use nom::bytes::complete::take;
 use nom::combinator::map;
+use nom::error::ErrorKind;
 use nom::multi::many0;
 use nom::sequence::{pair, preceded, terminated};
 
@@ -10,9 +14,10 @@ use crate::ast::{
     StringFragment,
 };
 use crate::error::{Error, Errors};
-use crate::lexer::{StringFragment as LexerFragment, Tokens};
+use crate::lexer::{StringFragment as LexerFragment, Token, Tokens};
 use crate::parser::partial::{expect_terminated, many_till_partial, map_partial_spanned, Partial};
 use crate::parser::{tokens, IResult};
+use crate::ToSpan;
 
 pub fn paren(input: Tokens) -> IResult<Partial<ExprParen>> {
     let expr = terminated(expr, many0(tokens::comment));
@@ -95,14 +100,30 @@ pub fn string(input: Tokens) -> IResult<Partial<ExprString>> {
 }
 
 pub fn literal(input: Tokens) -> IResult<Partial<Literal>> {
-    let boolean = map(tokens::boolean, Partial::from);
-    let null = map(tokens::null, Partial::from);
-    let path = map(tokens::path, Partial::from);
-    let float = map(tokens::float, Partial::from);
-    let integer = map(tokens::integer, Partial::from);
-    let path_template = map(tokens::path_template, Partial::from);
-    let uri = map(tokens::uri, Partial::from);
-    alt((boolean, null, float, integer, path, path_template, uri))(input)
+    let (remaining, tokens) = take(1usize)(input)?;
+    let literal = match tokens.current() {
+        Token::Boolean(value, span) => Literal::Boolean(*value, *span),
+        Token::Null(span) => Literal::Null(*span),
+        Token::Path(value, span) => Literal::Path(PathBuf::from(value.to_string()), *span),
+        Token::Float(value, span) => {
+            let float: f64 = lexical_core::parse(value.as_bytes()).expect("float parsing failed");
+            Literal::Float(float, *span)
+        }
+        Token::Integer(value, span) => {
+            Literal::Integer(value.parse().expect("integer parsing failed"), *span)
+        }
+        Token::PathTemplate(value, span) => {
+            Literal::PathTemplate(PathBuf::from(value.to_string()), *span)
+        }
+        Token::Uri(value, span) => Literal::Uri(value.parse().expect("URI parsing failed"), *span),
+        token => {
+            let mut errors = Errors::new();
+            errors.push(Error::Nom(token.to_span(), ErrorKind::Tag));
+            return Err(nom::Err::Error(errors));
+        }
+    };
+
+    Ok((remaining, Partial::from(literal)))
 }
 
 pub fn identifier(input: Tokens) -> IResult<Partial<Ident>> {

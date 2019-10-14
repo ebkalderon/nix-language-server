@@ -18,7 +18,7 @@ mod tokens;
 mod util;
 
 type LocatedSpan<'a> = nom_locate::LocatedSpan<&'a str>;
-type IResult<'a, T> = nom::IResult<LocatedSpan<'a>, T, Errors>;
+type IResult<'a, T> = nom::IResult<LocatedSpan<'a>, T>;
 
 impl<'a> ToSpan for LocatedSpan<'a> {
     fn to_span(&self) -> Span {
@@ -39,13 +39,6 @@ impl<'a> Lexer<'a> {
         let input = LocatedSpan::new(s);
         let tokens = many0(terminated(token, multispace0));
         match all_consuming(preceded(multispace0, tokens))(input) {
-            Err(nom::Err::Error(err)) | Err(nom::Err::Failure(err)) => Err(err),
-            Err(nom::Err::Incomplete(needed)) => {
-                let mut errors = Errors::new();
-                let message = format!("unable to recover from incomplete input: {:?}", needed);
-                errors.push(Error::Message(Span::initial(), message));
-                Err(errors)
-            }
             Ok((_, tokens)) => {
                 let (mut tokens, mut errors) = filter_unexpected_tokens(tokens);
 
@@ -64,6 +57,18 @@ impl<'a> Lexer<'a> {
 
                 tokens.push(Token::Eof(eof_span));
                 Ok(Lexer { tokens, errors })
+            }
+            Err(nom::Err::Error(err)) | Err(nom::Err::Failure(err)) => {
+                let (input, kind) = err;
+                let mut errors = Errors::new();
+                errors.push(Error::Nom(input.to_span(), kind));
+                Err(errors)
+            }
+            Err(nom::Err::Incomplete(needed)) => {
+                let mut errors = Errors::new();
+                let message = format!("unable to recover from incomplete input: {:?}", needed);
+                errors.push(Error::Message(Span::initial(), message));
+                Err(errors)
             }
         }
     }

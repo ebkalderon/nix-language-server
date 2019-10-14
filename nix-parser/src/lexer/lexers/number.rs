@@ -1,13 +1,12 @@
 use std::str::FromStr;
 
 use nom::character::complete::digit1;
+use nom::combinator::map;
 use nom::error::ErrorKind;
 use nom::Slice;
 use once_cell::sync::OnceCell;
 use regex::Regex;
 
-use crate::error::{Error, Errors};
-use crate::lexer::util::map_spanned;
 use crate::lexer::{IResult, LocatedSpan, Token};
 use crate::ToSpan;
 
@@ -23,15 +22,13 @@ pub fn float(input: LocatedSpan) -> IResult<Token> {
         let float = span.fragment.into();
         Ok((remaining, Token::Float(float, span.to_span())))
     } else {
-        let mut errors = Errors::new();
-        errors.push(Error::Nom(input.to_span(), ErrorKind::Float));
-        Err(nom::Err::Error(errors))
+        Err(nom::Err::Error((input, ErrorKind::Float)))
     }
 }
 
 pub fn integer(input: LocatedSpan) -> IResult<Token> {
-    map_spanned(digit1, |span, value| {
-        Token::Integer(value.fragment.into(), span)
+    map(digit1, |span: LocatedSpan| {
+        Token::Integer(span.fragment.into(), span.to_span())
     })(input)
 }
 

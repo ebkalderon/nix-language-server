@@ -6,7 +6,7 @@ use nom::Slice;
 use once_cell::sync::OnceCell;
 use regex::Regex;
 
-use crate::error::{Error, Errors};
+use crate::error::Error;
 use crate::lexer::util::map_spanned;
 use crate::lexer::{IResult, LocatedSpan, Token};
 use crate::ToSpan;
@@ -29,9 +29,7 @@ pub fn path(input: LocatedSpan) -> IResult<Token> {
             Ok((remaining, token))
         }
     } else {
-        let mut errors = Errors::new();
-        errors.push(Error::Nom(input.to_span(), ErrorKind::RegexpFind));
-        Err(nom::Err::Error(errors))
+        Err(nom::Err::Error((input, ErrorKind::RegexpFind)))
     }
 }
 

@@ -1211,7 +1211,7 @@ impl Display for ExprLetIn {
             write!(fmt, " {}", bind)?;
         }
 
-        write!(fmt, "in {}", self.body)
+        write!(fmt, " in {}", self.body)
     }
 }
 

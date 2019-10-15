@@ -122,6 +122,24 @@ impl<'a> InputIter for Tokens<'a> {
     }
 }
 
+impl<'a, 'b: 'a> PartialEq<&'a [Token<'a>]> for Tokens<'b> {
+    fn eq(&self, other: &&'a [Token<'a>]) -> bool {
+        self.tokens == *other
+    }
+}
+
+impl<'a, 'b: 'a> PartialEq<&'a mut [Token<'a>]> for Tokens<'b> {
+    fn eq(&self, other: &&'a mut [Token<'a>]) -> bool {
+        self.tokens == *other
+    }
+}
+
+impl<'a, 'b: 'a> PartialEq<Vec<Token<'a>>> for Tokens<'b> {
+    fn eq(&self, other: &Vec<Token<'a>>) -> bool {
+        self.tokens == &other[..]
+    }
+}
+
 impl<'a> Slice<Range<usize>> for Tokens<'a> {
     #[inline]
     fn slice(&self, range: Range<usize>) -> Self {

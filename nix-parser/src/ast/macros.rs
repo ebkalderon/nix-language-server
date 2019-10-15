@@ -2,19 +2,6 @@
 
 /// Constructs an `Expr` from a Nix expression.
 ///
-/// # Limitations
-///
-/// Due to limitations of `macro_rules` in Rust, certain complex expressions might need extra
-/// parentheses to reduce ambiguity and aid parsing. Some expressions are impossible to parse
-/// without tweaking due to Rust's tokenization rules, e.g. strings and raw URLs.
-///
-/// Also, if the compiler complains about hitting a certain recursion limit, try adding the
-/// following module attribute to the root file of your crate:
-///
-/// ```rust
-/// #![recursion_limit = "256"]
-/// ```
-///
 /// # Example
 ///
 /// ```rust,edition2018
@@ -33,6 +20,36 @@
 ///         { inherit foo root config; }
 /// );
 /// ```
+///
+/// # Recursion
+///
+/// If the compiler complains about hitting a certain recursion limit, try adding the following
+/// attribute to the root file of your crate:
+///
+/// ```rust
+/// #![recursion_limit = "256"]
+/// ```
+///
+/// # Limitations
+///
+/// Due to limitations of `macro_rules` in Rust, certain complex expressions might need extra
+/// parentheses to reduce ambiguity and aid parsing. Some expressions are impossible to parse
+/// without tweaking due to Rust's tokenization rules.
+///
+/// ### Partially supported tokens
+///
+/// | Token                | Caveat                                         |
+/// |----------------------|------------------------------------------------|
+/// | Update operator `//` | Must be written as `/ /` in order to tokenize. |
+///
+/// ### Unsupported tokens
+///
+/// | Token                    | Reason                                     |
+/// |--------------------------|--------------------------------------------|
+/// | Strings, single or multi | Cannot be converted with `Literal::from`.  |
+/// | Comments, line or block  | Cannot be matched upon in `macro_rules`.   |
+/// | Division operator `/`    | Messes with processing of path literals.   |
+/// | URI literals             | Tough to parse, messes with path literals. |
 #[macro_export]
 macro_rules! nix {
     ($($expr:tt)+) => {{

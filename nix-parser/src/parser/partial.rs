@@ -40,12 +40,8 @@ impl<T> Partial<T> {
 
     /// Returns the errors associated with the partial value, if any.
     #[inline]
-    pub fn errors(&self) -> Option<Errors> {
-        if self.has_errors() {
-            Some(self.errors.clone())
-        } else {
-            None
-        }
+    pub fn errors(&self) -> Errors {
+        self.errors.clone()
     }
 
     /// Appends the given error to the error stack contained in this partial value.
@@ -160,8 +156,8 @@ impl<T> Extend<Partial<T>> for Partial<Vec<T>> {
         }
 
         for partial in iter {
-            if let Some(errors) = partial.errors() {
-                self.extend_errors(errors);
+            if partial.has_errors() {
+                self.extend_errors(partial.errors());
             }
 
             if let (Some(values), Some(value)) = (self.value.as_mut(), partial.value) {
@@ -193,11 +189,11 @@ impl<T> FromIterator<Partial<T>> for Partial<Vec<T>> {
 
         let (_, capacity) = iter.size_hint();
         let mut values = Vec::with_capacity(capacity.unwrap_or(0));
-        let mut partials = Partial::new(None);
+        let mut errors = Errors::new();
 
         for partial in iter {
-            if let Some(errors) = partial.errors() {
-                partials.extend_errors(errors);
+            if partial.has_errors() {
+                errors.extend(partial.errors());
             }
 
             if let Some(value) = partial.value {
@@ -205,8 +201,7 @@ impl<T> FromIterator<Partial<T>> for Partial<Vec<T>> {
             }
         }
 
-        partials.value = Some(values);
-        partials
+        Partial::with_errors(Some(values), errors)
     }
 }
 

@@ -38,10 +38,18 @@ impl<T> Partial<T> {
         !self.errors.is_empty()
     }
 
-    /// Returns the errors associated with the partial value, if any.
+    /// Returns a reference to any errors associated with the partial value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nix_parser::parser::Partial;
+    /// let value = Partial::from("example");
+    /// assert_eq!(value.errors().len(), 0);
+    /// ```
     #[inline]
-    pub fn errors(&self) -> Errors {
-        self.errors.clone()
+    pub fn errors(&self) -> &Errors {
+        &self.errors
     }
 
     /// Appends the given error to the error stack contained in this partial value.
@@ -156,9 +164,7 @@ impl<T> Extend<Partial<T>> for Partial<Vec<T>> {
         }
 
         for partial in iter {
-            if partial.has_errors() {
-                self.extend_errors(partial.errors());
-            }
+            self.extend_errors(partial.errors);
 
             if let (Some(values), Some(value)) = (self.value.as_mut(), partial.value) {
                 values.push(value);
@@ -192,9 +198,7 @@ impl<T> FromIterator<Partial<T>> for Partial<Vec<T>> {
         let mut errors = Errors::new();
 
         for partial in iter {
-            if partial.has_errors() {
-                errors.extend(partial.errors());
-            }
+            errors.extend(partial.errors);
 
             if let Some(value) = partial.value {
                 values.push(value);

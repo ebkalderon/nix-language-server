@@ -23,7 +23,7 @@
 /// let expr = nix!(
 ///     { foo, bar ? true }:
 ///     let
-///         root = ./foo/bar;
+///         path = ./foo/bar;
 ///         enabled = true;
 ///         config.value = rec {
 ///             first = if enabled then [ 4 5 ] else [];
@@ -47,8 +47,8 @@ macro_rules! nix {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! nix_token {
-    (<$($template:tt)+>) => {
-        Literal::Template(["<", $($template),+, ">"].into_iter().collect(), Default::default())
+    (<$($template:tt)/+>) => {
+        Literal::PathTemplate(["<", $(stringify!($template)),+, ">"].into_iter().collect(), Default::default())
     };
 
     (/ $($path:tt)/+) => {
@@ -238,12 +238,12 @@ macro_rules! nix_binds {
         $crate::nix_binds!(@binds ($($prev)* $next) $($rest)*)
     };
 
-    ($first:tt $($rest:tt)+) => {{
+    ($($binds:tt)*) => {{
         #[allow(unused_imports)]
         use $crate::ast::*;
         #[allow(unused_imports)]
         use $crate::ast::tokens::*;
-        $crate::nix_binds!(@binds ($first) $($rest)*)
+        $crate::nix_binds!(@binds () $($binds)*)
     }};
 }
 
@@ -271,6 +271,8 @@ macro_rules! nix_expr_and_str {
             $crate::nix_expr!($($expr)+),
             stringify!($($expr)+)
                 .replace("+ +", "++")
+                .replace("{ ", "{")
+                .replace(" }", "}")
                 .replace("< ", "<")
                 .replace(" >", ">")
                 .replace(" . ", ".")
@@ -741,8 +743,8 @@ macro_rules! atomic {
         Expr::List($crate::nix_list!([$($expr)*]))
     };
 
-    (<$($template:tt)+>) => {
-        Expr::Literal($crate::nix_token!(<$($template)+>))
+    (<$($template:tt)/+>) => {
+        Expr::Literal($crate::nix_token!(<$($template)/+>))
     };
 
     (/ $($path:tt)/+) => {
@@ -780,4 +782,78 @@ macro_rules! atomic {
     ($($err:tt)*) => {
         compile_error!(stringify!($($err)*));
     };
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn function() {
+        nix!(x: y: _);
+
+        nix!({}: _);
+        nix!({ x, y }: _);
+        nix!({ x, y ? ./hello, }: _);
+
+        nix!(with foo.bar; {});
+        nix!(assert x == y; {});
+
+        nix!(
+            let
+                inherit foo;
+                inherit (123) bar;
+                baz = { foo = 12; };
+            in
+                { inherit foo bar baz; }
+        );
+    }
+
+    #[test]
+    fn if_else() {
+        nix!(if foo == bar then baz else quux);
+    }
+
+    #[test]
+    fn operations() {
+        nix!(foo -> bar -> baz);
+        nix!(foo && bar && baz);
+        nix!(foo || bar || baz);
+        nix!(foo == bar);
+        nix!(foo != bar);
+        nix!(foo < bar);
+        nix!(foo <= bar);
+        nix!(foo > bar);
+        nix!(foo >= bar);
+        nix!(foo / / bar / / baz);
+        nix!(foo + bar - baz);
+        nix!(foo * bar * baz);
+        nix!(foo ++ bar ++ baz);
+        nix!(!foo);
+        nix!(-foo);
+    }
+
+    #[test]
+    fn project() {
+        nix!(foo.bar.baz);
+        nix!(foo.bar or [1 2 3]);
+        nix!({}.foo);
+    }
+
+    #[test]
+    fn atomic() {
+        nix!((foo));
+        nix!({ inherit foo; inherit (123) bar; baz = { foo = 12; }; });
+        nix!(rec { inherit foo; inherit (123) bar; baz = { foo = 12; }; });
+        nix!(let { inherit foo; inherit (123) bar; baz = { foo = 12; }; });
+        nix!([-foo ./bar/baz quux]);
+        nix!(/foo/bar);
+        nix!(~/foo/bar);
+        nix!(./foo/bar);
+        nix!(<nixpkgs/foo>);
+        nix!(false);
+        nix!(true);
+        nix!(null);
+        nix!(_);
+        nix!(foo_bar);
+        nix!(123);
+    }
 }

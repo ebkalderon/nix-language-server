@@ -1,3 +1,5 @@
+//! Functions for parsing expressions.
+
 pub use self::partial::Partial;
 
 use std::str::FromStr;

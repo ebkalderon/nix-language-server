@@ -1,3 +1,5 @@
+//! Abstract syntax tree nodes.
+
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
 use codespan::Span;

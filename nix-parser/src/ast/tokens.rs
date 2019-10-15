@@ -1,3 +1,5 @@
+//! Nodes representing primitive tokens.
+
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::path::{Path, PathBuf};

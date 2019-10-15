@@ -1,3 +1,5 @@
+//! Data structures and parser combinators for working with partial values.
+
 use std::iter::FromIterator;
 
 use codespan::Span;
@@ -11,6 +13,54 @@ use crate::error::{Error, Errors};
 use crate::lexer::Tokens;
 use crate::ToSpan;
 
+/// A partial value which might contain errors.
+///
+/// `Partial<T>` is a data structure which may or may not contain a value, and also may or may not
+/// contain errors. It is essentially an [`std::option::Option`] with an associated [`Errors`]
+/// stack.
+///
+/// [`std::option::Option`]: https://doc.rust-lang.org/std/option/enum.Option.html
+/// [`Errors`]: ../error/struct.Errors.html
+///
+/// This type is used to accumulate and apply monadic transformations to a possibly incomplete
+/// [`Expr`] or [`SourceFile`]. Consumers of `Partial<T>` values can choose to assert that the
+/// contained value exists without errors with [`Partial::verify()`], which will consume the
+/// `Partial<T>` and transform it into a `Result<T, Errors>` which can be handled normally.
+///
+/// [`Expr`]: ../ast/enum.Expr.html
+/// [`SourceFile`]: ../ast/enum.SourceFile.html
+/// [`Partial::verify()`]: #method.verify
+///
+/// # Examples
+///
+/// ```
+/// use codespan::Span;
+/// use nix_parser::error::ExpectedFoundError;
+/// use nix_parser::parser::Partial;
+///
+/// let mut one = Partial::new(Some(1));
+/// assert!(one.value().is_some());
+/// assert!(!one.has_errors());
+///
+/// let checked = if one.value().filter(|i| **i >= 0).is_some() {
+///     one.map(|value| value + 1)
+/// } else {
+///     let error = ExpectedFoundError::new("positive number", "negative number", Span::initial());
+///     one.extend_errors(std::iter::once(error.into()));
+///     one
+/// };
+///
+/// // You can inspect the partial value and enumerate the errors.
+/// println!("Errors, if any: {:?}", checked.errors());
+/// if let Some(ref partial) = checked.value() {
+///     println!("Partial value is: {}", partial);
+/// } else {
+///     println!("No value found");
+/// }
+///
+/// // Or you can assert that the contained value exists and has no errors.
+/// assert_eq!(checked.verify(), Ok(2));
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct Partial<T> {
     value: Option<T>,
@@ -19,6 +69,14 @@ pub struct Partial<T> {
 
 impl<T> Partial<T> {
     /// Constructs a new `Partial<T>` with the given initial value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nix_parser::parser::Partial;
+    /// let something: Partial<u32> = Partial::new(Some(1));
+    /// let nothing: Partial<u32> = Partial::from(None);
+    /// ```
     #[inline]
     pub fn new(value: Option<T>) -> Self {
         Partial {
@@ -28,12 +86,37 @@ impl<T> Partial<T> {
     }
 
     /// Constructs a new `Partial<T>` with the given initial value and a stack of errors.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nix_parser::parser::Partial;
+    /// # use nix_parser::error::{Errors, UnexpectedError};
+    /// use codespan::Span;
+    ///
+    /// let mut errors = Errors::new();
+    /// errors.push(UnexpectedError::new("token", Span::new(3, 4)));
+    ///
+    /// let value = Partial::with_errors(Some(1), errors);
+    /// ```
     #[inline]
     pub fn with_errors(value: Option<T>, errors: Errors) -> Self {
         Partial { value, errors }
     }
 
     /// Returns whether this partial value contains errors.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nix_parser::parser::Partial;
+    /// let value = Partial::from("example");
+    /// assert!(!value.has_errors());
+    ///
+    /// // The line above is equivalent to:
+    /// assert!(value.errors().is_empty());
+    /// ```
+    #[inline]
     pub fn has_errors(&self) -> bool {
         !self.errors.is_empty()
     }
@@ -53,11 +136,38 @@ impl<T> Partial<T> {
     }
 
     /// Appends the given error to the error stack contained in this partial value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nix_parser::parser::Partial;
+    /// use codespan::Span;
+    /// use nix_parser::error::Error;
+    ///
+    /// let mut partial = Partial::from("example");
+    /// assert!(!partial.has_errors());
+    ///
+    /// let first = Error::Message(Span::new(1, 3), "oops".into());
+    /// let second = Error::Message(Span::new(5, 7), "sorry".into());
+    /// partial.extend_errors(vec![first, second]);
+    /// assert_eq!(partial.errors().len(), 2);
+    /// ```
     pub fn extend_errors<I: IntoIterator<Item = Error>>(&mut self, error: I) {
         self.errors.extend(error);
     }
 
     /// Returns the contained partial value, if any.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nix_parser::parser::Partial;
+    /// let nothing: Partial<u32> = Partial::from(None);
+    /// assert_eq!(nothing.value(), None);
+    ///
+    /// let something: Partial<u32> = Partial::from(1);
+    /// assert_eq!(something.value(), Some(&1));
+    /// ```
     #[inline]
     pub fn value(&self) -> Option<&T> {
         self.value.as_ref()
@@ -72,15 +182,9 @@ impl<T> Partial<T> {
     /// ```rust
     /// # use nix_parser::error::Errors;
     /// # use nix_parser::parser::Partial;
-    /// # fn main() -> Result<(), Errors> {
-    /// let partial_string = Partial::from(String::from("Hello, world!"));
-    /// let partial_len = partial_string.map(|s| s.len());
-    /// // We assert here that the contained partial value has no errors.
-    /// let full_len = partial_len.verify()?;
-    ///
-    /// assert_eq!(full_len, 13);
-    /// # Ok(())
-    /// # }
+    /// let value = Partial::from("Hello, world!");
+    /// let length = value.map(|s| s.len());
+    /// assert_eq!(length.value(), Some(&13));
     /// ```
     #[inline]
     pub fn map<U, F>(self, f: F) -> Partial<U>
@@ -96,6 +200,49 @@ impl<T> Partial<T> {
     /// Calls `f` if there exists a contained value, otherwise returns the stored errors instead.
     ///
     /// Any errors produced by `f` are appended to the errors already inside `self`.
+    ///
+    /// # Examples
+    ///
+    /// Notice in the example below how both the values and errors are accumulated.
+    ///
+    /// ```
+    /// # use nix_parser::error::{Errors, UnexpectedError};
+    /// # use nix_parser::parser::Partial;
+    /// use codespan::Span;
+    ///
+    /// let one = Partial::from(1u32);
+    ///
+    /// let mut errors = Errors::new();
+    /// errors.push(UnexpectedError::new("token", Span::new(3, 4)));
+    /// let two = Partial::with_errors(Some(2u32), errors);
+    ///
+    /// let three = one.flat_map(|x| two.map(|y| x + y));
+    ///
+    /// assert_eq!(three.value(), Some(&3));
+    /// assert_eq!(three.errors().len(), 1);
+    /// ```
+    ///
+    /// If any partial value in the chain returns a `None`, the final value will be `None`.
+    /// However, the errors are always accumulated regardless.
+    ///
+    /// ```
+    /// # use nix_parser::error::{Errors, ExpectedFoundError};
+    /// # use nix_parser::parser::Partial;
+    /// use codespan::Span;
+    ///
+    /// let one = Partial::from(1u32);
+    ///
+    /// let mut errors = Errors::new();
+    /// errors.push(ExpectedFoundError::new("foo", "bar", Span::new(5, 5)));
+    /// let two: Partial<u32> = Partial::with_errors(None, errors);
+    ///
+    /// let three = Partial::from(3u32);
+    ///
+    /// let four = one.flat_map(|x| two.flat_map(|y| three.map(|z| x + y + z)));
+    ///
+    /// assert_eq!(four.value(), None);
+    /// assert_eq!(four.errors().len(), 1);
+    /// ```
     #[inline]
     pub fn flat_map<U, F>(mut self, f: F) -> Partial<U>
     where
@@ -111,22 +258,6 @@ impl<T> Partial<T> {
         }
     }
 
-    pub fn map_err<F>(self, f: F) -> Partial<T>
-    where
-        F: FnOnce(Errors) -> Errors,
-    {
-        let errors = if self.has_errors() {
-            f(self.errors)
-        } else {
-            self.errors
-        };
-
-        Partial {
-            value: self.value,
-            errors,
-        }
-    }
-
     /// Transforms the `Partial<T>` into a `Result<T, Errors>`, asserting that the contained value
     /// exists and has no errors.
     ///
@@ -134,10 +265,10 @@ impl<T> Partial<T> {
     ///
     /// ```rust
     /// # use nix_parser::parser::Partial;
-    /// let partial = Partial::new(Some(123));
-    /// assert_eq!(Ok(123), partial.verify());
+    /// let partial = Partial::from(123);
+    /// assert_eq!(partial.verify(), Ok(123));
     ///
-    /// let partial: Partial<u32> = Partial::new(None);
+    /// let partial: Partial<u32> = Partial::from(None);
     /// assert!(partial.verify().is_err());
     /// ```
     #[inline]

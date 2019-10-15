@@ -4,6 +4,8 @@
 ///
 /// [`Expr`]: ./ast/enum.Expr.html
 ///
+/// This utility macro is mostly intended for use in writing tests.
+///
 /// # Example
 ///
 /// ```rust,edition2018

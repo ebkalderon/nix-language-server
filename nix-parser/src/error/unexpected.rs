@@ -1,3 +1,4 @@
+/// Unexpected token error data structure.
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
@@ -7,13 +8,17 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 use super::ToDiagnostic;
 use crate::ToSpan;
 
+/// Error that occurs when an unexpected token was found.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UnexpectedError {
+    /// Printable name of the token that was found.
     pub token: String,
+    /// Span of the found token.
     pub span: Span,
 }
 
 impl UnexpectedError {
+    /// Constructs a new `UnexpectedError`.
     pub fn new<T, S>(token: T, span: S) -> Self
     where
         T: Into<String>,

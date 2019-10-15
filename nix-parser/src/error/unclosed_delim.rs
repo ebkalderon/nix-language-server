@@ -1,3 +1,4 @@
+/// Unclosed delimiters error data structure.
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
@@ -7,13 +8,17 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 use super::ToDiagnostic;
 use crate::ToSpan;
 
+/// Error that occurs when at least one delimited span was left unclosed.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UnclosedDelimError {
+    /// Locations of open delimiters that lack a matching close delimiter.
     pub unclosed_delims: Vec<Span>,
+    /// Span pointing to the end of the file.
     pub eof_span: Span,
 }
 
 impl UnclosedDelimError {
+    /// Constructs a new `UnclosedDelimError`.
     pub fn new<S1, S2>(delims: Vec<S1>, eof_span: S2) -> Self
     where
         S1: ToSpan,

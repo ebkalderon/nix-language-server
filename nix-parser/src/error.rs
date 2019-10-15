@@ -1,3 +1,5 @@
+//! Error reporting data structures.
+
 pub use self::expected_found::ExpectedFoundError;
 pub use self::incorrect_delim::IncorrectDelimError;
 pub use self::unclosed_delim::UnclosedDelimError;
@@ -50,7 +52,7 @@ pub trait ToDiagnostic {
     fn to_diagnostic(&self, file: FileId) -> Diagnostic;
 }
 
-/// A growable stack of errors.
+/// A growable stack for accumulating errors.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Errors {
     errors: Vec<Error>,
@@ -312,7 +314,7 @@ pub enum Error {
     ExpectedFound(ExpectedFoundError),
     /// An incorrect closing delimiter was specified.
     IncorrectDelim(IncorrectDelimError),
-    /// A delimited span was left unclosed.
+    /// At least one delimited span was left unclosed.
     UnclosedDelim(UnclosedDelimError),
     /// An unexpected token was found.
     Unexpected(UnexpectedError),

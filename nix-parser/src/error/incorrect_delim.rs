@@ -1,3 +1,5 @@
+//! Incorrect closing delimiter error data structure.
+
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
@@ -7,14 +9,19 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 use super::ToDiagnostic;
 use crate::ToSpan;
 
+/// Error that occurs when an incorrect closing delimiter was specified.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct IncorrectDelimError {
+    /// The unmatched delimiter and its location in the source file.
     pub unmatched_delim: (char, Span),
+    /// Location where a possible closing delimiter could be placed.
     pub candidate_span: Option<Span>,
+    /// Span from the unmatched character to EOF.
     pub unclosed_span: Option<Span>,
 }
 
 impl IncorrectDelimError {
+    /// Constructs a new `IncorrectDelimError`.
     pub fn new<S>(delim: char, span: S, candidate: Option<S>, unclosed: Option<S>) -> Self
     where
         S: ToSpan,

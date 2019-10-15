@@ -1,3 +1,5 @@
+//! Expected/found error data structure.
+
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
@@ -7,14 +9,19 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 use super::ToDiagnostic;
 use crate::ToSpan;
 
+/// Error that occurs when an item was found, but was expecting something else.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExpectedFoundError {
+    /// Printable name of the item that was expected.
     pub expected: String,
+    /// Printable name of the item that was found.
     pub found: String,
+    /// Span of the found item.
     pub span: Span,
 }
 
 impl ExpectedFoundError {
+    /// Constructs a new `ExpectedFoundError`.
     pub fn new<T, U, S>(expected: T, found: U, span: S) -> Self
     where
         T: Into<String>,

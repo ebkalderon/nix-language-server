@@ -11,22 +11,23 @@
 /// Also, if the compiler complains about hitting a certain recursion limit, try adding the
 /// following module attribute to the root file of your crate:
 ///
-/// ```rust,ignore
-/// #![recursion_limit = "128"]
+/// ```rust
+/// #![recursion_limit = "256"]
 /// ```
 ///
 /// # Example
 ///
 /// ```rust,edition2018
-/// # #![recursion_limit = "128"]
+/// # #![recursion_limit = "256"]
 /// # use nix_parser::nix;
 /// let expr = nix!(
 ///     { foo, bar ? true }:
 ///     let
 ///         root = ./foo/bar;
-///         config.value = {
-///             first = true;
-///             second = if bar then [1 2 -3] else [];
+///         enabled = true;
+///         config.value = rec {
+///             first = if enabled then [ 4 5 ] else [];
+///             second = [ 1 2 -3 ] ++ first;
 ///         };
 ///     in
 ///         { inherit foo root config; }
@@ -76,10 +77,6 @@ macro_rules! nix_token {
 
     ($ident:ident) => {
         Ident::from(stringify!($ident))
-    };
-
-    ($($path:ident).+) => {
-        AttrPath::new(vec![$(AttrSegment::Ident(Ident::from(stringify!($path)))),+])
     };
 
     ($literal:expr) => {
@@ -162,70 +159,46 @@ macro_rules! nix_formals {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! nix_list {
-    (@elems (/ $($path:ident)/+) $next:tt $($rest:tt)*) => {{
-        let first = $crate::nix_list!(@elems (/ $($path)/+));
-        let rest = $crate::nix_list!(@elems ($next) $($rest)*);
+    (@elems (/ $($path:tt)/+) / $next:tt $($rest:tt)*) => {
+        $crate::nix_list!(@elems (/ $($path)/+ / $next) $($rest)*)
+    };
+
+    (@elems ($($path:tt)/+) / $next:tt $($rest:tt)*) => {
+        $crate::nix_list!(@elems ($($path)/+ / $next) $($rest)*)
+    };
+
+    (@elems ($($expr:tt)+) $($rest:tt)*) => {{
+        let first = ::std::iter::once($crate::unary!($($expr)+));
+        let rest = $crate::nix_list!(@elems () $($rest)*);
         first.chain(rest)
     }};
 
-    (@elems ($prefix:tt / $($path:tt)/+), $next:tt $($rest:tt)*) => {{
-        let first = $crate::nix_list!(@elems ($prefix / $($path)/+));
-        let rest = $crate::nix_list!(@elems ($next) $($rest)*);
-        first.chain(rest)
-    }};
-
-    (@elems (- $expr:tt) $next:tt $($rest:tt)*) => {{
-        let first = $crate::nix_list!(@elems (- $expr));
-        let rest = $crate::nix_list!(@elems ($next) $($rest)*);
-        first.chain(rest)
-    }};
-
-    (@elems (! $expr:tt) $next:tt $($rest:tt)*) => {{
-        let first = $crate::nix_list!(@elems (! $expr));
-        let rest = $crate::nix_list!(@elems ($next) $($rest)*);
-        first.chain(rest)
-    }};
+    (@elems ()) => {
+        ::std::iter::empty()
+    };
 
     (@elems ($($prev:tt)*) / $next:tt $($rest:tt)*) => {
         $crate::nix_list!(@elems ($($prev)* / $next) $($rest)*)
-    };
-
-    (@elems ($($prev:tt)*) - $next:tt $($rest:tt)*) => {
-        $crate::nix_list!(@elems ($($prev)* - $next) $($rest)*)
     };
 
     (@elems ($($prev:tt)*) ! $next:tt $($rest:tt)*) => {
         $crate::nix_list!(@elems ($($prev)* ! $next) $($rest)*)
     };
 
-    (@elems ($expr:tt) $next:tt $($rest:tt)*) => {{
-        let first = $crate::nix_list!(@elems ($expr));
-        let rest = $crate::nix_list!(@elems ($next) $($rest)*);
-        first.chain(rest)
-    }};
-
-    (@elems ($($expr:tt)+)) => {
-        ::std::iter::once($crate::unary!($($expr)+))
+    (@elems ($($prev:tt)*) - $next:tt $($rest:tt)*) => {
+        $crate::nix_list!(@elems ($($prev)* - $next) $($rest)*)
     };
 
     (@elems ($($prev:tt)*) $next:tt $($rest:tt)*) => {
         $crate::nix_list!(@elems ($($prev)* $next) $($rest)*)
     };
 
-    ([ ]) => {{
+    ([$($elems:tt)*]) => {{
         #[allow(unused_imports)]
         use $crate::ast::tokens::*;
         #[allow(unused_imports)]
         use $crate::ast::*;
-        ExprList::new(Vec::new(), Default::default())
-    }};
-
-    ([$first:tt $($rest:tt)*]) => {{
-        #[allow(unused_imports)]
-        use $crate::ast::tokens::*;
-        #[allow(unused_imports)]
-        use $crate::ast::*;
-        ExprList::new($crate::nix_list!(@elems ($first) $($rest)*).collect(), Default::default())
+        ExprList::new($crate::nix_list!(@elems () $($elems)*).collect(), Default::default())
     }};
 }
 
@@ -252,17 +225,17 @@ macro_rules! nix_bind {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! nix_let_in {
-    (@binds ($($bind:tt)+) ; $($rest:tt)+) => {
-        ::std::iter::once($crate::nix_bind!($($bind)+)).chain($crate::nix_set!(@binds $($rest)+))
+macro_rules! nix_binds {
+    (@binds ($($bind:tt)+) ; $($rest:tt)*) => {
+        ::std::iter::once($crate::nix_bind!($($bind)+)).chain($crate::nix_binds!(@binds () $($rest)*))
     };
 
-    (@binds ($($bind:tt)+) ;) => {
-        ::std::iter::once($crate::nix_bind!($($bind)+))
+    (@binds ()) => {
+        ::std::iter::empty()
     };
 
     (@binds ($($prev:tt)*) $next:tt $($rest:tt)*) => {
-        $crate::nix_let_in!(@binds ($($prev)* $next) $($rest)*)
+        $crate::nix_binds!(@binds ($($prev)* $next) $($rest)*)
     };
 
     ($first:tt $($rest:tt)+) => {{
@@ -270,39 +243,7 @@ macro_rules! nix_let_in {
         use $crate::ast::*;
         #[allow(unused_imports)]
         use $crate::ast::tokens::*;
-        $crate::nix_let_in!(@binds ($first) $($rest)*)
-    }};
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! nix_set {
-    ({ }) => {
-        ExprSet::new(Vec::new(), Default::default())
-    };
-
-    ({ $($binds:tt)+ }) => {
-        ExprSet::new($crate::nix_set!(@binds $($binds)*).collect(), Default::default())
-    };
-
-    (@binds ($($bind:tt)+) ; $($rest:tt)+) => {
-        ::std::iter::once($crate::nix_bind!($($bind)+)).chain($crate::nix_set!(@binds $($rest)+))
-    };
-
-    (@binds ($($bind:tt)+) ;) => {
-        ::std::iter::once($crate::nix_bind!($($bind)+))
-    };
-
-    (@binds ($($prev:tt)*) $next:tt $($rest:tt)*) => {
-        $crate::nix_set!(@binds ($($prev)* $next) $($rest)*)
-    };
-
-    (@binds $first:tt $($rest:tt)*) => {{
-        #[allow(unused_imports)]
-        use $crate::ast::*;
-        #[allow(unused_imports)]
-        use $crate::ast::tokens::*;
-        $crate::nix_set!(@binds ($first) $($rest)*)
+        $crate::nix_binds!(@binds ($first) $($rest)*)
     }};
 }
 
@@ -313,6 +254,8 @@ macro_rules! nix_set {
 /// # Example
 ///
 /// ```rust,edition2018
+/// # #![recursion_limit = "128"]
+/// #
 /// # use nix_parser::nix_expr_and_str;
 /// # use nix_parser::ast::{tokens::Literal, Expr};
 /// #
@@ -327,6 +270,7 @@ macro_rules! nix_expr_and_str {
         (
             $crate::nix_expr!($($expr)+),
             stringify!($($expr)+)
+                .replace("+ +", "++")
                 .replace("< ", "<")
                 .replace(" >", ">")
                 .replace(" . ", ".")
@@ -385,7 +329,7 @@ macro_rules! function {
     }};
 
     (@rule (let $($binds:tt)+) in $($rest:tt)+) => {{
-        let binds = $crate::nix_let_in!($($binds)+).collect();
+        let binds = $crate::nix_binds!($($binds)+).collect();
         let body = $crate::nix!($($rest)+);
         Expr::from(ExprLetIn::new(binds, body, Default::default()))
     }};
@@ -435,8 +379,286 @@ macro_rules! if_else {
     };
 
     ($($expr:tt)+) => {
-        $crate::unary!($($expr)+);
+        $crate::imply!($($expr)+);
     };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! imply {
+    (@rule ($($lhs:tt)+) -> $($rhs:tt)+) => {{
+        let lhs = $crate::and!($($lhs)+);
+        let rhs = $crate::imply!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::Impl, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($prev:tt)*) $next:tt $($rest:tt)*) => {
+        $crate::imply!(@rule ($($prev)* $next) $($rest)*)
+    };
+
+    (@rule ($($expr:tt)+)) => {
+        $crate::and!($($expr)+)
+    };
+
+    ( $first:tt $($rest:tt)* ) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        $crate::imply!(@rule ($first) $($rest)*)
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! and {
+    (@rule ($($lhs:tt)+) && $($rhs:tt)+) => {{
+        let lhs = $crate::or!($($lhs)+);
+        let rhs = $crate::and!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::And, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($prev:tt)*) $next:tt $($rest:tt)*) => {
+        $crate::and!(@rule ($($prev)* $next) $($rest)*)
+    };
+
+    (@rule ($($expr:tt)+)) => {
+        $crate::or!($($expr)+)
+    };
+
+    ( $first:tt $($rest:tt)* ) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        $crate::and!(@rule ($first) $($rest)*)
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! or {
+    (@rule ($($lhs:tt)+) || $($rhs:tt)+) => {{
+        let lhs = $crate::equality!($($lhs)+);
+        let rhs = $crate::or!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::Or, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($prev:tt)*) $next:tt $($rest:tt)*) => {
+        $crate::or!(@rule ($($prev)* $next) $($rest)*)
+    };
+
+    (@rule ($($expr:tt)+)) => {
+        $crate::equality!($($expr)+)
+    };
+
+    ( $first:tt $($rest:tt)* ) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        $crate::or!(@rule ($first) $($rest)*)
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! equality {
+    (@rule ($($lhs:tt)+) == $($rhs:tt)+) => {{
+        let lhs = $crate::compare!($($lhs)+);
+        let rhs = $crate::compare!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::Eq, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($lhs:tt)+) != $($rhs:tt)+) => {{
+        let lhs = $crate::compare!($($lhs)+);
+        let rhs = $crate::compare!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::NotEq, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($prev:tt)*) $next:tt $($rest:tt)*) => {
+        $crate::equality!(@rule ($($prev)* $next) $($rest)*)
+    };
+
+    (@rule ($($expr:tt)+)) => {
+        $crate::compare!($($expr)+)
+    };
+
+    ( $first:tt $($rest:tt)* ) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        $crate::equality!(@rule ($first) $($rest)*)
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! compare {
+    (@rule ($($lhs:tt)+) <= $($rhs:tt)+) => {{
+        let lhs = $crate::update!($($lhs)+);
+        let rhs = $crate::update!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::LessThanEq, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($lhs:tt)+) < $($rhs:tt)+) => {{
+        let lhs = $crate::update!($($lhs)+);
+        let rhs = $crate::update!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::LessThan, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($lhs:tt)+) >= $($rhs:tt)+) => {{
+        let lhs = $crate::update!($($lhs)+);
+        let rhs = $crate::update!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::GreaterThanEq, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($lhs:tt)+) > $($rhs:tt)+) => {{
+        let lhs = $crate::update!($($lhs)+);
+        let rhs = $crate::update!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::GreaterThan, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($prev:tt)*) $next:tt $($rest:tt)*) => {
+        $crate::compare!(@rule ($($prev)* $next) $($rest)*)
+    };
+
+    (@rule ($($expr:tt)+)) => {
+        $crate::update!($($expr)+)
+    };
+
+    ( $first:tt $($rest:tt)* ) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        $crate::compare!(@rule ($first) $($rest)*)
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! update {
+    // Note that the update (`//`) operator is separated by a space in this macro because it also
+    // happens to be the comment token in Rust. The `nix_expr_and_str!()` macro will replace these
+    // occurrences with the correct `//` form in the output string.
+    (@rule ($($lhs:tt)+) / / $($rhs:tt)+) => {{
+        let lhs = $crate::sum!($($lhs)+);
+        let rhs = $crate::update!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::Update, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($prev:tt)*) $next:tt $($rest:tt)*) => {
+        $crate::update!(@rule ($($prev)* $next) $($rest)*)
+    };
+
+    (@rule ($($expr:tt)+)) => {
+        $crate::sum!($($expr)+)
+    };
+
+    ( $first:tt $($rest:tt)* ) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        $crate::update!(@rule ($first) $($rest)*)
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! sum {
+    (@rule ($($prev:tt)*) ++ $($rest:tt)*) => {
+        $crate::sum!(@rule ($($prev)* ++) $($rest)*)
+    };
+
+    (@rule ($($lhs:tt)+) + $($rhs:tt)+) => {{
+        let lhs = $crate::product!($($lhs)+);
+        let rhs = $crate::sum!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::Add, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($lhs:tt)+) - $($rhs:tt)+) => {{
+        let lhs = $crate::product!($($lhs)+);
+        let rhs = $crate::sum!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::Sub, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($prev:tt)*) $next:tt $($rest:tt)*) => {
+        $crate::sum!(@rule ($($prev)* $next) $($rest)*)
+    };
+
+    (@rule ($($expr:tt)+)) => {
+        $crate::product!($($expr)+)
+    };
+
+    ( $($expr:tt)+ ) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        $crate::sum!(@rule () $($expr)*)
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! product {
+    (@rule ($($lhs:tt)+) * $($rhs:tt)+) => {{
+        let lhs = $crate::concat!($($lhs)+);
+        let rhs = $crate::product!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::Mul, lhs, rhs, Default::default()))
+    }};
+
+    // FIXME: This operator does not work currently because it interferes with path parsing.
+    // (@rule ($($lhs:tt)+) / $($rhs:tt)+) => {{
+    //     let lhs = $crate::unary!($($lhs)+);
+    //     let rhs = $crate::product!($($rhs)+);
+    //     Expr::from(ExprBinary::new(BinaryOp::Div, lhs, rhs, Default::default()))
+    // }};
+
+    (@rule ($($prev:tt)*) $next:tt $($rest:tt)*) => {
+        $crate::product!(@rule ($($prev)* $next) $($rest)*)
+    };
+
+    (@rule ($($expr:tt)+)) => {
+        $crate::concat!($($expr)+)
+    };
+
+    ( $first:tt $($rest:tt)* ) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        $crate::product!(@rule ($first) $($rest)*)
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! concat {
+    (@rule ($($lhs:tt)+) ++ $($rhs:tt)+) => {{
+        let lhs = $crate::unary!($($lhs)+);
+        let rhs = $crate::concat!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::Concat, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($prev:tt)*) $next:tt $($rest:tt)*) => {
+        $crate::concat!(@rule ($($prev)* $next) $($rest)*)
+    };
+
+    (@rule ($($expr:tt)+)) => {
+        $crate::unary!($($expr)+)
+    };
+
+    ( $first:tt $($rest:tt)* ) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        $crate::concat!(@rule ($first) $($rest)*)
+    }};
 }
 
 #[doc(hidden)]
@@ -467,14 +689,14 @@ macro_rules! unary {
 #[macro_export]
 macro_rules! project {
     (@rule ($($expr:tt)+) . $($path:ident).+ or $($fallback:tt)+) => {{
-        let base = $crate::nix!($($expr)+);
+        let base = $crate::atomic!($($expr)+);
         let path = AttrPath::new(vec![$(AttrSegment::Ident(Ident::from(stringify!($path)))),+]);
         let fallback = $crate::project!($($fallback)+);
         Expr::from(ExprProj::new(base, path, Some(fallback), Default::default()))
     }};
 
     (@rule ($($expr:tt)+) . $($path:ident).+) => {{
-        let base = $crate::nix!($($expr)+);
+        let base = $crate::atomic!($($expr)+);
         let path = AttrPath::new(vec![$(AttrSegment::Ident(Ident::from(stringify!($path)))),+]);
         Expr::from(ExprProj::new(base, path, None, Default::default()))
     }};
@@ -504,7 +726,15 @@ macro_rules! atomic {
     };
 
     ({$($binds:tt)*}) => {
-        Expr::Set($crate::nix_set!({$($binds)*}))
+        Expr::Set(ExprSet::new($crate::nix_binds!($($binds)*).collect(), Default::default()))
+    };
+
+    (rec {$($binds:tt)*}) => {
+        Expr::Rec(ExprRec::new($crate::nix_binds!($($binds)*).collect(), Default::default()))
+    };
+
+    (let {$($binds:tt)*}) => {
+        Expr::Let(ExprLet::new($crate::nix_binds!($($binds)*).collect(), Default::default()))
     };
 
     ([$($expr:tt)*]) => {

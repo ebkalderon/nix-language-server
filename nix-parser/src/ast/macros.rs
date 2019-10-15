@@ -6,7 +6,7 @@
 ///
 /// Due to limitations of `macro_rules` in Rust, certain complex expressions might need extra
 /// parentheses to reduce ambiguity and aid parsing. Some expressions are impossible to parse
-/// without tweaking due to Rust's tokenization rules.
+/// without tweaking due to Rust's tokenization rules, e.g. strings and raw URLs.
 ///
 /// Also, if the compiler complains about hitting a certain recursion limit, try adding the
 /// following module attribute to the root file of your crate:
@@ -739,6 +739,10 @@ macro_rules! atomic {
         Expr::Let(ExprLet::new($crate::nix_binds!($($binds)*).collect(), Default::default()))
     };
 
+    ($dollar:tt { $($expr:tt)+ }) => {
+        Expr::from(ExprInterpolation::new($crate::nix!($($expr)+), Default::default()))
+    };
+
     ([$($expr:tt)*]) => {
         Expr::List($crate::nix_list!([$($expr)*]))
     };
@@ -844,6 +848,7 @@ mod tests {
         nix!({ inherit foo; inherit (123) bar; baz = { foo = 12; }; });
         nix!(rec { inherit foo; inherit (123) bar; baz = { foo = 12; }; });
         nix!(let { inherit foo; inherit (123) bar; baz = { foo = 12; }; });
+        nix!(${foo.bar});
         nix!([-foo ./bar/baz quux]);
         nix!(/foo/bar);
         nix!(~/foo/bar);

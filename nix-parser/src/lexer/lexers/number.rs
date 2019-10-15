@@ -1,3 +1,5 @@
+//! Combinators for lexing floating-point numbers and integers.
+
 use nom::branch::alt;
 use nom::bytes::complete::is_a;
 use nom::character::complete::{char, digit0, digit1, one_of};

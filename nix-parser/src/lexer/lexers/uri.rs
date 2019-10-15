@@ -1,3 +1,5 @@
+//! Combinator for lexing URIs.
+
 use nom::bytes::complete::{take_while, take_while1};
 use nom::character::complete::{anychar, char};
 use nom::combinator::{recognize, verify};

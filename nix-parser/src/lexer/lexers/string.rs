@@ -1,3 +1,5 @@
+//! Combinators for lexing single and multi-line strings.
+
 use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::{escaped_transform, is_not, tag};

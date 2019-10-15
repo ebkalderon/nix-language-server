@@ -1,3 +1,5 @@
+//! Utilities for lexing and tokenizing.
+
 pub use self::tokens::{CommentKind, StringFragment, Token, Tokens};
 
 use codespan::Span;
@@ -28,6 +30,31 @@ impl<'a> ToSpan for LocatedSpan<'a> {
     }
 }
 
+/// Converts an input string into a sequence of tokens.
+///
+/// # Examples
+///
+/// ```
+/// # use nix_parser::error::Errors;
+/// # fn main() -> Result<(), Errors> {
+/// use nix_parser::lexer::Lexer;
+///
+/// let expr = r#"
+///     { foo, bar, ... }:
+///     with import <nixpkgs> {};
+///     let
+///         inherit foo;
+///         baz = { quux = 12 + bar; };
+///     in
+///         { inherit foo baz; }
+/// "#;
+///
+/// let lexer = Lexer::new(expr)?;
+/// println!("produced tokens: {:?}", lexer.tokens());
+/// println!("lexing errors: {:?}", lexer.errors());
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct Lexer<'a> {
     tokens: Vec<Token<'a>>,
@@ -35,6 +62,17 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
+    /// Constructs a new `Lexer` and converts the source text into a sequence of tokens.
+    ///
+    /// Once the text has been tokenized, all tokens of type [`Token::Unknown`] will be stripped
+    /// out and converted to errors and delimiter balancing is checked. Errors are produced during
+    /// these two phases are not fatal, though, and are accessible via the [`errors`] method.
+    ///
+    /// [`Token::Unknown`]: ./enum.Token.html#variant.Unknown
+    /// [`errors`]: #method.errors
+    ///
+    /// The tokenization process will only return `Err` if the source text is empty or consists
+    /// only of comments or invalid tokens, or if the lexer itself has a bug.
     pub fn new(s: &'a str) -> Result<Self, Errors> {
         let input = LocatedSpan::new(s);
         let tokens = many0(terminated(token, multispace0));
@@ -73,10 +111,64 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Returns a slice over the tokens produced by the `Lexer`.
+    ///
+    /// This slice is guaranteed not to include any tokens that are [`Token::Unknown`], as these
+    /// are converted to errors accessible via the [`errors`] method.
+    ///
+    /// [`Token::Unknown`]: ./enum.Token.html#variant.Unknown
+    /// [`errors`]: #method.errors
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nix_parser::error::Errors;
+    /// # use nix_parser::lexer::Lexer;
+    /// # fn main() -> Result<(), Errors> {
+    /// use codespan::Span;
+    /// use nix_parser::lexer::Token;
+    ///
+    /// let expr = "{ foo = /nix/store/xrnya64zahcibg89vqhf9cwm5gcnaa6q-rust; }";
+    /// let tokens = [
+    ///     Token::LBrace(Span::new(0, 1)),
+    ///     Token::Identifier("foo".into(), Span::new(2, 5)),
+    ///     Token::Eq(Span::new(6, 7)),
+    ///     Token::Path("/nix/store/xrnya64zahcibg89vqhf9cwm5gcnaa6q-rust".into(), Span::new(8, 56)),
+    ///     Token::Semi(Span::new(56, 57)),
+    ///     Token::RBrace(Span::new(58, 59)),
+    ///     Token::Eof(Span::new(58, 58)),
+    /// ];
+    ///
+    /// let lexer = Lexer::new(expr)?;
+    /// assert_eq!(lexer.tokens(), &tokens[..]);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn tokens(&self) -> Tokens<'_> {
         Tokens::new(self.tokens.as_slice())
     }
 
+    /// Returns the errors that occurred at tokenization time, if any.
+    ///
+    /// Examples of errors that can occur may include unbalanced delimiters, incorrect delimiters,
+    /// the presence of invalid or unknown tokens, path values with trailing slashes, or
+    /// unterminated strings or interpolations.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nix_parser::error::Errors;
+    /// # use nix_parser::lexer::Lexer;
+    /// # fn main() -> Result<(), Errors> {
+    /// use codespan::Span;
+    ///
+    /// let lexer = Lexer::new("{ % is not allowed")?;
+    ///
+    /// // Two lexing errors: there is an unclosed `{` delimiter, and `%` is an unknown character.
+    /// assert_eq!(lexer.errors().len(), 2);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn errors(&self) -> &Errors {
         &self.errors
     }

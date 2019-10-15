@@ -1,3 +1,5 @@
+//! Types for reading tokens and token slices.
+
 use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::iter::Enumerate;
@@ -10,6 +12,14 @@ use nom::{InputIter, InputLength, InputTake, Offset, Slice};
 use crate::error::Error;
 use crate::ToSpan;
 
+/// A slice over a sequence of tokens.
+///
+/// This struct is produced by the [`tokens`] method on [`Lexer`]. It implements all the necessary
+/// traits to be used as an input type with [`nom`] parser combinators.
+///
+/// [`tokens`]: ./struct.Lexer.html#method.tokens
+/// [`Lexer`]: ./struct.Lexer.html
+/// [`nom`]: https://docs.rs/nom/5.0.1/nom/
 #[derive(Clone, Copy, PartialEq)]
 pub struct Tokens<'a> {
     tokens: &'a [Token<'a>],
@@ -18,6 +28,7 @@ pub struct Tokens<'a> {
 }
 
 impl<'a> Tokens<'a> {
+    /// Constructs a new `Tokens` from a slice.
     pub(crate) fn new(tokens: &'a [Token<'a>]) -> Self {
         Tokens {
             tokens,
@@ -26,6 +37,11 @@ impl<'a> Tokens<'a> {
         }
     }
 
+    /// Returns a reference to the current token.
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if `Tokens` contains no tokens.
     #[inline]
     pub fn current(&self) -> &'a Token<'a> {
         &self.tokens[0]
@@ -192,15 +208,31 @@ impl<'a> ToSpan for Tokens<'a> {
     }
 }
 
+/// List of valid types of comments.
+///
+/// This enum indicates whether a [`Token::Comment`] is a line comment or a block comment.
+///
+/// [`Token::Comment`]: ./enum.Token.html#variant.Comment
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CommentKind {
     Line,
     Block,
 }
 
+/// A fragment of a string token.
+///
+/// A [`Token::String`] is composed of a sequence of `StringFragment`s.
+///
+/// [`Token::String`]: ./enum.Token.html#variant.String
 #[derive(Clone, PartialEq)]
 pub enum StringFragment<'a> {
+    /// A literal string value.
+    ///
+    /// If this value is part of a single-line string, all escape codes are normalized. If this
+    /// value is part of a multi-line string, the text contents are left alone and leading
+    /// identation for the block is trimmed.
     Literal(String, Span),
+    /// An interpolated expression.
     Interpolation(Vec<Token<'a>>, Span),
 }
 
@@ -217,6 +249,7 @@ impl<'a> Debug for StringFragment<'a> {
     }
 }
 
+/// A token with span information.
 #[derive(Clone, PartialEq)]
 pub enum Token<'a> {
     Eof(Span),
@@ -286,6 +319,9 @@ pub enum Token<'a> {
 }
 
 impl<'a> Token<'a> {
+    /// Returns `true` if the token is a [`Token::Comment`].
+    ///
+    /// [`Token::Comment`]: ./enum.Token.html#variant.Comment
     pub fn is_comment(&self) -> bool {
         match *self {
             Token::Comment(..) => true,
@@ -293,6 +329,7 @@ impl<'a> Token<'a> {
         }
     }
 
+    /// Returns `true` if the token is a reserved keyword.
     pub fn is_keyword(&self) -> bool {
         match *self {
             Token::Assert(_)
@@ -309,6 +346,9 @@ impl<'a> Token<'a> {
         }
     }
 
+    /// Returns the user-facing description of a token.
+    ///
+    /// This string is intended to be used in the text of error messages.
     pub fn description(&self) -> String {
         match *self {
             Token::Eof(_) => "<eof>".to_string(),

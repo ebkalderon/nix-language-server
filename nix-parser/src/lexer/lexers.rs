@@ -1,3 +1,5 @@
+//! Combinators for splitting a source text into tokens.
+
 pub use self::string::string;
 
 use codespan::Span;

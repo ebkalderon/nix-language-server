@@ -1,6 +1,8 @@
 //! Utility macros for constructing an AST from an expression.
 
-/// Constructs an `Expr` from a Nix expression.
+/// Constructs an [`Expr`] from a Nix expression.
+///
+/// [`Expr`]: ./ast/enum.Expr.html
 ///
 /// # Example
 ///
@@ -44,12 +46,14 @@
 ///
 /// ### Unsupported tokens
 ///
-/// | Token                    | Reason                                     |
-/// |--------------------------|--------------------------------------------|
-/// | Strings, single or multi | Cannot be converted with `Literal::from`.  |
-/// | Comments, line or block  | Cannot be matched upon in `macro_rules`.   |
-/// | Division operator `/`    | Messes with processing of path literals.   |
-/// | URI literals             | Tough to parse, messes with path literals. |
+/// | Token                    | Reason                                      |
+/// |--------------------------|---------------------------------------------|
+/// | Strings, single or multi | Cannot be converted with [`Literal::from`]. |
+/// | Comments, line or block  | Cannot be matched upon in `macro_rules`.    |
+/// | Division operator `/`    | Messes with processing of path literals.    |
+/// | URI literals             | Tough to parse, messes with path literals.  |
+///
+/// [`Literal::from`]: ./ast/tokens/enum.Literal.html#impl-From<()>
 #[macro_export]
 macro_rules! nix {
     ($($expr:tt)+) => {{

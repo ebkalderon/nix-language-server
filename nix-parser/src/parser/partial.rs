@@ -123,8 +123,8 @@ impl<T> Partial<T> {
         }
     }
 
-    /// Transforms the `Partial<T>` into a `Result<T, VerboseError<LocatedSpan>>`, asserting that
-    /// the contained value exists and has no errors.
+    /// Transforms the `Partial<T>` into a `Result<T, Errors>`, asserting that the contained value
+    /// exists and has no errors.
     ///
     /// # Examples
     ///

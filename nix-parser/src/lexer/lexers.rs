@@ -62,9 +62,14 @@ pub fn literal(input: LocatedSpan) -> IResult<Token> {
 }
 
 fn boolean(input: LocatedSpan) -> IResult<Token> {
-    let true_val = map_spanned(tag("true"), |span, _| Token::Boolean(true, span));
-    let false_val = map_spanned(tag("false"), |span, _| Token::Boolean(false, span));
-    alt((true_val, false_val))(input)
+    alt((
+        map(tag("true"), |s: LocatedSpan| {
+            Token::Boolean(true, s.to_span())
+        }),
+        map(tag("false"), |s: LocatedSpan| {
+            Token::Boolean(false, s.to_span())
+        }),
+    ))(input)
 }
 
 pub fn interpolation(input: LocatedSpan) -> IResult<Token> {
@@ -105,9 +110,9 @@ macro_rules! define_identifiers {
             let first = verify(anychar, |c: &char| c.is_alphabetic() || *c == '_');
             let rest = take_while(|c: char| c.is_alphanumeric() || "_-'".contains(c));
             let ident = recognize(pair(first, rest));
-            map_spanned(ident, |span, ident| match ident.fragment {
-                $($keyword => Token::$variant(span),)+
-                frag => Token::Identifier(frag.into(), span),
+            map(ident, |span: LocatedSpan| match span.fragment {
+                $($keyword => Token::$variant(span.to_span()),)+
+                frag => Token::Identifier(frag.into(), span.to_span()),
             })(input)
         }
     };
@@ -128,36 +133,30 @@ define_identifiers! {
 }
 
 macro_rules! define_operator {
-    ($($function:ident => $variant:ident ( $op:expr )),+) => {
+    ($($variant:ident ( $op:expr )),+) => {
         pub fn operator(input: LocatedSpan) -> IResult<Token> {
-            alt(($($function),+))(input)
+            alt(($(map(tag($op), |s: LocatedSpan| Token::$variant(s.to_span()))),+))(input)
         }
-
-        $(
-            fn $function(input: LocatedSpan) -> IResult<Token> {
-                map(tag($op), |span: LocatedSpan| Token::$variant(span.to_span()))(input)
-            }
-        )+
     };
 }
 
 define_operator! {
-    op_concat => Concat("++"),
-    op_add => Add("+"),
-    op_imply => Imply("->"),
-    op_sub => Sub("-"),
-    op_mul => Mul("*"),
-    op_update => Update("//"),
-    op_div => Div("/"),
-    op_neq => NotEq("!="),
-    op_lte => LessThanEq("<="),
-    op_lt => LessThan("<"),
-    op_gte => GreaterThanEq(">="),
-    op_gt => GreaterThan(">"),
-    op_and => LogicalAnd("&&"),
-    op_or => LogicalOr("||"),
-    op_question => Question("?"),
-    op_not => Not("!")
+    Concat("++"),
+    Add("+"),
+    Imply("->"),
+    Sub("-"),
+    Mul("*"),
+    Update("//"),
+    Div("/"),
+    NotEq("!="),
+    LessThanEq("<="),
+    LessThan("<"),
+    GreaterThanEq(">="),
+    GreaterThan(">"),
+    LogicalAnd("&&"),
+    LogicalOr("||"),
+    Question("?"),
+    Not("!")
 }
 
 macro_rules! define_punctuation {

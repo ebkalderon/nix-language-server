@@ -98,12 +98,12 @@ define_simple_tokens! {
 
     keyword_assert => Assert("keyword `assert`"),
     keyword_else => Else("keyword `else`"),
-    keyword_if => If("keyword `if`"),
+    keyword_if => If,
     keyword_in => In("keyword `in`"),
     keyword_inherit => Inherit("keyword `inherit`"),
     keyword_let => Let("keyword `let`"),
     keyword_or => Or("keyword `or`"),
-    keyword_rec => Rec("keyword `rec`"),
+    keyword_rec => Rec,
     keyword_then => Then("keyword `then`"),
     keyword_with => With("keyword `with`"),
 

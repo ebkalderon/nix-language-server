@@ -1,6 +1,6 @@
-use std::io::Read;
-use std::process;
-use std::{env, io};
+use std::io::{Read, Write};
+use std::time::Instant;
+use std::{env, io, process};
 
 use codespan::Files;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
@@ -15,41 +15,63 @@ fn main() {
         .read_to_string(&mut expr)
         .expect("Failed to read expression from stdin");
 
+    let verbose = env::args()
+        .find(|arg| arg == "-v" || arg == "--verbose")
+        .is_some();
+
     if env::args().find(|arg| arg == "--partial").is_some() {
-        partial(&expr);
+        partial(&expr, verbose);
     } else {
-        full(&expr);
+        full(&expr, verbose);
     }
 }
 
-fn full(expr: &str) {
+fn full(expr: &str, verbose: bool) {
+    let start = Instant::now();
     let expr: SourceFile = expr.parse().unwrap_or_else(|e| {
         print_diagnostics(expr, e);
         process::exit(1);
     });
+    let end = start.elapsed();
 
-    println!("# Full AST:\n\n{:?}\n", expr);
-    println!("# Display:\n\n{}", expr);
+    if verbose {
+        let stdout = io::stdout();
+        let mut lock = stdout.lock();
+        writeln!(lock, "# Full AST:\n\n{:?}\n", expr).unwrap();
+        writeln!(lock, "# Display:\n\n{}\n", expr).unwrap();
+        writeln!(lock, "# Time: {:?}", end).unwrap();
+    } else {
+        println!("{}", expr);
+    }
 }
 
-fn partial(expr: &str) {
+fn partial(expr: &str, verbose: bool) {
+    let start = Instant::now();
     let partial = parse_source_file_partial(&expr).unwrap_or_else(|e| {
         print_diagnostics(expr, e);
         process::exit(1);
     });
+    let end = start.elapsed();
+
+    let stdout = io::stdout();
+    let mut lock = stdout.lock();
 
     if let Some(ref expr) = partial.value() {
         if partial.has_errors() {
-            println!("# Partial AST:\n\n{:?}\n", partial);
+            writeln!(lock, "# Partial AST:\n\n{:?}\n", partial).unwrap();
         } else {
-            println!("# Full AST:\n\n{:?}\n", expr);
+            writeln!(lock, "# Full AST:\n\n{:?}\n", expr).unwrap();
         }
 
-        println!("# Display:\n\n{}", expr);
+        writeln!(lock, "# Display:\n\n{}", expr).unwrap();
+
+        if verbose {
+            writeln!(lock, "# Time: {:?}", end).unwrap();
+        }
     } else {
         eprintln!("No expression value produced");
         if partial.has_errors() {
-            println!("{:?}", partial.errors());
+            eprintln!("# Errors:\n\n{:?}", partial.errors());
         }
 
         process::exit(1);

@@ -1,10 +1,9 @@
-use nom::bytes::complete::take_while1;
+use nom::branch::alt;
+use nom::bytes::complete::{take_while, take_while1};
 use nom::character::complete::char;
-use nom::error::ErrorKind;
-use nom::sequence::delimited;
-use nom::Slice;
-use once_cell::sync::OnceCell;
-use regex::Regex;
+use nom::combinator::{map, opt, recognize};
+use nom::multi::many1;
+use nom::sequence::{delimited, pair};
 
 use crate::error::Error;
 use crate::lexer::util::map_spanned;
@@ -12,35 +11,24 @@ use crate::lexer::{IResult, LocatedSpan, Token};
 use crate::ToSpan;
 
 pub fn path(input: LocatedSpan) -> IResult<Token> {
-    let path_match = normal_path_regex()
-        .find(input.fragment)
-        .or_else(|| home_path_regex().find(input.fragment));
+    let segments = many1(pair(char('/'), take_while1(path_segment)));
+    let normal = map(pair(take_while(path_segment), segments), |_| ());
+    let segments = many1(pair(char('/'), take_while1(path_segment)));
+    let home = map(pair(char('~'), segments), |_| ());
+    let (remaining, path) = recognize(pair(alt((normal, home)), opt(char('/'))))(input)?;
 
-    if let Some(m) = path_match {
-        let span = input.slice(m.start()..m.end());
-        let remaining = input.slice(m.end()..);
-
-        if !span.fragment.ends_with('/') {
-            Ok((remaining, Token::Path(span.fragment.into(), span.to_span())))
-        } else {
-            let message = "paths cannot have trailing slashes".to_string();
-            let error = Error::Message(span.to_span(), message);
-            let token = Token::Unknown(span.fragment.into(), span.to_span(), error);
-            Ok((remaining, token))
-        }
+    if !path.fragment.ends_with('/') {
+        Ok((remaining, Token::Path(path.fragment.into(), path.to_span())))
     } else {
-        Err(nom::Err::Error((input, ErrorKind::RegexpFind)))
+        let message = "paths cannot have trailing slashes".to_string();
+        let error = Error::Message(path.to_span(), message);
+        let token = Token::Unknown(path.fragment.into(), path.to_span(), error);
+        Ok((remaining, token))
     }
 }
 
-fn normal_path_regex<'a>() -> &'a Regex {
-    static PATH: OnceCell<Regex> = OnceCell::new();
-    PATH.get_or_init(|| Regex::new(r#"^[a-zA-Z0-9\._\-\+]*(/[a-zA-Z0-9\._\-\+]+)+/?"#).unwrap())
-}
-
-fn home_path_regex<'a>() -> &'a Regex {
-    static PATH: OnceCell<Regex> = OnceCell::new();
-    PATH.get_or_init(|| Regex::new(r#"^\~(/[a-zA-Z0-9\._\-\+]+)+/?"#).unwrap())
+fn path_segment(c: char) -> bool {
+    c.is_alphanumeric() || c == '.' || c == '_' || c == '-' || c == '+'
 }
 
 pub fn path_template(input: LocatedSpan) -> IResult<Token> {

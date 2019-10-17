@@ -5,7 +5,7 @@ use std::iter::FromIterator;
 use codespan::Span;
 use nom::bytes::complete::take;
 use nom::combinator::opt;
-use nom::sequence::{preceded, terminated};
+use nom::sequence::preceded;
 use nom::InputLength;
 
 use super::{tokens, IResult};
@@ -352,14 +352,16 @@ where
     F: Fn(Tokens<'a>) -> IResult<Partial<O1>>,
     G: Fn(Tokens<'a>) -> IResult<O2>,
 {
-    move |input| match terminated(&f, &term)(input) {
-        Ok((remaining, partial)) => Ok((remaining, partial)),
-        Err(nom::Err::Error(err)) => {
-            let (remaining, mut partial) = f(input)?;
-            partial.extend_errors(err);
-            Ok((remaining, partial))
+    move |input| {
+        let (remaining, mut partial) = f(input)?;
+        match term(remaining) {
+            Ok((remaining, _)) => Ok((remaining, partial)),
+            Err(nom::Err::Error(err)) => {
+                partial.extend_errors(err);
+                Ok((remaining, partial))
+            }
+            Err(err) => Err(err),
         }
-        Err(err) => Err(err),
     }
 }
 

@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use codespan::{FileId, Files};
 use codespan_lsp::{make_lsp_diagnostic, range_to_byte_span};
 use futures::future::{self, FutureResult};
-use jsonrpc_core::{BoxFuture, Error, Result};
+use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use log::info;
 use nix_parser::ast::SourceFile;
 use serde_json::Value;
@@ -43,7 +43,7 @@ impl LanguageServer for Nix {
     type HoverFuture = BoxFuture<Option<Hover>>;
     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 
-    fn initialize(&self, _: &Printer, _: InitializeParams) -> Result<InitializeResult> {
+    fn initialize(&self, _: &Printer, _: InitializeParams) -> RpcResult<InitializeResult> {
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
@@ -150,16 +150,11 @@ fn get_diagnostics(state: &State, uri: &Url, id: FileId) -> Vec<Diagnostic> {
         }
         Err(err) => {
             info!("expression has errors: {}", err);
-            let diagnostics = err.to_diagnostics(id);
-
-            let mut new_diags = Vec::new();
-            for diag in diagnostics {
-                let diag =
-                    make_lsp_diagnostic(&state.files, None, diag, |_| Ok(uri.clone())).unwrap();
-                new_diags.push(diag);
-            }
-
-            new_diags
+            err.to_diagnostics(id)
+                .into_iter()
+                .map(|d| make_lsp_diagnostic(&state.files, None, d, |_| Ok(uri.clone())))
+                .collect::<Result<Vec<_>, _>>()
+                .unwrap()
         }
     }
 }

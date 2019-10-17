@@ -289,9 +289,9 @@ impl<T> Extend<Partial<T>> for Partial<Vec<T>> {
     {
         let iter = iter.into_iter();
 
-        if let (Some(values), (_, Some(bound))) = (self.value.as_mut(), iter.size_hint()) {
-            let additional = bound.saturating_sub(values.len());
-            values.reserve(additional);
+        if let Some(values) = self.value.as_mut() {
+            let (lower, upper) = iter.size_hint();
+            values.reserve(upper.unwrap_or(lower).saturating_sub(values.capacity()));
         }
 
         for partial in iter {
@@ -324,8 +324,8 @@ impl<T> FromIterator<Partial<T>> for Partial<Vec<T>> {
     {
         let iter = iter.into_iter();
 
-        let (_, capacity) = iter.size_hint();
-        let mut values = Vec::with_capacity(capacity.unwrap_or(0));
+        let (lower, upper) = iter.size_hint();
+        let mut values = Vec::with_capacity(upper.unwrap_or(lower));
         let mut errors = Errors::new();
 
         for partial in iter {

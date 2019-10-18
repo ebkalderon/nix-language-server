@@ -84,37 +84,15 @@ pub fn parse_source_file_partial(source: &str) -> Result<Partial<SourceFile>, Er
 mod tests {
     use super::*;
 
-    use crate::{
-        ast::{ExprFnDecl, FnDeclFormals, Formal},
-        nix,
-    };
+    use crate::nix_expr_and_str;
 
     #[test]
     fn issue_6() {
-        let source = parse_source_file(
-            r#"
-{
-  baz = quux;
-  inherit ({foo}: foo) bar;
-
-}
-"#,
-        )
-        .unwrap();
-        eprintln!("{:?}", source);
-        let some_fn = ExprFnDecl::Formals(FnDeclFormals::new(
-            vec![Formal::new("foo".into(), None, Default::default())],
-            None,
-            None,
-            nix!(foo),
-            Default::default(),
-        ));
-        assert_eq!(
-            source.expr(),
-            &nix!({
-                baz = quux;
-                inherit (antiquote!(some_fn.into())) bar;
-            })
-        );
+        let (expected, s) = nix_expr_and_str!({
+            baz = quux;
+            inherit ({foo}: foo) bar;
+        });
+        let found = parse_expr(&s).unwrap();
+        assert_eq!(expected, found);
     }
 }

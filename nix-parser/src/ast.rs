@@ -1417,7 +1417,9 @@ impl HasSpan for FnDeclFormals {
 
 impl PartialEq for FnDeclFormals {
     fn eq(&self, other: &Self) -> bool {
-        self.formals == other.formals && self.ellipsis == other.ellipsis && self.body == other.body
+        self.formals == other.formals
+            && self.ellipsis.is_some() == other.ellipsis.is_some()
+            && self.body == other.body
     }
 }
 

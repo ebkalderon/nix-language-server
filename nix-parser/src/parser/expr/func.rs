@@ -47,7 +47,7 @@ fn formals(input: Tokens) -> IResult<Partial<FnDeclFormals>> {
     // left-curly-bracket ( right-curly-bracket colon / ellipsis / ident ( question / comma / right-curly-bracket ))
     fn ignore<T>(_: T) {}
     preceded(
-        tokens::brace_left,
+        pair(tokens::brace_left, many0(tokens::comment)),
         alt((
             map(preceded(tokens::brace_right, tokens::colon), ignore),
             map(tokens::ellipsis, ignore),

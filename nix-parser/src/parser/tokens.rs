@@ -131,11 +131,11 @@ define_simple_tokens! {
     ellipsis => Ellipsis("ellipsis (`...`)"),
     dot => Dot("dot separator"),
     eq => Eq("equals sign"),
-    brace_left => LBrace("left brace"),
+    brace_left => LBrace,
     brace_right => RBrace("right brace"),
-    bracket_left => LBracket("left bracket"),
+    bracket_left => LBracket,
     bracket_right => RBracket("right bracket"),
-    paren_left => LParen("left parentheses"),
+    paren_left => LParen,
     paren_right => RParen("right parentheses"),
     semi => Semi("semicolon")
 }

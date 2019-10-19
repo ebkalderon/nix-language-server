@@ -70,9 +70,11 @@ fn formals(input: Tokens) -> IResult<Partial<FnDeclFormals>> {
         Partial::from(Formal::new(name, def, Span::merge(name_span, default_span)))
     });
 
-    let args = separated_list_partial(tokens::comma, tokens::brace_right, formal);
+    let sep = pair(tokens::comma, many0(tokens::comment));
+    let args = separated_list_partial(sep, tokens::brace_right, formal);
+    let start = pair(tokens::brace_left, many0(tokens::comment));
     let term = pair(tokens::brace_right, tokens::colon);
-    let formals = delimited(tokens::brace_left, args, term);
+    let formals = delimited(start, args, term);
 
     let expr = alt((expr, util::error_expr_if(tokens::eof)));
     map_partial_spanned(pair_partial(formals, expr), |span, (formals, expr)| {

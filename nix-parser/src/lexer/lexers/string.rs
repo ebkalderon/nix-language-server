@@ -54,11 +54,10 @@ where
                                 break;
                             }
                         }
-                        _ => {
-                            let (input, _) = multispace0(remaining)?;
-                            remaining = input;
-                        }
+                        _ => {}
                     }
+                    let (input, _) = multispace0(remaining)?;
+                    remaining = input;
                     tokens.push(token);
                 }
 

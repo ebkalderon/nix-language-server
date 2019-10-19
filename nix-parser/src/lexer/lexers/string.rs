@@ -4,12 +4,12 @@ use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::{escaped_transform, is_not, tag};
 use nom::character::complete::{anychar, char, multispace0, one_of};
-use nom::combinator::{cond, map, peek, recognize};
+use nom::combinator::{cond, map, not, peek, recognize};
 use nom::multi::many_till;
 use nom::sequence::{pair, terminated};
 
 use super::{punct_interpolate, punct_quote_double, punct_quote_single};
-use crate::lexer::util::split_lines_without_indentation;
+use crate::lexer::util::split_lines_without_indent;
 use crate::lexer::{token, IResult, LocatedSpan, StringFragment, Token};
 use crate::ToSpan;
 
@@ -32,9 +32,10 @@ where
 
         let mut remaining = input;
         let mut fragments = Vec::new();
+        let indent_level = input.get_column();
 
         loop {
-            if let Ok((input, _)) = delimiter(remaining) {
+            if let Ok((input, _)) = pair(&delimiter, peek(not(char('$'))))(remaining) {
                 remaining = input;
                 break;
             } else if let Ok((input, _)) = terminated(punct_interpolate, multispace0)(remaining) {
@@ -64,16 +65,20 @@ where
                 let span = Span::new(start.offset as u32, remaining.offset as u32);
                 fragments.push(StringFragment::Interpolation(tokens, span));
             } else {
-                let boundary = alt((&delimiter, punct_interpolate));
                 let (string, span) = if is_multiline {
-                    let (input, string) = recognize(many_till(anychar, peek(boundary)))(remaining)?;
-                    let lines: Vec<_> = split_lines_without_indentation(string).collect();
-                    remaining = input;
-                    (lines.join("\n"), string.to_span())
-                } else {
-                    let escape = recognize(pair(tag("\\"), one_of("\\\"$")));
-                    let chars = alt((escape, recognize(anychar)));
+                    let unescaped_delim = terminated(&delimiter, peek(not(char('$'))));
+                    let boundary = alt((unescaped_delim, punct_interpolate));
+                    let chars = alt((tag("''$"), recognize(anychar)));
                     let (input, string) = recognize(many_till(chars, peek(boundary)))(remaining)?;
+                    let lines: Vec<_> = split_lines_without_indent(string, indent_level).collect();
+                    remaining = input;
+                    (lines.join("\n").replace("''$", "$"), string.to_span())
+                } else {
+                    let unescaped_delim = recognize(terminated(not(char('\\')), peek(&delimiter)));
+                    let boundary = alt((unescaped_delim, peek(recognize(punct_interpolate))));
+                    let escape = recognize(pair(char('\\'), one_of("\\\"$")));
+                    let chars = alt((escape, recognize(anychar)));
+                    let (input, string) = recognize(many_till(chars, boundary))(remaining)?;
                     let (_, escaped) = escaped_transform(is_not("\\"), '\\', escape_codes)(string)?;
                     remaining = input;
                     (escaped, string.to_span())

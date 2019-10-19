@@ -16,7 +16,7 @@ use regex::Regex;
 use self::number::{float, integer};
 use self::path::{path, path_template};
 use self::uri::uri;
-use super::util::{map_spanned, split_lines_without_indentation};
+use super::util::{map_spanned, split_lines_without_indent};
 use super::{token, CommentKind, IResult, LocatedSpan, Token};
 use crate::error::Error;
 use crate::ToSpan;
@@ -45,7 +45,7 @@ fn block_comment(input: LocatedSpan) -> IResult<Token> {
     if let Some(m) = regex.find(input.fragment) {
         let span = input.slice(..m.start());
         let remaining = input.slice(m.end()..);
-        let rows: Vec<_> = split_lines_without_indentation(span).collect();
+        let rows: Vec<_> = split_lines_without_indent(span, span.get_column()).collect();
         let comment = Token::Comment(rows.join("\n"), CommentKind::Block, span.to_span());
         Ok((remaining, comment))
     } else {

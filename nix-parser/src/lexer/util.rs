@@ -20,6 +20,10 @@ where
     }
 }
 
+/// Checks whether all delimiter tokens (braces, brackets, and parentheses) in the given token
+/// slice are balanced.
+///
+/// If all delimiters are balanced, the returned `Errors` stack will be empty.
 pub fn check_delims_balanced(tokens: &[Token], eof_span: Span) -> Errors {
     let mut delim_stack = Vec::new();
     let mut errors = Errors::new();
@@ -62,13 +66,43 @@ pub fn check_delims_balanced(tokens: &[Token], eof_span: Span) -> Errors {
     errors
 }
 
-pub fn split_lines_without_indentation(input: LocatedSpan) -> impl Iterator<Item = &str> {
-    let indent_level = input.get_column();
-    input.fragment.split('\n').map(move |row| {
-        let trim_start = row
-            .char_indices()
-            .take_while(|(i, c)| c.is_whitespace() && *i < indent_level)
-            .count();
-        &row[trim_start..]
+/// Splits the given input string into lines with the leading indentation trimmed on all subsequent
+/// lines.
+///
+/// # Panics
+///
+/// This function will panic if `indent` not greater than 0. Since this parameter is expected to be
+/// populated with a value from `LocatedSpan::get_column()`, it is expected that the indentation
+/// column is always 1 or more.
+pub fn split_lines_without_indent(input: LocatedSpan, indent: usize) -> impl Iterator<Item = &str> {
+    debug_assert!(indent > 0);
+    input.fragment.split('\n').enumerate().map(move |(i, row)| {
+        if i > 0 {
+            let trim_start = row
+                .char_indices()
+                .take_while(|(i, c)| c.is_whitespace() && *i < indent - 1)
+                .count();
+            &row[trim_start..]
+        } else {
+            row
+        }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn split_lines() {
+        let input = LocatedSpan::new(
+            r#"
+            first
+            second
+               indented
+          de-indented"#,
+        );
+        let lines: Vec<_> = split_lines_without_indent(input, 13).collect();
+        assert_eq!(lines, ["", "first", "second", "   indented", "de-indented"]);
+    }
 }

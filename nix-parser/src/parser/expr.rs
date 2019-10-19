@@ -183,7 +183,7 @@ fn product(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn concat(input: Tokens) -> IResult<Partial<Expr>> {
-    let expr = pair(unary, many0(preceded(tokens::op_concat, unary)));
+    let expr = pair(has_attr, many0(preceded(tokens::op_concat, has_attr)));
     map(expr, |(first, rest)| {
         let exprs = Partial::from_iter(iter::once(first).chain(rest));
         exprs.map(|mut exprs| {
@@ -193,6 +193,20 @@ fn concat(input: Tokens) -> IResult<Partial<Expr>> {
                 Expr::from(ExprBinary::new(BinaryOp::Concat, lhs, rhs, span))
             })
         })
+    })(input)
+}
+
+fn has_attr(input: Tokens) -> IResult<Partial<Expr>> {
+    let rhs = alt((unary, util::error_expr_if(tokens::eof)));
+    let expr = pair(unary, opt(preceded(tokens::op_question, rhs)));
+    map(expr, |(lhs, rhs)| match rhs {
+        None => lhs,
+        Some(rhs) => lhs.flat_map(|lhs| {
+            rhs.map(|rhs| {
+                let span = Span::merge(lhs.span(), rhs.span());
+                Expr::from(ExprBinary::new(BinaryOp::HasAttr, lhs, rhs, span))
+            })
+        }),
     })(input)
 }
 

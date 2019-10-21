@@ -4,7 +4,7 @@ use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::take;
 use nom::combinator::{map, opt};
-use nom::multi::{many0, many1};
+use nom::multi::many0;
 use nom::sequence::{pair, preceded};
 
 use super::partial::{
@@ -54,45 +54,39 @@ fn if_else(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn imply(input: Tokens) -> IResult<Partial<Expr>> {
-    let rhs = alt((and, util::error_expr_if(tokens::eof)));
-    let expr = pair(and, many0(preceded(tokens::op_imply, rhs)));
-    map(expr, |(first, rest)| {
-        rest.into_iter().fold(first, |lhs, rhs| {
-            lhs.flat_map(|lhs| {
-                rhs.map(|rhs| {
-                    let span = Span::merge(lhs.span(), rhs.span());
-                    Expr::from(ExprBinary::new(BinaryOp::Impl, lhs, rhs, span))
-                })
+    let (input, first) = and(input)?;
+    let next = alt((and, util::error_expr_if(tokens::eof)));
+    util::fold_many0(preceded(tokens::op_imply, next), first, |lhs, rhs| {
+        lhs.flat_map(|lhs| {
+            rhs.map(|rhs| {
+                let span = Span::merge(lhs.span(), rhs.span());
+                Expr::from(ExprBinary::new(BinaryOp::Impl, lhs, rhs, span))
             })
         })
     })(input)
 }
 
 fn and(input: Tokens) -> IResult<Partial<Expr>> {
-    let rhs = alt((or, util::error_expr_if(tokens::eof)));
-    let expr = pair(or, many0(preceded(tokens::op_and, rhs)));
-    map(expr, |(first, rest)| {
-        rest.into_iter().fold(first, |lhs, rhs| {
-            lhs.flat_map(|lhs| {
-                rhs.map(|rhs| {
-                    let span = Span::merge(lhs.span(), rhs.span());
-                    Expr::from(ExprBinary::new(BinaryOp::And, lhs, rhs, span))
-                })
+    let (input, first) = or(input)?;
+    let next = alt((or, util::error_expr_if(tokens::eof)));
+    util::fold_many0(preceded(tokens::op_and, next), first, |lhs, rhs| {
+        lhs.flat_map(|lhs| {
+            rhs.map(|rhs| {
+                let span = Span::merge(lhs.span(), rhs.span());
+                Expr::from(ExprBinary::new(BinaryOp::And, lhs, rhs, span))
             })
         })
     })(input)
 }
 
 fn or(input: Tokens) -> IResult<Partial<Expr>> {
-    let rhs = alt((equality, util::error_expr_if(tokens::eof)));
-    let expr = pair(equality, many0(preceded(tokens::op_or, rhs)));
-    map(expr, |(first, rest)| {
-        rest.into_iter().fold(first, |lhs, rhs| {
-            lhs.flat_map(|lhs| {
-                rhs.map(|rhs| {
-                    let span = Span::merge(lhs.span(), rhs.span());
-                    Expr::from(ExprBinary::new(BinaryOp::Or, lhs, rhs, span))
-                })
+    let (input, first) = equality(input)?;
+    let next = alt((equality, util::error_expr_if(tokens::eof)));
+    util::fold_many0(preceded(tokens::op_or, next), first, |lhs, rhs| {
+        lhs.flat_map(|lhs| {
+            rhs.map(|rhs| {
+                let span = Span::merge(lhs.span(), rhs.span());
+                Expr::from(ExprBinary::new(BinaryOp::Or, lhs, rhs, span))
             })
         })
     })(input)
@@ -149,34 +143,30 @@ fn update(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn sum(input: Tokens) -> IResult<Partial<Expr>> {
+    let (input, first) = product(input)?;
+    let next = alt((product, util::error_expr_if(tokens::eof)));
     let add = map(tokens::op_add, |_| BinaryOp::Add);
     let sub = map(tokens::op_sub, |_| BinaryOp::Sub);
-    let rhs = alt((product, util::error_expr_if(tokens::eof)));
-    let expr = pair(product, many0(pair(alt((add, sub)), rhs)));
-    map(expr, |(first, rest)| {
-        rest.into_iter().fold(first, |lhs, (op, rhs)| {
-            lhs.flat_map(|lhs| {
-                rhs.map(|rhs| {
-                    let span = Span::merge(lhs.span(), rhs.span());
-                    Expr::from(ExprBinary::new(op, lhs, rhs, span))
-                })
+    util::fold_many0(pair(alt((add, sub)), next), first, |lhs, (op, rhs)| {
+        lhs.flat_map(|lhs| {
+            rhs.map(|rhs| {
+                let span = Span::merge(lhs.span(), rhs.span());
+                Expr::from(ExprBinary::new(op, lhs, rhs, span))
             })
         })
     })(input)
 }
 
 fn product(input: Tokens) -> IResult<Partial<Expr>> {
+    let (input, first) = concat(input)?;
+    let next = alt((concat, util::error_expr_if(tokens::eof)));
     let mul = map(tokens::op_mul, |_| BinaryOp::Mul);
     let div = map(tokens::op_div, |_| BinaryOp::Div);
-    let rhs = alt((concat, util::error_expr_if(tokens::eof)));
-    let expr = pair(concat, many0(pair(alt((mul, div)), rhs)));
-    map(expr, |(first, rest)| {
-        rest.into_iter().fold(first, |lhs, (op, rhs)| {
-            lhs.flat_map(|lhs| {
-                rhs.map(|rhs| {
-                    let span = Span::merge(lhs.span(), rhs.span());
-                    Expr::from(ExprBinary::new(op, lhs, rhs, span))
-                })
+    util::fold_many0(pair(alt((mul, div)), next), first, |lhs, (op, rhs)| {
+        lhs.flat_map(|lhs| {
+            rhs.map(|rhs| {
+                let span = Span::merge(lhs.span(), rhs.span());
+                Expr::from(ExprBinary::new(op, lhs, rhs, span))
             })
         })
     })(input)
@@ -222,14 +212,12 @@ fn unary(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
-    map(many1(project), |mut items| {
-        let first = items.remove(0);
-        items.into_iter().fold(first, |lhs, rhs| {
-            lhs.flat_map(|lhs| {
-                rhs.map(|rhs| {
-                    let span = Span::merge(lhs.span(), rhs.span());
-                    Expr::from(ExprFnApp::new(lhs, rhs, span))
-                })
+    let (input, first) = project(input)?;
+    util::fold_many0(project, first, |lhs, rhs| {
+        lhs.flat_map(|lhs| {
+            rhs.map(|rhs| {
+                let span = Span::merge(lhs.span(), rhs.span());
+                Expr::from(ExprFnApp::new(lhs, rhs, span))
             })
         })
     })(input)

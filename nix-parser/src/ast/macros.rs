@@ -664,13 +664,39 @@ macro_rules! product {
 #[macro_export]
 macro_rules! concat {
     (@rule ($($lhs:tt)+) ++ $($rhs:tt)+) => {{
-        let lhs = $crate::unary!($($lhs)+);
+        let lhs = $crate::has_attr!($($lhs)+);
         let rhs = $crate::concat!($($rhs)+);
         Expr::from(ExprBinary::new(BinaryOp::Concat, lhs, rhs, Default::default()))
     }};
 
     (@rule ($($prev:tt)*) $next:tt $($rest:tt)*) => {
         $crate::concat!(@rule ($($prev)* $next) $($rest)*)
+    };
+
+    (@rule ($($expr:tt)+)) => {
+        $crate::has_attr!($($expr)+)
+    };
+
+    ( $first:tt $($rest:tt)* ) => {{
+        #[allow(unused_imports)]
+        use $crate::ast::*;
+        #[allow(unused_imports)]
+        use $crate::ast::tokens::*;
+        $crate::concat!(@rule ($first) $($rest)*)
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! has_attr {
+    (@rule ($($lhs:tt)+) ? $($rhs:tt)+) => {{
+        let lhs = $crate::unary!($($lhs)+);
+        let rhs = $crate::has_attr!($($rhs)+);
+        Expr::from(ExprBinary::new(BinaryOp::HasAttr, lhs, rhs, Default::default()))
+    }};
+
+    (@rule ($($prev:tt)*) $next:tt $($rest:tt)*) => {
+        $crate::has_attr!(@rule ($($prev)* $next) $($rest)*)
     };
 
     (@rule ($($expr:tt)+)) => {
@@ -682,7 +708,7 @@ macro_rules! concat {
         use $crate::ast::*;
         #[allow(unused_imports)]
         use $crate::ast::tokens::*;
-        $crate::concat!(@rule ($first) $($rest)*)
+        $crate::has_attr!(@rule ($first) $($rest)*)
     }};
 }
 
@@ -857,6 +883,7 @@ mod tests {
         nix!(foo + bar - baz);
         nix!(foo * bar * baz);
         nix!(foo ++ bar ++ baz);
+        nix!(foo ? bar ? baz);
         nix!(!foo);
         nix!(-foo);
     }

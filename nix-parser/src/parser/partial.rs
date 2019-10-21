@@ -287,19 +287,14 @@ impl<T> Extend<Partial<T>> for Partial<Vec<T>> {
     where
         I: IntoIterator<Item = Partial<T>>,
     {
-        let iter = iter.into_iter();
-
         if let Some(values) = self.value.as_mut() {
-            let (lower, upper) = iter.size_hint();
-            values.reserve(upper.unwrap_or(lower).saturating_sub(values.capacity()));
-        }
-
-        for partial in iter {
-            self.extend_errors(partial.errors);
-
-            if let (Some(values), Some(value)) = (self.value.as_mut(), partial.value) {
-                values.push(value);
+            for partial in iter {
+                self.errors.extend(partial.errors);
+                values.extend(partial.value);
             }
+        } else {
+            let errors = iter.into_iter().map(|p| p.errors).flatten();
+            self.errors.extend(errors);
         }
     }
 }

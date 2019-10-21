@@ -131,14 +131,18 @@ fn update(input: Tokens) -> IResult<Partial<Expr>> {
     let rhs = alt((sum, util::error_expr_if(tokens::eof)));
     let expr = pair(sum, many0(preceded(tokens::op_update, rhs)));
     map(expr, |(first, rest)| {
-        let exprs = Partial::from_iter(iter::once(first).chain(rest));
-        exprs.map(|mut exprs| {
-            let last = exprs.pop().unwrap();
-            exprs.into_iter().rev().fold(last, |lhs, rhs| {
-                let span = Span::merge(rhs.span(), lhs.span());
-                Expr::from(ExprBinary::new(BinaryOp::Update, lhs, rhs, span))
+        if rest.is_empty() {
+            first
+        } else {
+            let exprs = Partial::from_iter(iter::once(first).chain(rest));
+            exprs.map(|mut exprs| {
+                let last = exprs.pop().unwrap();
+                exprs.into_iter().rev().fold(last, |lhs, rhs| {
+                    let span = Span::merge(rhs.span(), lhs.span());
+                    Expr::from(ExprBinary::new(BinaryOp::Update, lhs, rhs, span))
+                })
             })
-        })
+        }
     })(input)
 }
 
@@ -175,14 +179,18 @@ fn product(input: Tokens) -> IResult<Partial<Expr>> {
 fn concat(input: Tokens) -> IResult<Partial<Expr>> {
     let expr = pair(has_attr, many0(preceded(tokens::op_concat, has_attr)));
     map(expr, |(first, rest)| {
-        let exprs = Partial::from_iter(iter::once(first).chain(rest));
-        exprs.map(|mut exprs| {
-            let last = exprs.pop().unwrap();
-            exprs.into_iter().rev().fold(last, |lhs, rhs| {
-                let span = Span::merge(rhs.span(), lhs.span());
-                Expr::from(ExprBinary::new(BinaryOp::Concat, lhs, rhs, span))
+        if rest.is_empty() {
+            first
+        } else {
+            let exprs = Partial::from_iter(iter::once(first).chain(rest));
+            exprs.map(|mut exprs| {
+                let last = exprs.pop().unwrap();
+                exprs.into_iter().rev().fold(last, |lhs, rhs| {
+                    let span = Span::merge(rhs.span(), lhs.span());
+                    Expr::from(ExprBinary::new(BinaryOp::Concat, lhs, rhs, span))
+                })
             })
-        })
+        }
     })(input)
 }
 

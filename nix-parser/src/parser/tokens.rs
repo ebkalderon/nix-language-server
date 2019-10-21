@@ -96,16 +96,16 @@ macro_rules! define_simple_tokens {
 define_simple_tokens! {
     eof => Eof("<eof>"),
 
-    keyword_assert => Assert("keyword `assert`"),
+    keyword_assert => Assert,
     keyword_else => Else("keyword `else`"),
     keyword_if => If,
     keyword_in => In("keyword `in`"),
     keyword_inherit => Inherit("keyword `inherit`"),
-    keyword_let => Let("keyword `let`"),
+    keyword_let => Let,
     keyword_or => Or,
     keyword_rec => Rec,
     keyword_then => Then("keyword `then`"),
-    keyword_with => With("keyword `with`"),
+    keyword_with => With,
 
     op_add => Add,
     op_sub => Sub,

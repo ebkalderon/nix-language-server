@@ -4,7 +4,7 @@ use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::take;
 use nom::combinator::{map, opt};
-use nom::multi::many0;
+use nom::multi::{many0, many1};
 use nom::sequence::{pair, preceded};
 
 use super::partial::{
@@ -222,8 +222,9 @@ fn unary(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
-    map(pair(project, many0(project)), |(first, rest)| {
-        rest.into_iter().fold(first, |lhs, rhs| {
+    map(many1(project), |mut items| {
+        let first = items.remove(0);
+        items.into_iter().fold(first, |lhs, rhs| {
             lhs.flat_map(|lhs| {
                 rhs.map(|rhs| {
                     let span = Span::merge(lhs.span(), rhs.span());

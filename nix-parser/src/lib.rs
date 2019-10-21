@@ -1,3 +1,5 @@
+//! Parser for the Nix programming language.
+
 #![forbid(unsafe_code)]
 #![recursion_limit = "128"]
 

@@ -102,7 +102,7 @@ define_simple_tokens! {
     keyword_in => In("keyword `in`"),
     keyword_inherit => Inherit("keyword `inherit`"),
     keyword_let => Let("keyword `let`"),
-    keyword_or => Or("keyword `or`"),
+    keyword_or => Or,
     keyword_rec => Rec,
     keyword_then => Then("keyword `then`"),
     keyword_with => With("keyword `with`"),

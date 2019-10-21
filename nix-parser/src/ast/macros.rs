@@ -40,6 +40,23 @@
 /// parentheses to reduce ambiguity and aid parsing. Some expressions are impossible to parse
 /// without tweaking due to Rust's tokenization rules.
 ///
+/// Unsupported tokens can be substituted with the `antiquote!()` macro, which allows for the
+/// insertion of manually constructed AST nodes, like so:
+///
+/// ```rust,edition2018
+/// # #![recursion_limit = "128"]
+/// # use nix_parser::nix;
+/// use codespan::Span;
+/// use nix_parser::ast::{Expr, ExprString, StringFragment};
+///
+/// let fragments = vec![StringFragment::Literal("hello".into(), Span::new(1, 6))];
+/// let string = ExprString::new(fragments, Span::new(0, 7));
+/// let expr = nix!({
+///     foo = ./some/dir;
+///     bar = antiquote!(Expr::String(string));
+/// });
+/// ```
+///
 /// ### Partially supported tokens
 ///
 /// | Token                | Caveat                                         |
@@ -775,6 +792,7 @@ macro_rules! atomic {
     (antiquote!($antiquote:expr)) => {
         ($antiquote)
     };
+
     (($($expr:tt)+)) => {
         Expr::from(ExprParen::new($crate::nix_expr!($($expr)+), Default::default()))
     };

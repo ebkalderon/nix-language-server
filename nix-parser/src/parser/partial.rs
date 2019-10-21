@@ -323,18 +323,13 @@ impl<T> FromIterator<Partial<T>> for Partial<Vec<T>> {
         I: IntoIterator<Item = Partial<T>>,
     {
         let iter = iter.into_iter();
-
         let (lower, upper) = iter.size_hint();
-        let mut values = Vec::with_capacity(upper.unwrap_or(lower));
-        let mut errors = Errors::new();
-
-        for partial in iter {
+        let init = (Vec::with_capacity(upper.unwrap_or(lower)), Errors::new());
+        let (values, errors) = iter.fold(init, |(mut values, mut errors), partial| {
+            values.extend(partial.value);
             errors.extend(partial.errors);
-
-            if let Some(value) = partial.value {
-                values.push(value);
-            }
-        }
+            (values, errors)
+        });
 
         Partial::with_errors(Some(values), errors)
     }

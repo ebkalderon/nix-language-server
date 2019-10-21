@@ -4,10 +4,10 @@ pub use self::string::string;
 
 use codespan::Span;
 use nom::branch::alt;
-use nom::bytes::complete::{tag, take_while};
+use nom::bytes::complete::{tag, take_while, take_while1};
 use nom::character::complete::{anychar, char, line_ending, multispace0, not_line_ending, space0};
 use nom::combinator::{map, peek, recognize, verify};
-use nom::multi::{many0, many1, separated_nonempty_list};
+use nom::multi::separated_nonempty_list;
 use nom::sequence::{pair, preceded, terminated, tuple};
 use nom::Slice;
 use once_cell::sync::OnceCell;
@@ -35,8 +35,8 @@ pub fn comment(input: LocatedSpan) -> IResult<Token> {
 }
 
 fn block_comment(input: LocatedSpan) -> IResult<Token> {
-    let close_tag = recognize(pair(many1(char('*')), char('/')));
-    let maybe_consume_stars = alt((peek(close_tag), recognize(many0(char('*')))));
+    let close_tag = recognize(pair(take_while1(|c: char| c == '*'), char('/')));
+    let maybe_consume_stars = alt((peek(close_tag), take_while(|c: char| c == '*')));
     let (input, _) = tuple((tag("/*"), maybe_consume_stars, multispace0))(input)?;
 
     static REGEX: OnceCell<Regex> = OnceCell::new();

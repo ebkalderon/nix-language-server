@@ -7,7 +7,7 @@ use nom::error::ErrorKind;
 use nom::multi::many0;
 use nom::sequence::{pair, preceded, terminated};
 
-use super::{bind, expr, unary};
+use super::{bind, error, expr, project};
 use crate::ast::tokens::{Ident, Literal};
 use crate::ast::{
     Bind, Expr, ExprInterpolation, ExprLet, ExprList, ExprParen, ExprRec, ExprSet, ExprString,
@@ -61,11 +61,39 @@ fn set_binds(input: Tokens) -> IResult<Partial<Vec<Bind>>> {
 }
 
 pub fn list(input: Tokens) -> IResult<Partial<ExprList>> {
-    let unary = terminated(unary, many0(tokens::comment));
-    let elems = many_till_partial(unary, tokens::bracket_right);
+    let elems = many_till_partial(list_elem, tokens::bracket_right);
     let inner = preceded(many0(tokens::comment), elems);
     let list = expect_terminated(preceded(tokens::bracket_left, inner), tokens::bracket_right);
     map_partial_spanned(list, |span, exprs| ExprList::new(exprs, span))(input)
+}
+
+fn list_elem(input: Tokens) -> IResult<Partial<Expr>> {
+    let mut input = input;
+    let mut errors = Errors::new();
+
+    let (remaining, tokens) = take(1usize)(input)?;
+    match tokens.current() {
+        Token::Sub(span) => {
+            let message = "unary negation `-` not allowed in lists".to_string();
+            errors.push(Error::Message(*span, message));
+            input = remaining;
+        }
+        Token::Not(span) => {
+            let message = "logical not `!` not allowed in lists".to_string();
+            errors.push(Error::Message(*span, message));
+            input = remaining;
+        }
+        _ => {}
+    }
+
+    let (_, tokens) = take(1usize)(input)?;
+    if let Token::RBracket(_) = tokens.current() {
+        return Err(nom::Err::Error(errors));
+    }
+
+    let (remaining, mut proj) = terminated(alt((project, error)), many0(tokens::comment))(input)?;
+    proj.extend_errors(errors);
+    Ok((remaining, proj))
 }
 
 pub fn string(input: Tokens) -> IResult<Partial<ExprString>> {

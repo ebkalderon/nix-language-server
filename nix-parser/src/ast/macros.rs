@@ -18,7 +18,7 @@
 ///         enabled = true;
 ///         config.value = rec {
 ///             first = if enabled then [ 4 5 ] else [];
-///             second = [ 1 2 -3 ] ++ first;
+///             second = [ 1 2 3 ] ++ first;
 ///         };
 ///     in
 ///         { inherit foo root config; }
@@ -208,7 +208,7 @@ macro_rules! nix_list {
     };
 
     (@elems ($($expr:tt)+) $($rest:tt)*) => {{
-        let first = ::std::iter::once($crate::unary!($($expr)+));
+        let first = ::std::iter::once($crate::project!($($expr)+));
         let rest = $crate::nix_list!(@elems () $($rest)*);
         first.chain(rest)
     }};
@@ -221,12 +221,8 @@ macro_rules! nix_list {
         $crate::nix_list!(@elems ($($prev)* / $next) $($rest)*)
     };
 
-    (@elems ($($prev:tt)*) ! $next:tt $($rest:tt)*) => {
-        $crate::nix_list!(@elems ($($prev)* ! $next) $($rest)*)
-    };
-
-    (@elems ($($prev:tt)*) - $next:tt $($rest:tt)*) => {
-        $crate::nix_list!(@elems ($($prev)* - $next) $($rest)*)
+    (@elems ($($prev:tt)+) . $next:ident $($rest:tt)*) => {
+        $crate::nix_list!(@elems ($($prev)+ . $next) $($rest)*)
     };
 
     (@elems ($($prev:tt)*) $next:tt $($rest:tt)*) => {
@@ -920,7 +916,7 @@ mod tests {
         nix!(rec { inherit foo; inherit (123) bar; baz = { foo = 12; }; });
         nix!(let { inherit foo; inherit (123) bar; baz = { foo = 12; }; });
         nix!(${foo.bar});
-        nix!([-foo ./bar/baz quux]);
+        nix!([foo ./bar/baz]);
         nix!(/foo/bar);
         nix!(~/foo/bar);
         nix!(./foo/bar);

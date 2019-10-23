@@ -137,8 +137,8 @@ fn update(input: Tokens) -> IResult<Partial<Expr>> {
             let exprs = Partial::from_iter(iter::once(first).chain(rest));
             exprs.map(|mut exprs| {
                 let last = exprs.pop().unwrap();
-                exprs.into_iter().rev().fold(last, |lhs, rhs| {
-                    let span = Span::merge(rhs.span(), lhs.span());
+                exprs.into_iter().rev().fold(last, |rhs, lhs| {
+                    let span = Span::merge(lhs.span(), rhs.span());
                     Expr::from(ExprBinary::new(BinaryOp::Update, lhs, rhs, span))
                 })
             })
@@ -185,8 +185,8 @@ fn concat(input: Tokens) -> IResult<Partial<Expr>> {
             let exprs = Partial::from_iter(iter::once(first).chain(rest));
             exprs.map(|mut exprs| {
                 let last = exprs.pop().unwrap();
-                exprs.into_iter().rev().fold(last, |lhs, rhs| {
-                    let span = Span::merge(rhs.span(), lhs.span());
+                exprs.into_iter().rev().fold(last, |rhs, lhs| {
+                    let span = Span::merge(lhs.span(), rhs.span());
                     Expr::from(ExprBinary::new(BinaryOp::Concat, lhs, rhs, span))
                 })
             })

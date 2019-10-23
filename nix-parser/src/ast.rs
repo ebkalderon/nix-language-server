@@ -286,7 +286,7 @@ impl Display for ExprList {
         }
 
         for elem in elems {
-            write!(fmt, ", {}", elem)?;
+            write!(fmt, " {}", elem)?;
         }
 
         write!(fmt, "]")

@@ -1,3 +1,5 @@
+//! Combinators for lexing single paths and path templates.
+
 use nom::branch::alt;
 use nom::bytes::complete::{take_while, take_while1};
 use nom::character::complete::char;

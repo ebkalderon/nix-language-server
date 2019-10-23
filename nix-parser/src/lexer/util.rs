@@ -1,3 +1,5 @@
+//! Utility functions for the lexer.
+
 use codespan::Span;
 use nom::Slice;
 

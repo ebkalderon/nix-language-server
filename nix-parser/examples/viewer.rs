@@ -38,10 +38,10 @@ fn full(expr: &str, verbose: bool) {
         let stdout = io::stdout();
         let mut lock = stdout.lock();
         writeln!(lock, "# Full AST:\n\n{:?}\n", expr).unwrap();
-        writeln!(lock, "# Display:\n\n{}\n", expr).unwrap();
+        writeln!(lock, "# Display:\n\n{:#}\n", expr).unwrap();
         writeln!(lock, "# Time: {:?}", end).unwrap();
     } else {
-        println!("{}", expr);
+        println!("{:#}", expr);
     }
 }
 
@@ -63,7 +63,7 @@ fn partial(expr: &str, verbose: bool) {
             writeln!(lock, "# Full AST:\n\n{:?}\n", expr).unwrap();
         }
 
-        writeln!(lock, "# Display:\n\n{}", expr).unwrap();
+        writeln!(lock, "# Display:\n\n{:#}", expr).unwrap();
 
         if verbose {
             writeln!(lock, "# Time: {:?}", end).unwrap();

@@ -1,14 +1,16 @@
 //! Abstract syntax tree nodes.
 
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::fmt::{Display, Formatter, Result as FmtResult, Write};
 
 use codespan::Span;
 
+use self::fmt::FormatterExt;
 use self::tokens::{Comment, Ident, Literal};
 use crate::HasSpan;
 
 pub mod tokens;
 
+mod fmt;
 mod macros;
 
 /// A source file with a top-level doc comment.
@@ -35,10 +37,10 @@ impl SourceFile {
 impl Display for SourceFile {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         if let Some(ref comment) = &self.comment {
-            write!(fmt, "{}\n{}", comment, self.expr)
-        } else {
-            write!(fmt, "{}", self.expr)
+            writeln!(fmt, "{}", comment)?;
         }
+
+        self.expr.fmt(fmt)
     }
 }
 
@@ -104,28 +106,28 @@ pub enum Expr {
 impl Display for Expr {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
-            Expr::Paren(ref e) => write!(fmt, "{}", e),
-            Expr::Ident(ref e) => write!(fmt, "{}", e),
-            Expr::Interpolation(ref e) => write!(fmt, "{}", e),
-            Expr::Literal(ref e) => write!(fmt, "{}", e),
-            Expr::List(ref e) => write!(fmt, "{}", e),
-            Expr::String(ref e) => write!(fmt, "{}", e),
-            Expr::Set(ref e) => write!(fmt, "{}", e),
+            Expr::Paren(ref e) => e.fmt(fmt),
+            Expr::Ident(ref e) => e.fmt(fmt),
+            Expr::Interpolation(ref e) => e.fmt(fmt),
+            Expr::Literal(ref e) => e.fmt(fmt),
+            Expr::List(ref e) => e.fmt(fmt),
+            Expr::String(ref e) => e.fmt(fmt),
+            Expr::Set(ref e) => e.fmt(fmt),
 
-            Expr::Unary(ref e) => write!(fmt, "{}", e),
-            Expr::Binary(ref e) => write!(fmt, "{}", e),
+            Expr::Unary(ref e) => e.fmt(fmt),
+            Expr::Binary(ref e) => e.fmt(fmt),
 
-            Expr::Let(ref e) => write!(fmt, "{}", e),
-            Expr::Rec(ref e) => write!(fmt, "{}", e),
-            Expr::Proj(ref e) => write!(fmt, "{}", e),
+            Expr::Let(ref e) => e.fmt(fmt),
+            Expr::Rec(ref e) => e.fmt(fmt),
+            Expr::Proj(ref e) => e.fmt(fmt),
 
-            Expr::If(ref e) => write!(fmt, "{}", e),
-            Expr::Assert(ref e) => write!(fmt, "{}", e),
-            Expr::With(ref e) => write!(fmt, "{}", e),
+            Expr::If(ref e) => e.fmt(fmt),
+            Expr::Assert(ref e) => e.fmt(fmt),
+            Expr::With(ref e) => e.fmt(fmt),
 
-            Expr::LetIn(ref e) => write!(fmt, "{}", e),
-            Expr::FnDecl(ref e) => write!(fmt, "{}", e),
-            Expr::FnApp(ref e) => write!(fmt, "{}", e),
+            Expr::LetIn(ref e) => e.fmt(fmt),
+            Expr::FnDecl(ref e) => e.fmt(fmt),
+            Expr::FnApp(ref e) => e.fmt(fmt),
 
             Expr::Error(_) => write!(fmt, "<error>"),
         }
@@ -193,7 +195,11 @@ impl ExprParen {
 
 impl Display for ExprParen {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "({})", self.expr)
+        if fmt.alternate() {
+            write!(fmt, "({:#})", self.expr)
+        } else {
+            write!(fmt, "({})", self.expr)
+        }
     }
 }
 
@@ -233,7 +239,11 @@ impl ExprInterpolation {
 
 impl Display for ExprInterpolation {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "${{{}}}", self.inner)
+        if fmt.alternate() {
+            write!(fmt, "${{{:#}}}", self.inner)
+        } else {
+            write!(fmt, "${{{}}}", self.inner)
+        }
     }
 }
 
@@ -275,14 +285,25 @@ impl Display for ExprList {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "[")?;
 
-        let mut elems = self.elems.iter();
+        if fmt.alternate() && !self.elems.is_empty() {
+            if self.elems.len() > 1 {
+                write!(fmt, "\n")?;
+                for elem in &self.elems {
+                    writeln!(fmt.indent(2), "{:#}", elem)?;
+                }
+            } else if let Some(ref elem) = self.elems.first() {
+                write!(fmt, "{:#}", elem)?;
+            }
+        } else {
+            let mut elems = self.elems.iter();
 
-        if let Some(ref elem) = elems.next() {
-            write!(fmt, "{}", elem)?;
-        }
+            if let Some(ref elem) = elems.next() {
+                write!(fmt, "{}", elem)?;
+            }
 
-        for elem in elems {
-            write!(fmt, " {}", elem)?;
+            for elem in elems {
+                write!(fmt, " {}", elem)?;
+            }
         }
 
         write!(fmt, "]")
@@ -327,14 +348,31 @@ impl Display for ExprSet {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "{{")?;
 
-        let mut binds = self.binds.iter();
+        if fmt.alternate() {
+            if self.binds.len() > 1 {
+                write!(fmt, "\n")?;
+                for bind in &self.binds {
+                    writeln!(fmt.indent(2), "{:#}", bind)?;
+                }
+            } else if let Some(ref bind) = self.binds.first() {
+                match bind {
+                    Bind::Inherit(_) | Bind::InheritExpr(_) => write!(fmt, " {:#} ", bind)?,
+                    Bind::Simple(_) => {
+                        write!(fmt, "\n")?;
+                        writeln!(fmt.indent(2), "{:#}", bind)?;
+                    }
+                }
+            }
+        } else {
+            let mut binds = self.binds.iter();
 
-        if let Some(ref bind) = binds.next() {
-            write!(fmt, "{}", bind)?;
-        }
+            if let Some(ref bind) = binds.next() {
+                write!(fmt, "{}", bind)?;
+            }
 
-        for bind in binds {
-            write!(fmt, " {}", bind)?;
+            for bind in binds {
+                write!(fmt, " {}", bind)?;
+            }
         }
 
         write!(fmt, "}}")
@@ -409,8 +447,8 @@ pub enum StringFragment {
 impl Display for StringFragment {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
-            StringFragment::Literal(ref text, _) => write!(fmt, "{}", text),
-            StringFragment::Interpolation(ref expr) => write!(fmt, "{}", expr),
+            StringFragment::Literal(ref text, _) => text.fmt(fmt),
+            StringFragment::Interpolation(ref expr) => expr.fmt(fmt),
         }
     }
 }
@@ -475,7 +513,11 @@ impl ExprUnary {
 
 impl Display for ExprUnary {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "{}{}", self.op, self.expr)
+        if fmt.alternate() {
+            write!(fmt, "{}{:#}", self.op, self.expr)
+        } else {
+            write!(fmt, "{}{}", self.op, self.expr)
+        }
     }
 }
 
@@ -584,7 +626,11 @@ impl ExprBinary {
 
 impl Display for ExprBinary {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "{} {} {}", self.lhs, self.op, self.rhs)
+        if fmt.alternate() {
+            write!(fmt, "{:#} {} {:#}", self.lhs, self.op, self.rhs)
+        } else {
+            write!(fmt, "{} {} {}", self.lhs, self.op, self.rhs)
+        }
     }
 }
 
@@ -616,9 +662,9 @@ pub enum Bind {
 impl Display for Bind {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
-            Bind::Simple(ref b) => write!(fmt, "{}", b),
-            Bind::Inherit(ref b) => write!(fmt, "{}", b),
-            Bind::InheritExpr(ref b) => write!(fmt, "{}", b),
+            Bind::Simple(ref b) => b.fmt(fmt),
+            Bind::Inherit(ref b) => b.fmt(fmt),
+            Bind::InheritExpr(ref b) => b.fmt(fmt),
         }
     }
 }
@@ -667,10 +713,16 @@ impl BindSimple {
 impl Display for BindSimple {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         if let Some(ref comment) = self.comment {
-            write!(fmt, "{}{} = {};", comment, self.attr, self.expr)
-        } else {
-            write!(fmt, "{} = {};", self.attr, self.expr)
+            write!(fmt, "{}", comment)?;
         }
+
+        if fmt.alternate() {
+            write!(fmt, "{} = {:#};", self.attr, self.expr)?;
+        } else {
+            write!(fmt, "{} = {};", self.attr, self.expr)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -791,14 +843,31 @@ impl Display for ExprLet {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "let {{")?;
 
-        let mut binds = self.binds.iter();
+        if fmt.alternate() {
+            if self.binds.len() > 1 {
+                write!(fmt, "\n")?;
+                for bind in &self.binds {
+                    writeln!(fmt.indent(2), "{:#}", bind)?;
+                }
+            } else if let Some(ref bind) = self.binds.first() {
+                match bind {
+                    Bind::Inherit(_) | Bind::InheritExpr(_) => write!(fmt, " {:#} ", bind)?,
+                    Bind::Simple(_) => {
+                        write!(fmt, "\n")?;
+                        writeln!(fmt.indent(2), "{:#}", bind)?;
+                    }
+                }
+            }
+        } else {
+            let mut binds = self.binds.iter();
 
-        if let Some(ref bind) = binds.next() {
-            write!(fmt, "{}", bind)?;
-        }
+            if let Some(ref bind) = binds.next() {
+                write!(fmt, "{}", bind)?;
+            }
 
-        for bind in binds {
-            write!(fmt, " {}", bind)?;
+            for bind in binds {
+                write!(fmt, " {}", bind)?;
+            }
         }
 
         write!(fmt, "}}")
@@ -843,14 +912,31 @@ impl Display for ExprRec {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "rec {{")?;
 
-        let mut binds = self.binds.iter();
+        if fmt.alternate() {
+            if self.binds.len() > 1 {
+                write!(fmt, "\n")?;
+                for bind in &self.binds {
+                    writeln!(fmt.indent(2), "{:#}", bind)?;
+                }
+            } else if let Some(ref bind) = self.binds.first() {
+                match bind {
+                    Bind::Inherit(_) | Bind::InheritExpr(_) => write!(fmt, " {:#} ", bind)?,
+                    Bind::Simple(_) => {
+                        write!(fmt, "\n")?;
+                        writeln!(fmt.indent(2), "{:#}", bind)?;
+                    }
+                }
+            }
+        } else {
+            let mut binds = self.binds.iter();
 
-        if let Some(ref bind) = binds.next() {
-            write!(fmt, "{}", bind)?;
-        }
+            if let Some(ref bind) = binds.next() {
+                write!(fmt, "{}", bind)?;
+            }
 
-        for bind in binds {
-            write!(fmt, " {}", bind)?;
+            for bind in binds {
+                write!(fmt, " {}", bind)?;
+            }
         }
 
         write!(fmt, "}}")
@@ -987,11 +1073,17 @@ impl ExprProj {
 
 impl Display for ExprProj {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        if let Some(ref val) = self.fallback.as_ref() {
-            write!(fmt, "{}.{} or {}", self.base, self.attr, val)
-        } else {
-            write!(fmt, "{}.{}", self.base, self.attr)
+        write!(fmt, "{}.{}", self.base, self.attr)?;
+
+        if let Some(ref value) = self.fallback.as_ref() {
+            if fmt.alternate() {
+                write!(fmt, " or {:#}", value)?;
+            } else {
+                write!(fmt, " or {}", value)?;
+            }
         }
+
+        Ok(())
     }
 }
 
@@ -1046,11 +1138,18 @@ impl ExprIf {
 
 impl Display for ExprIf {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(
-            fmt,
-            "if {} then {} else {}",
-            self.cond, self.body, self.fallback
-        )
+        if fmt.alternate() {
+            writeln!(fmt, "if {} then", self.cond)?;
+            writeln!(fmt.indent(2), "{:#}", self.body)?;
+            writeln!(fmt, "else")?;
+            write!(fmt.indent(2), "{:#}", self.fallback)
+        } else {
+            write!(
+                fmt,
+                "if {} then {} else {}",
+                self.cond, self.body, self.fallback
+            )
+        }
     }
 }
 
@@ -1095,7 +1194,11 @@ impl ExprAssert {
 
 impl Display for ExprAssert {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "assert {}; {}", self.cond, self.expr)
+        if fmt.alternate() {
+            write!(fmt, "assert {:#}; {:#}", self.cond, self.expr)
+        } else {
+            write!(fmt, "assert {}; {}", self.cond, self.expr)
+        }
     }
 }
 
@@ -1140,7 +1243,11 @@ impl ExprWith {
 
 impl Display for ExprWith {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "with {}; {}", self.with, self.expr)
+        if fmt.alternate() {
+            write!(fmt, "with {:#}; {:#}", self.with, self.expr)
+        } else {
+            write!(fmt, "with {}; {}", self.with, self.expr)
+        }
     }
 }
 
@@ -1185,19 +1292,24 @@ impl ExprLetIn {
 
 impl Display for ExprLetIn {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "let ")?;
+        write!(fmt, "let")?;
 
-        let mut binds = self.binds.iter();
+        if fmt.alternate() {
+            write!(fmt, "\n")?;
 
-        if let Some(ref bind) = binds.next() {
-            write!(fmt, "{}", bind)?;
+            for bind in &self.binds {
+                writeln!(fmt.indent(2), "{:#}", bind)?;
+            }
+
+            writeln!(fmt, "in")?;
+            write!(fmt.indent(2), "{:#}", self.body)
+        } else {
+            for bind in &self.binds {
+                write!(fmt, " {}", bind)?;
+            }
+
+            write!(fmt, " in {}", self.body)
         }
-
-        for bind in binds {
-            write!(fmt, " {}", bind)?;
-        }
-
-        write!(fmt, " in {}", self.body)
     }
 }
 
@@ -1228,8 +1340,8 @@ pub enum ExprFnDecl {
 impl Display for ExprFnDecl {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
-            ExprFnDecl::Simple(ref s) => write!(fmt, "{}", s),
-            ExprFnDecl::Formals(ref f) => write!(fmt, "{}", f),
+            ExprFnDecl::Simple(ref s) => s.fmt(fmt),
+            ExprFnDecl::Formals(ref f) => f.fmt(fmt),
         }
     }
 }
@@ -1272,7 +1384,11 @@ impl FnDeclSimple {
 
 impl Display for FnDeclSimple {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "{}: {}", self.name, self.body)
+        if fmt.alternate() {
+            write!(fmt, "{}: {:#}", self.name, self.body)
+        } else {
+            write!(fmt, "{}: {}", self.name, self.body)
+        }
     }
 }
 
@@ -1315,12 +1431,15 @@ impl Formal {
 
 impl Display for Formal {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let default = self
-            .default
-            .as_ref()
-            .map(|e| format!(" ? {}", e))
-            .unwrap_or_default();
-        write!(fmt, "{}{}", self.name, default)
+        if let Some(ref default) = self.default.as_ref() {
+            if fmt.alternate() {
+                write!(fmt, "{} ? {:#}", self.name, default)
+            } else {
+                write!(fmt, "{} ? {}", self.name, default)
+            }
+        } else {
+            write!(fmt, "{}", self.name)
+        }
     }
 }
 
@@ -1371,25 +1490,51 @@ impl Display for FnDeclFormals {
 
         write!(fmt, "{{")?;
 
-        let mut formals = self.formals.iter();
+        if fmt.alternate() {
+            if self.formals.len() > 1 || !self.formals.is_empty() && self.ellipsis.is_some() {
+                write!(fmt, "\n")?;
+                for formal in &self.formals {
+                    writeln!(fmt.indent(2), "{:#},", formal)?;
+                }
 
-        if let Some(ref formal) = formals.next() {
-            write!(fmt, "{}", formal)?;
-        }
-
-        for formal in formals {
-            write!(fmt, ", {}", formal)?;
-        }
-
-        if self.ellipsis.is_some() {
-            if self.formals.is_empty() {
-                write!(fmt, "...")?;
-            } else {
-                write!(fmt, ", ...")?;
+                if self.ellipsis.is_some() {
+                    writeln!(fmt.indent(2), ", ...")?;
+                }
+            } else if let Some(ref formal) = self.formals.first() {
+                write!(fmt, " {:#}", formal)?;
+                if self.ellipsis.is_some() {
+                    if self.formals.is_empty() {
+                        write!(fmt, " ... ")?;
+                    } else {
+                        write!(fmt, ", ... ")?;
+                    }
+                } else {
+                    write!(fmt, " ")?;
+                }
             }
-        }
 
-        write!(fmt, "}}: {}", self.body)
+            write!(fmt, "}}:\n\n{:#}", self.body)
+        } else {
+            let mut formals = self.formals.iter();
+
+            if let Some(ref formal) = formals.next() {
+                write!(fmt, "{}", formal)?;
+            }
+
+            for formal in formals {
+                write!(fmt, ", {}", formal)?;
+            }
+
+            if self.ellipsis.is_some() {
+                if self.formals.is_empty() {
+                    write!(fmt, "...")?;
+                } else {
+                    write!(fmt, ", ...")?;
+                }
+            }
+
+            write!(fmt, "}}: {}", self.body)
+        }
     }
 }
 
@@ -1434,7 +1579,11 @@ impl ExprFnApp {
 
 impl Display for ExprFnApp {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "{} {}", self.function, self.argument)
+        if fmt.alternate() {
+            write!(fmt, "{:#} {:#}", self.function, self.argument)
+        } else {
+            write!(fmt, "{} {}", self.function, self.argument)
+        }
     }
 }
 

@@ -708,15 +708,9 @@ impl BindInherit {
 
 impl Display for BindInherit {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        write!(fmt, "inherit ")?;
+        write!(fmt, "inherit")?;
 
-        let mut names = self.names.iter();
-
-        if let Some(ref name) = names.next() {
-            write!(fmt, "{}", name)?;
-        }
-
-        for name in names {
+        for name in &self.names {
             write!(fmt, " {}", name)?;
         }
 
@@ -761,13 +755,7 @@ impl Display for BindInheritExpr {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         write!(fmt, "inherit ({})", self.expr)?;
 
-        let mut names = self.names.iter();
-
-        if let Some(ref name) = names.next() {
-            write!(fmt, "{}", name)?;
-        }
-
-        for name in names {
+        for name in &self.names {
             write!(fmt, " {}", name)?;
         }
 

@@ -1,4 +1,6 @@
-/// Unexpected token error data structure.
+//! Unexpected token error data structure.
+
+use std::borrow::Cow;
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
@@ -12,7 +14,7 @@ use crate::ToSpan;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UnexpectedError {
     /// Printable name of the token that was found.
-    pub token: String,
+    pub token: Cow<'static, str>,
     /// Span of the found token.
     pub span: Span,
 }
@@ -21,7 +23,7 @@ impl UnexpectedError {
     /// Constructs a new `UnexpectedError`.
     pub fn new<T, S>(token: T, span: S) -> Self
     where
-        T: Into<String>,
+        T: Into<Cow<'static, str>>,
         S: ToSpan,
     {
         UnexpectedError {

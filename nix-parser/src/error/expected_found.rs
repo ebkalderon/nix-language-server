@@ -1,5 +1,6 @@
 //! Expected/found error data structure.
 
+use std::borrow::Cow;
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
@@ -13,9 +14,9 @@ use crate::ToSpan;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExpectedFoundError {
     /// Printable name of the item that was expected.
-    pub expected: String,
+    pub expected: Cow<'static, str>,
     /// Printable name of the item that was found.
-    pub found: String,
+    pub found: Cow<'static, str>,
     /// Span of the found item.
     pub span: Span,
 }
@@ -24,8 +25,8 @@ impl ExpectedFoundError {
     /// Constructs a new `ExpectedFoundError`.
     pub fn new<T, U, S>(expected: T, found: U, span: S) -> Self
     where
-        T: Into<String>,
-        U: Into<String>,
+        T: Into<Cow<'static, str>>,
+        U: Into<Cow<'static, str>>,
         S: ToSpan,
     {
         ExpectedFoundError {

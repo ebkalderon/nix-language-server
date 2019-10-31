@@ -105,12 +105,10 @@ impl<'a> Lexer<'a> {
     {
         let input = LocatedSpan::new(s);
         let mut lexer = iterator(input, token);
-        let tokens = lexer.filter(f).collect();
+        let (mut tokens, mut errors) = filter_unexpected_tokens(lexer.filter(f));
 
         match lexer.finish() {
             Ok((remaining, _)) if remaining.fragment.is_empty() => {
-                let (mut tokens, mut errors) = filter_unexpected_tokens(tokens);
-
                 let end = input.fragment.len().saturating_sub(1) as u32;
                 let eof_span = Span::new(end, end);
 
@@ -237,18 +235,19 @@ fn unknown(input: LocatedSpan) -> IResult<Token> {
     })(input)
 }
 
-fn filter_unexpected_tokens(tokens: Vec<Token>) -> (Vec<Token>, Errors) {
-    // FIXME: Replace this with `Vec::drain_filter()` once stabilized.
-    let (invalid, valid): (Vec<_>, _) = tokens.into_iter().partition(|token| match token {
-        Token::Unknown(..) => true,
-        _ => false,
-    });
-    let errors: Errors = invalid
-        .into_iter()
-        .filter_map(|token| match token {
-            Token::Unknown(_, _, error) => Some(error),
-            _ => None,
-        })
-        .collect();
+fn filter_unexpected_tokens<'a, I>(tokens: I) -> (Vec<Token<'a>>, Errors)
+where
+    I: Iterator<Item = Token<'a>>,
+{
+    let mut valid = Vec::new();
+    let mut errors = Errors::new();
+
+    for token in tokens {
+        match token {
+            Token::Unknown(_, _, error) => errors.push(error),
+            token => valid.push(token),
+        }
+    }
+
     (valid, errors)
 }

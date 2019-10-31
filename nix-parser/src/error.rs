@@ -5,6 +5,7 @@ pub use self::incorrect_delim::IncorrectDelimError;
 pub use self::unclosed_delim::UnclosedDelimError;
 pub use self::unexpected::UnexpectedError;
 
+use std::borrow::Cow;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::iter::FromIterator;
 use std::slice::Iter;
@@ -321,7 +322,7 @@ pub enum Error {
     /// An unexpected token was found.
     Unexpected(UnexpectedError),
     /// A custom error with a span and message.
-    Message(Span, String),
+    Message(Span, Cow<'static, str>),
     /// A [`nom`] parse error occurred.
     ///
     /// [`nom`]: https://docs.rs/nom/5.0.1/nom/

@@ -22,7 +22,7 @@ pub fn path(input: LocatedSpan) -> IResult<Token> {
     if !path.fragment.ends_with('/') {
         Ok((remaining, Token::Path(path.fragment.into(), path.to_span())))
     } else {
-        let message = "paths cannot have trailing slashes".to_string();
+        let message = "paths cannot have trailing slashes".into();
         let error = Error::Message(path.to_span(), message);
         let token = Token::Unknown(path.fragment.into(), path.to_span(), error);
         Ok((remaining, token))

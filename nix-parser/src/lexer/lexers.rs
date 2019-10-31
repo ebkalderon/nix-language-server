@@ -51,7 +51,7 @@ fn block_comment(input: LocatedSpan) -> IResult<Token> {
     } else {
         let end = input.fragment.len();
         let remaining = input.slice((end - 1)..end);
-        let error = Error::Message(input.to_span(), "unterminated block comment".to_string());
+        let error = Error::Message(input.to_span(), "unterminated block comment".into());
         let unknown = Token::Unknown(input.fragment.into(), remaining.to_span(), error);
         Ok((remaining, unknown))
     }
@@ -94,7 +94,7 @@ pub fn interpolation(input: LocatedSpan) -> IResult<Token> {
         } else {
             let end = input.fragment.len();
             let remaining = input.slice(end..);
-            let error = Error::Message(input.to_span(), "unterminated interpolation".to_string());
+            let error = Error::Message(input.to_span(), "unterminated interpolation".into());
             let unknown = Token::Unknown(input.fragment.into(), input.to_span(), error);
             return Ok((remaining, unknown));
         }

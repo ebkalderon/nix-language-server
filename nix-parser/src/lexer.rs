@@ -85,7 +85,7 @@ impl<'a> Lexer<'a> {
 
                 let only_comments = tokens.iter().all(|t| t.is_comment());
                 let errors = if tokens.is_empty() || only_comments {
-                    let message = "Nix expressions must resolve to a value".to_string();
+                    let message = "Nix expressions must resolve to a value".into();
                     errors.push(Error::Message(Span::initial(), message));
                     return Err(errors);
                 } else {
@@ -105,7 +105,7 @@ impl<'a> Lexer<'a> {
             Err(nom::Err::Incomplete(needed)) => {
                 let mut errors = Errors::new();
                 let message = format!("unable to recover from incomplete input: {:?}", needed);
-                errors.push(Error::Message(Span::initial(), message));
+                errors.push(Error::Message(Span::initial(), message.into()));
                 Err(errors)
             }
         }

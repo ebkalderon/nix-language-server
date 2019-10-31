@@ -74,12 +74,12 @@ fn list_elem(input: Tokens) -> IResult<Partial<Expr>> {
     let (remaining, tokens) = take(1usize)(input)?;
     match tokens.current() {
         Token::Sub(span) => {
-            let message = "unary negation `-` not allowed in lists".to_string();
+            let message = "unary negation `-` not allowed in lists".into();
             errors.push(Error::Message(*span, message));
             input = remaining;
         }
         Token::Not(span) => {
-            let message = "logical not `!` not allowed in lists".to_string();
+            let message = "logical not `!` not allowed in lists".into();
             errors.push(Error::Message(*span, message));
             input = remaining;
         }
@@ -108,7 +108,7 @@ pub fn string(input: Tokens) -> IResult<Partial<ExprString>> {
             LexerFragment::Interpolation(tokens, span) => {
                 let expr = if tokens.is_empty() {
                     let mut errors = Errors::new();
-                    let message = "interpolation cannot be empty".to_string();
+                    let message = "interpolation cannot be empty".into();
                     errors.push(Error::Message(*span, message));
                     Partial::with_errors(Some(Expr::Error(*span)), errors)
                 } else {

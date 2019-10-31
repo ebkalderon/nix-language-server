@@ -68,7 +68,7 @@ fn ident_sequence(input: Tokens) -> IResult<Partial<Vec<Ident>>> {
     if idents.is_empty() {
         let mut errors = Errors::new();
         let span = input.current().to_span();
-        let message = "expected at least one identifier".to_string();
+        let message = "expected at least one identifier".into();
         errors.push(Error::Message(span, message));
         Ok((remaining, Partial::with_errors(None, errors)))
     } else {

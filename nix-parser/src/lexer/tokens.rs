@@ -239,12 +239,14 @@ pub enum StringFragment<'a> {
 impl<'a> Debug for StringFragment<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
-            StringFragment::Literal(ref text, _) => {
-                fmt.debug_tuple("Literal").field(&text).finish()
+            StringFragment::Literal(_, ref span) => {
+                fmt.debug_tuple("Literal").field(&span.to_string()).finish()
             }
-            StringFragment::Interpolation(ref tokens, _) => {
-                fmt.debug_tuple("Interpolation").field(&tokens).finish()
-            }
+            StringFragment::Interpolation(ref tokens, ref span) => fmt
+                .debug_tuple("Interpolation")
+                .field(tokens)
+                .field(&span.to_string())
+                .finish(),
         }
     }
 }
@@ -254,6 +256,7 @@ impl<'a> Debug for StringFragment<'a> {
 pub enum Token<'a> {
     Eof(Span),
     Unknown(Cow<'a, str>, Span, Error),
+    Whitespace(Span),
 
     // Literals
     Comment(String, CommentKind, Span),
@@ -313,22 +316,10 @@ pub enum Token<'a> {
     RBracket(Span),
     LParen(Span),
     RParen(Span),
-    QuoteDouble(Span),
-    QuoteSingle(Span),
     Semi(Span),
 }
 
 impl<'a> Token<'a> {
-    /// Returns `true` if the token is a [`Token::Comment`].
-    ///
-    /// [`Token::Comment`]: ./enum.Token.html#variant.Comment
-    pub fn is_comment(&self) -> bool {
-        match *self {
-            Token::Comment(..) => true,
-            _ => false,
-        }
-    }
-
     /// Returns `true` if the token is a reserved keyword.
     pub fn is_keyword(&self) -> bool {
         match *self {
@@ -346,6 +337,27 @@ impl<'a> Token<'a> {
         }
     }
 
+    /// Returns `true` if the token is either a [`Token::Whitespace`] or [`Token::Comment`].
+    ///
+    /// [`Token::Whitespace`]: ./enum.Token.html#variant.Whitespace
+    /// [`Token::Comment`]: ./enum.Token.html#variant.Comment
+    pub fn is_trivia(&self) -> bool {
+        match *self {
+            Token::Comment(..) | Token::Whitespace(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the token is either a [`Token::Whitespace`].
+    ///
+    /// [`Token::Whitespace`]: ./enum.Token.html#variant.Whitespace
+    pub fn is_whitespace(&self) -> bool {
+        match *self {
+            Token::Whitespace(_) => true,
+            _ => false,
+        }
+    }
+
     /// Returns the user-facing description of a token.
     ///
     /// This string is intended to be used in the text of error messages.
@@ -353,6 +365,7 @@ impl<'a> Token<'a> {
         match *self {
             Token::Eof(_) => "<eof>".into(),
             Token::Unknown(ref text, _, _) => format!("`{}`", text.escape_debug()).into(),
+            Token::Whitespace(_) => "whitespace".into(),
 
             Token::Comment(..) => "comment".into(),
             Token::Identifier(ref ident, _) => format!("identifier `{}`", ident).into(),
@@ -408,8 +421,6 @@ impl<'a> Token<'a> {
             Token::RBracket(_) => "right bracket".into(),
             Token::LParen(_) => "left parentheses".into(),
             Token::RParen(_) => "right parentheses".into(),
-            Token::QuoteDouble(_) => "double quote".into(),
-            Token::QuoteSingle(_) => "multiline string open (`''`)".into(),
             Token::Semi(_) => "semicolon".into(),
         }
     }
@@ -418,74 +429,128 @@ impl<'a> Token<'a> {
 impl<'a> Debug for Token<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
         match *self {
-            Token::Eof(_) => fmt.write_str("Eof"),
-            Token::Unknown(ref text, _, ref errors) => fmt
-                .debug_tuple("Unknown")
-                .field(&text)
-                .field(&errors)
+            Token::Eof(ref span) => fmt.debug_tuple("Eof").field(&span.to_string()).finish(),
+            Token::Unknown(_, ref span, _) => {
+                fmt.debug_tuple("Unknown").field(&span.to_string()).finish()
+            }
+            Token::Whitespace(ref span) => fmt
+                .debug_tuple("Whitespace")
+                .field(&span.to_string())
                 .finish(),
 
-            Token::Comment(ref text, ..) => fmt.debug_tuple("Comment").field(&text).finish(),
-            Token::Identifier(ref text, _) => fmt.debug_tuple("Identifier").field(&text).finish(),
-            Token::Null(_) => fmt.write_str("Null"),
-            Token::Boolean(ref value, _) => fmt.debug_tuple("Boolean").field(&value).finish(),
-            Token::Float(ref value, _) => fmt.debug_tuple("Float").field(&value).finish(),
-            Token::Interpolation(ref value, _) => {
-                fmt.debug_tuple("Interpolation").field(&value).finish()
+            Token::Comment(_, ref kind, ref span) => fmt
+                .debug_tuple("Comment")
+                .field(kind)
+                .field(&span.to_string())
+                .finish(),
+            Token::Identifier(ref text, ref span) => fmt
+                .debug_tuple("Identifier")
+                .field(&text)
+                .field(&span.to_string())
+                .finish(),
+            Token::Null(ref span) => fmt.debug_tuple("Null").field(&span.to_string()).finish(),
+            Token::Boolean(_, ref span) => {
+                fmt.debug_tuple("Boolean").field(&span.to_string()).finish()
             }
-            Token::Integer(ref value, _) => fmt.debug_tuple("Integer").field(&value).finish(),
-            Token::Path(ref value, _) => fmt.debug_tuple("Path").field(&value).finish(),
-            Token::PathTemplate(ref value, _) => {
-                fmt.debug_tuple("PathTemplate").field(&value).finish()
+            Token::Float(_, ref span) => fmt.debug_tuple("Float").field(&span.to_string()).finish(),
+            Token::Interpolation(ref value, ref span) => fmt
+                .debug_tuple("Interpolation")
+                .field(&value)
+                .field(&span.to_string())
+                .finish(),
+            Token::Integer(_, ref span) => {
+                fmt.debug_tuple("Integer").field(&span.to_string()).finish()
             }
-            Token::String(ref value, _) => fmt.debug_tuple("String").field(&value).finish(),
-            Token::Uri(ref value, _) => fmt.debug_tuple("Uri").field(&value).finish(),
+            Token::Path(_, ref span) => fmt.debug_tuple("Path").field(&span.to_string()).finish(),
+            Token::PathTemplate(_, ref span) => fmt
+                .debug_tuple("PathTemplate")
+                .field(&span.to_string())
+                .finish(),
+            Token::String(ref value, ref span) => fmt
+                .debug_tuple("String")
+                .field(&value)
+                .field(&span.to_string())
+                .finish(),
+            Token::Uri(_, ref span) => fmt.debug_tuple("Uri").field(&span.to_string()).finish(),
 
-            Token::Add(_) => fmt.write_str("Add"),
-            Token::Sub(_) => fmt.write_str("Sub"),
-            Token::Mul(_) => fmt.write_str("Mul"),
-            Token::Div(_) => fmt.write_str("Div"),
-            Token::IsEq(_) => fmt.write_str("IsEq"),
-            Token::NotEq(_) => fmt.write_str("NotEq"),
-            Token::LessThan(_) => fmt.write_str("LessThan"),
-            Token::LessThanEq(_) => fmt.write_str("LessThanEq"),
-            Token::GreaterThan(_) => fmt.write_str("GreaterThan"),
-            Token::GreaterThanEq(_) => fmt.write_str("GreaterThanEq"),
-            Token::LogicalAnd(_) => fmt.write_str("LogicalAnd"),
-            Token::LogicalOr(_) => fmt.write_str("LogicalOr"),
-            Token::Concat(_) => fmt.write_str("Concat"),
-            Token::Update(_) => fmt.write_str("Update"),
-            Token::Question(_) => fmt.write_str("Question"),
-            Token::Imply(_) => fmt.write_str("Imply"),
-            Token::Not(_) => fmt.write_str("Not"),
+            Token::Add(ref span) => fmt.debug_tuple("Add").field(&span.to_string()).finish(),
+            Token::Sub(ref span) => fmt.debug_tuple("Sub").field(&span.to_string()).finish(),
+            Token::Mul(ref span) => fmt.debug_tuple("Mul").field(&span.to_string()).finish(),
+            Token::Div(ref span) => fmt.debug_tuple("Div").field(&span.to_string()).finish(),
+            Token::IsEq(ref span) => fmt.debug_tuple("IsEq").field(&span.to_string()).finish(),
+            Token::NotEq(ref span) => fmt.debug_tuple("NotEq").field(&span.to_string()).finish(),
+            Token::LessThan(ref span) => fmt
+                .debug_tuple("LessThan")
+                .field(&span.to_string())
+                .finish(),
+            Token::LessThanEq(ref span) => fmt
+                .debug_tuple("LessThanEq")
+                .field(&span.to_string())
+                .finish(),
+            Token::GreaterThan(ref span) => fmt
+                .debug_tuple("GreaterThan")
+                .field(&span.to_string())
+                .finish(),
+            Token::GreaterThanEq(ref span) => fmt
+                .debug_tuple("GreaterThanEq")
+                .field(&span.to_string())
+                .finish(),
+            Token::LogicalAnd(ref span) => fmt
+                .debug_tuple("LogicalAnd")
+                .field(&span.to_string())
+                .finish(),
+            Token::LogicalOr(ref span) => fmt
+                .debug_tuple("LogicalOr")
+                .field(&span.to_string())
+                .finish(),
+            Token::Concat(ref span) => fmt.debug_tuple("Concat").field(&span.to_string()).finish(),
+            Token::Update(ref span) => fmt.debug_tuple("Update").field(&span.to_string()).finish(),
+            Token::Question(ref span) => fmt
+                .debug_tuple("Question")
+                .field(&span.to_string())
+                .finish(),
+            Token::Imply(ref span) => fmt.debug_tuple("Imply").field(&span.to_string()).finish(),
+            Token::Not(ref span) => fmt.debug_tuple("Not").field(&span.to_string()).finish(),
 
-            Token::Assert(_) => fmt.write_str("Assert"),
-            Token::Else(_) => fmt.write_str("Else"),
-            Token::If(_) => fmt.write_str("If"),
-            Token::In(_) => fmt.write_str("In"),
-            Token::Inherit(_) => fmt.write_str("Inherit"),
-            Token::Let(_) => fmt.write_str("Let"),
-            Token::Or(_) => fmt.write_str("Or"),
-            Token::Rec(_) => fmt.write_str("Rec"),
-            Token::Then(_) => fmt.write_str("Then"),
-            Token::With(_) => fmt.write_str("With"),
+            Token::Assert(ref span) => fmt.debug_tuple("Assert").field(&span.to_string()).finish(),
+            Token::Else(ref span) => fmt.debug_tuple("Else").field(&span.to_string()).finish(),
+            Token::If(ref span) => fmt.debug_tuple("If").field(&span.to_string()).finish(),
+            Token::In(ref span) => fmt.debug_tuple("In").field(&span.to_string()).finish(),
+            Token::Inherit(ref span) => {
+                fmt.debug_tuple("Inherit").field(&span.to_string()).finish()
+            }
+            Token::Let(ref span) => fmt.debug_tuple("Let").field(&span.to_string()).finish(),
+            Token::Or(ref span) => fmt.debug_tuple("Or").field(&span.to_string()).finish(),
+            Token::Rec(ref span) => fmt.debug_tuple("Rec").field(&span.to_string()).finish(),
+            Token::Then(ref span) => fmt.debug_tuple("Then").field(&span.to_string()).finish(),
+            Token::With(ref span) => fmt.debug_tuple("With").field(&span.to_string()).finish(),
 
-            Token::At(_) => fmt.write_str("At"),
-            Token::Colon(_) => fmt.write_str("Colon"),
-            Token::Comma(_) => fmt.write_str("Comma"),
-            Token::Dot(_) => fmt.write_str("Dot"),
-            Token::Ellipsis(_) => fmt.write_str("Ellipsis"),
-            Token::Eq(_) => fmt.write_str("Eq"),
-            Token::Interpolate(_) => fmt.write_str("Interpolate"),
-            Token::LBrace(_) => fmt.write_str("LBrace"),
-            Token::RBrace(_) => fmt.write_str("RBrace"),
-            Token::LBracket(_) => fmt.write_str("LBracket"),
-            Token::RBracket(_) => fmt.write_str("RBracket"),
-            Token::LParen(_) => fmt.write_str("LParen"),
-            Token::RParen(_) => fmt.write_str("RParen"),
-            Token::QuoteDouble(_) => fmt.write_str("QuoteDouble"),
-            Token::QuoteSingle(_) => fmt.write_str("QuoteSingle"),
-            Token::Semi(_) => fmt.write_str("Semi"),
+            Token::At(ref span) => fmt.debug_tuple("At").field(&span.to_string()).finish(),
+            Token::Colon(ref span) => fmt.debug_tuple("Colon").field(&span.to_string()).finish(),
+            Token::Comma(ref span) => fmt.debug_tuple("Comma").field(&span.to_string()).finish(),
+            Token::Dot(ref span) => fmt.debug_tuple("Dot").field(&span.to_string()).finish(),
+            Token::Ellipsis(ref span) => fmt
+                .debug_tuple("Ellipsis")
+                .field(&span.to_string())
+                .finish(),
+            Token::Eq(ref span) => fmt.debug_tuple("Eq").field(&span.to_string()).finish(),
+            Token::Interpolate(ref span) => fmt
+                .debug_tuple("Interpolate")
+                .field(&span.to_string())
+                .finish(),
+            Token::LBrace(ref span) => fmt.debug_tuple("LBrace").field(&span.to_string()).finish(),
+            Token::RBrace(ref span) => fmt.debug_tuple("RBrace").field(&span.to_string()).finish(),
+            Token::LBracket(ref span) => fmt
+                .debug_tuple("LBracket")
+                .field(&span.to_string())
+                .finish(),
+            Token::RBracket(ref span) => fmt
+                .debug_tuple("RBracket")
+                .field(&span.to_string())
+                .finish(),
+            Token::LParen(ref span) => fmt.debug_tuple("LParen").field(&span.to_string()).finish(),
+            Token::RParen(ref span) => fmt.debug_tuple("RParen").field(&span.to_string()).finish(),
+            Token::Semi(ref span) => fmt.debug_tuple("Semi").field(&span.to_string()).finish(),
         }
     }
 }
@@ -495,6 +560,7 @@ impl<'a> ToSpan for Token<'a> {
         match *self {
             Token::Eof(ref span) => *span,
             Token::Unknown(_, ref span, _) => *span,
+            Token::Whitespace(ref span) => *span,
 
             Token::Comment(_, _, ref span) => *span,
             Token::Identifier(_, ref span) => *span,
@@ -550,8 +616,6 @@ impl<'a> ToSpan for Token<'a> {
             Token::RBracket(ref span) => *span,
             Token::LParen(ref span) => *span,
             Token::RParen(ref span) => *span,
-            Token::QuoteDouble(ref span) => *span,
-            Token::QuoteSingle(ref span) => *span,
             Token::Semi(ref span) => *span,
         }
     }

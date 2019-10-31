@@ -5,10 +5,9 @@ pub use self::tokens::{CommentKind, StringFragment, Token, Tokens};
 use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::take;
-use nom::character::complete::multispace0;
-use nom::combinator::{all_consuming, map};
-use nom::multi::many0;
-use nom::sequence::{preceded, terminated};
+use nom::character::complete::multispace1;
+use nom::combinator::{iterator, map};
+use nom::error::ErrorKind;
 
 use self::lexers::{comment, identifier, interpolation, literal, operator, punctuation, string};
 use self::util::check_delims_balanced;
@@ -64,6 +63,10 @@ pub struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     /// Constructs a new `Lexer` and converts the source text into a sequence of tokens.
     ///
+    /// This constructor strips all [`Token::Whitespace`] tokens out of the text.
+    ///
+    /// [`Token::Whitespace`]: ./enum.Token.html#variant.Whitespace
+    ///
     /// Once the text has been tokenized, all tokens of type [`Token::Unknown`] will be stripped
     /// out and converted to errors and delimiter balancing is checked. Errors are produced during
     /// these two phases are not fatal, though, and are accessible via the [`errors`] method.
@@ -74,17 +77,45 @@ impl<'a> Lexer<'a> {
     /// The tokenization process will only return `Err` if the source text is empty or consists
     /// only of comments or invalid tokens, or if the lexer itself has a bug.
     pub fn new(s: &'a str) -> Result<Self, Errors> {
+        Self::new_filtered(s, |token| !token.is_whitespace())
+    }
+
+    /// Constructs a new `Lexer` and converts the source text into a sequence of tokens.
+    ///
+    /// This constructor preserves all [`Token::Whitespace`] tokens.
+    ///
+    /// [`Token::Whitespace`]: ./enum.Token.html#variant.Whitespace
+    ///
+    /// Once the text has been tokenized, all tokens of type [`Token::Unknown`] will be stripped
+    /// out and converted to errors and delimiter balancing is checked. Errors are produced during
+    /// these two phases are not fatal, though, and are accessible via the [`errors`] method.
+    ///
+    /// [`Token::Unknown`]: ./enum.Token.html#variant.Unknown
+    /// [`errors`]: #method.errors
+    ///
+    /// The tokenization process will only return `Err` if the source text is empty or consists
+    /// only of comments or invalid tokens, or if the lexer itself has a bug.
+    pub fn new_with_whitespace(s: &'a str) -> Result<Self, Errors> {
+        Self::new_filtered(s, |_| true)
+    }
+
+    fn new_filtered<F>(s: &'a str, f: F) -> Result<Self, Errors>
+    where
+        F: Fn(&Token) -> bool,
+    {
         let input = LocatedSpan::new(s);
-        let tokens = many0(terminated(token, multispace0));
-        match all_consuming(preceded(multispace0, tokens))(input) {
-            Ok((_, tokens)) => {
+        let mut lexer = iterator(input, token);
+        let tokens = lexer.filter(f).collect();
+
+        match lexer.finish() {
+            Ok((remaining, _)) if remaining.fragment.is_empty() => {
                 let (mut tokens, mut errors) = filter_unexpected_tokens(tokens);
 
                 let end = input.fragment.len().saturating_sub(1) as u32;
                 let eof_span = Span::new(end, end);
 
-                let only_comments = tokens.iter().all(|t| t.is_comment());
-                let errors = if tokens.is_empty() || only_comments {
+                let only_trivia = tokens.iter().all(|t| t.is_trivia());
+                let errors = if tokens.is_empty() || only_trivia {
                     let message = "Nix expressions must resolve to a value".into();
                     errors.push(Error::Message(Span::initial(), message));
                     return Err(errors);
@@ -95,6 +126,11 @@ impl<'a> Lexer<'a> {
 
                 tokens.push(Token::Eof(eof_span));
                 Ok(Lexer { tokens, errors })
+            }
+            Ok((remaining, _)) => {
+                let mut errors = Errors::new();
+                errors.push(Error::Nom(remaining.to_span(), ErrorKind::Eof));
+                Err(errors)
             }
             Err(nom::Err::Error(err)) | Err(nom::Err::Failure(err)) => {
                 let (input, kind) = err;
@@ -176,6 +212,7 @@ impl<'a> Lexer<'a> {
 
 fn token(input: LocatedSpan) -> IResult<Token> {
     alt((
+        whitespace,
         literal,
         identifier,
         string,
@@ -185,6 +222,12 @@ fn token(input: LocatedSpan) -> IResult<Token> {
         operator,
         unknown,
     ))(input)
+}
+
+fn whitespace(input: LocatedSpan) -> IResult<Token> {
+    map(multispace1, |span: LocatedSpan| {
+        Token::Whitespace(span.to_span())
+    })(input)
 }
 
 fn unknown(input: LocatedSpan) -> IResult<Token> {

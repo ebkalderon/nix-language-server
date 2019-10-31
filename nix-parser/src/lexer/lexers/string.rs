@@ -8,14 +8,14 @@ use nom::combinator::{cond, map, not, peek, recognize};
 use nom::multi::many_till;
 use nom::sequence::{pair, terminated};
 
-use super::{punct_interpolate, punct_quote_double, punct_quote_single};
+use super::punct_interpolate;
 use crate::lexer::util::split_lines_without_indent;
 use crate::lexer::{token, IResult, LocatedSpan, StringFragment, Token};
 use crate::ToSpan;
 
 pub fn string(input: LocatedSpan) -> IResult<Token> {
-    let single = string_body(punct_quote_double, false);
-    let multi = string_body(punct_quote_single, true);
+    let single = string_body(tag("\""), false);
+    let multi = string_body(tag("''"), true);
     alt((single, multi))(input)
 }
 
@@ -24,7 +24,7 @@ fn string_body<'a, F>(
     is_multiline: bool,
 ) -> impl Fn(LocatedSpan<'a>) -> IResult<'a, Token>
 where
-    F: Fn(LocatedSpan<'a>) -> IResult<Token>,
+    F: Fn(LocatedSpan<'a>) -> IResult<LocatedSpan>,
 {
     move |input| {
         let start = input;
@@ -38,7 +38,7 @@ where
             if let Ok((input, _)) = pair(&delimiter, peek(not(char('$'))))(remaining) {
                 remaining = input;
                 break;
-            } else if let Ok((input, _)) = terminated(punct_interpolate, multispace0)(remaining) {
+            } else if let Ok((input, _)) = punct_interpolate(remaining) {
                 let start = remaining;
                 remaining = input;
 
@@ -56,8 +56,6 @@ where
                         }
                         _ => {}
                     }
-                    let (input, _) = multispace0(remaining)?;
-                    remaining = input;
                     tokens.push(token);
                 }
 
@@ -66,7 +64,7 @@ where
             } else {
                 let (string, span) = if is_multiline {
                     let unescaped_delim = terminated(&delimiter, peek(not(char('$'))));
-                    let boundary = alt((unescaped_delim, punct_interpolate));
+                    let boundary = alt((unescaped_delim, recognize(punct_interpolate)));
                     let chars = alt((tag("''$"), recognize(anychar)));
                     let (input, string) = recognize(many_till(chars, peek(boundary)))(remaining)?;
                     let lines: Vec<_> = split_lines_without_indent(string, indent_level).collect();

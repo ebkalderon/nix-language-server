@@ -8,7 +8,7 @@ use nom::bytes::complete::{tag, take_while, take_while1};
 use nom::character::complete::{anychar, char, line_ending, multispace0, not_line_ending, space0};
 use nom::combinator::{map, peek, recognize, verify};
 use nom::multi::separated_nonempty_list;
-use nom::sequence::{pair, preceded, terminated, tuple};
+use nom::sequence::{pair, preceded, tuple};
 use nom::Slice;
 use once_cell::sync::OnceCell;
 use regex::Regex;
@@ -73,12 +73,12 @@ fn boolean(input: LocatedSpan) -> IResult<Token> {
 }
 
 pub fn interpolation(input: LocatedSpan) -> IResult<Token> {
-    let (mut remaining, _) = terminated(punct_interpolate, multispace0)(input)?;
+    let (mut remaining, _) = punct_interpolate(input)?;
 
     let mut tokens = Vec::new();
     let mut depth = 1;
     loop {
-        if let Ok((input, token)) = terminated(token, multispace0)(remaining) {
+        if let Ok((input, token)) = token(remaining) {
             remaining = input;
             match token {
                 Token::LBrace(_) => depth += 1,
@@ -188,7 +188,5 @@ define_punctuation! {
     punct_left_paren => LParen("("),
     punct_right_paren => RParen(")"),
     punct_colon => Colon(":"),
-    punct_token => At("@"),
-    punct_quote_double => QuoteDouble("\""),
-    punct_quote_single => QuoteSingle("''")
+    punct_token => At("@")
 }

@@ -8,11 +8,11 @@ pub use self::unexpected::UnexpectedError;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::iter::FromIterator;
 use std::slice::Iter;
-use std::vec::IntoIter;
 
 use codespan::{FileId, Span};
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use nom::error::{ErrorKind, ParseError};
+use smallvec::{smallvec, IntoIter, SmallVec};
 
 use crate::ToSpan;
 
@@ -55,7 +55,7 @@ pub trait ToDiagnostic {
 /// A growable stack for accumulating errors.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Errors {
-    errors: Vec<Error>,
+    errors: SmallVec<[Error; 1]>,
 }
 
 impl Errors {
@@ -72,7 +72,9 @@ impl Errors {
     /// ```
     #[inline]
     pub fn new() -> Self {
-        Errors { errors: Vec::new() }
+        Errors {
+            errors: SmallVec::new(),
+        }
     }
 
     /// Returns the number of errors in the stack.
@@ -255,14 +257,14 @@ impl FromIterator<Error> for Errors {
         I: IntoIterator<Item = Error>,
     {
         Errors {
-            errors: Vec::from_iter(iter),
+            errors: SmallVec::from_iter(iter),
         }
     }
 }
 
 impl IntoIterator for Errors {
     type Item = Error;
-    type IntoIter = IntoIter<Self::Item>;
+    type IntoIter = IntoIter<[Self::Item; 1]>;
 
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
@@ -289,7 +291,7 @@ where
 {
     fn from_error_kind(input: I, kind: ErrorKind) -> Self {
         Errors {
-            errors: vec![Error::Nom(input.to_span(), kind)],
+            errors: smallvec![Error::Nom(input.to_span(), kind)],
         }
     }
 

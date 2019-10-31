@@ -231,13 +231,17 @@ impl Default for Errors {
 
 impl Display for Errors {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        let errors: Vec<_> = self
-            .errors
-            .iter()
-            .enumerate()
-            .map(|(i, e)| format!("{}: {}", i, e))
-            .collect();
-        write!(fmt, "{}", errors.join("\n"))
+        let mut errors = self.errors.iter().enumerate();
+
+        if let Some((i, error)) = errors.next() {
+            write!(fmt, "{}: {}", i, error)?;
+        }
+
+        for (i, error) in errors {
+            write!(fmt, "\n{}: {}", i, error)?;
+        }
+
+        Ok(())
     }
 }
 

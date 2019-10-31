@@ -297,7 +297,9 @@ where
     }
 
     fn append(input: I, kind: ErrorKind, mut other: Self) -> Self {
-        other.push(Error::Nom(input.to_span(), kind));
+        if cfg!(debug_assertions) {
+            other.push(Error::Nom(input.to_span(), kind));
+        }
         other
     }
 }

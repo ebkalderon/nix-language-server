@@ -37,22 +37,22 @@ pub fn comment(input: LocatedSpan) -> IResult<Token> {
 fn block_comment(input: LocatedSpan) -> IResult<Token> {
     let close_tag = recognize(pair(take_while1(|c: char| c == '*'), char('/')));
     let maybe_consume_stars = alt((peek(close_tag), take_while(|c: char| c == '*')));
-    let (input, _) = tuple((tag("/*"), maybe_consume_stars, multispace0))(input)?;
+    let (remaining, _) = tuple((tag("/*"), maybe_consume_stars, multispace0))(input)?;
 
     static REGEX: OnceCell<Regex> = OnceCell::new();
     let regex = REGEX.get_or_init(|| Regex::new(r#"\*+/"#).unwrap());
 
-    if let Some(m) = regex.find(input.fragment) {
-        let span = input.slice(..m.start());
-        let remaining = input.slice(m.end()..);
+    if let Some(m) = regex.find(remaining.fragment) {
+        let span = remaining.slice(..m.start());
+        let remaining = remaining.slice(m.end()..);
         let rows: Vec<_> = split_lines_without_indent(span, span.get_column()).collect();
         let comment = Token::Comment(rows.join("\n"), CommentKind::Block, span.to_span());
         Ok((remaining, comment))
     } else {
-        let end = input.fragment.len();
-        let remaining = input.slice((end - 1)..end);
+        let end = remaining.fragment.len();
+        let remaining = remaining.slice(end.saturating_sub(1)..end);
         let error = Error::Message(input.to_span(), "unterminated block comment".into());
-        let unknown = Token::Unknown(input.fragment.into(), remaining.to_span(), error);
+        let unknown = Token::Unknown(input.fragment.into(), input.to_span(), error);
         Ok((remaining, unknown))
     }
 }

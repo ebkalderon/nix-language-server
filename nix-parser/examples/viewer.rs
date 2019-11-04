@@ -1,6 +1,6 @@
-use std::io::{Read, Write};
+use std::io::Read;
 use std::time::Instant;
-use std::{env, io, process};
+use std::{fs, io, process};
 
 use codespan::Files;
 use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
@@ -8,77 +8,104 @@ use codespan_reporting::term::{emit, Config};
 use nix_parser::ast::SourceFile;
 use nix_parser::error::Errors;
 use nix_parser::parser::parse_source_file_partial;
+use structopt::StructOpt;
+
+#[derive(StructOpt)]
+#[structopt(about = "Parses a Nix expression and displays the result")]
+struct Cli {
+    /// Display the abstract syntax tree (AST)
+    #[structopt(long)]
+    debug: bool,
+    /// Continue even in the presence of parse errors
+    #[structopt(short, long)]
+    partial: bool,
+    /// Produce pretty printed output
+    #[structopt(long)]
+    pretty: bool,
+    /// Display the amount of time spent parsing
+    #[structopt(long)]
+    time: bool,
+    /// Source file to parse (reads from stdin if "-")
+    #[structopt(default_value = "default.nix")]
+    file: String,
+}
 
 fn main() {
-    let mut expr = String::new();
-    io::stdin()
-        .read_to_string(&mut expr)
-        .expect("Failed to read expression from stdin");
+    let args = Cli::from_args();
 
-    let verbose = env::args()
-        .find(|arg| arg == "-v" || arg == "--verbose")
-        .is_some();
-
-    if env::args().find(|arg| arg == "--partial").is_some() {
-        partial(&expr, verbose);
+    let expr = if args.file == "-" {
+        let mut expr = String::new();
+        io::stdin()
+            .read_to_string(&mut expr)
+            .map(|_| expr)
+            .expect("Failed to read expression from stdin")
     } else {
-        full(&expr, verbose);
+        fs::read_to_string(&args.file).expect("Unable to read file")
+    };
+
+    if args.partial {
+        parse_partial(&expr, args);
+    } else {
+        parse_full(&expr, args);
     }
 }
 
-fn full(expr: &str, verbose: bool) {
+fn parse_full(expr: &str, args: Cli) {
     let start = Instant::now();
-    let expr: SourceFile = expr.parse().unwrap_or_else(|e| {
-        print_diagnostics(expr, e);
+    let ast: SourceFile = expr.parse().unwrap_or_else(|errors| {
+        print_diagnostics(expr, &errors);
         process::exit(1);
     });
     let end = start.elapsed();
 
-    if verbose {
-        let stdout = io::stdout();
-        let mut lock = stdout.lock();
-        writeln!(lock, "# Full AST:\n\n{:?}\n", expr).unwrap();
-        writeln!(lock, "# Display:\n\n{:#}\n", expr).unwrap();
-        writeln!(lock, "# Time: {:?}", end).unwrap();
-    } else {
-        println!("{:#}", expr);
+    print_source_file(&ast, &args);
+
+    if args.time {
+        println!("\nParse time: {:?}", end);
     }
 }
 
-fn partial(expr: &str, verbose: bool) {
+fn parse_partial(expr: &str, args: Cli) {
     let start = Instant::now();
-    let partial = parse_source_file_partial(&expr).unwrap_or_else(|e| {
-        print_diagnostics(expr, e);
+    let partial = parse_source_file_partial(expr).unwrap_or_else(|errors| {
+        print_diagnostics(expr, &errors);
         process::exit(1);
     });
     let end = start.elapsed();
 
-    let stdout = io::stdout();
-    let mut lock = stdout.lock();
+    if let Some(ref ast) = partial.value() {
+        print_source_file(ast, &args)
+    } else {
+        println!("No expression value produced");
+    }
 
-    if let Some(ref expr) = partial.value() {
-        if partial.has_errors() {
-            writeln!(lock, "# Partial AST:\n\n{:?}\n", partial).unwrap();
+    if !partial.errors().is_empty() {
+        print!("\n");
+        print_diagnostics(expr, partial.errors());
+    }
+
+    if args.time {
+        println!("\nParse time: {:?}", end);
+    }
+}
+
+fn print_source_file(ast: &SourceFile, args: &Cli) {
+    if args.debug {
+        if args.pretty {
+            println!("{:#?}", ast);
         } else {
-            writeln!(lock, "# Full AST:\n\n{:?}\n", expr).unwrap();
-        }
-
-        writeln!(lock, "# Display:\n\n{:#}", expr).unwrap();
-
-        if verbose {
-            writeln!(lock, "# Time: {:?}", end).unwrap();
+            println!("{:?}", ast);
         }
     } else {
-        eprintln!("No expression value produced");
-        if partial.has_errors() {
-            eprintln!("# Errors:\n\n{:?}", partial.errors());
+        if args.pretty {
+            println!("{:#}", ast);
+        } else {
+            println!("{}", ast);
         }
-
-        process::exit(1);
     }
 }
 
-fn print_diagnostics(expr: &str, errors: Errors) {
+fn print_diagnostics(expr: &str, errors: &Errors) {
     let mut files = Files::new();
     let id = files.add("stdin", expr);
     let diagnostics = errors.to_diagnostics(id);

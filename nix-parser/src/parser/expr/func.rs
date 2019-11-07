@@ -1,36 +1,30 @@
 use codespan::Span;
 use nom::branch::alt;
-use nom::bytes::complete::take;
 use nom::combinator::{map, opt};
 use nom::multi::many0;
 use nom::sequence::{delimited, pair, preceded, terminated};
 
 use super::{expr, util};
-use crate::ast::tokens::Ident;
-use crate::ast::{ExprFnDecl, FnDeclFormals, FnDeclSimple, Formal};
-use crate::error::{Errors, ExpectedFoundError};
+use crate::ast::{ExprFnDecl, Formal, Pattern, SetPattern};
 use crate::lexer::Tokens;
 use crate::parser::partial::{
     map_partial, map_partial_spanned, pair_partial, separated_list_partial, verify_full, Partial,
 };
 use crate::parser::{tokens, IResult};
-use crate::{HasSpan, ToSpan};
+use crate::HasSpan;
 
 pub fn fn_decl(input: Tokens) -> IResult<Partial<ExprFnDecl>> {
-    let simple = map_partial(simple, ExprFnDecl::Simple);
-    let formals = map_partial(formals, ExprFnDecl::Formals);
-    terminated(alt((simple, formals)), many0(tokens::comment))(input)
-}
-
-fn simple(input: Tokens) -> IResult<Partial<FnDeclSimple>> {
+    let simple = map(map(tokens::identifier, Pattern::Simple), Partial::from);
+    let set = map_partial(set_pattern, Pattern::Set);
+    let pattern = terminated(alt((simple, set)), tokens::colon);
     let expr = alt((expr, util::error_expr_if(tokens::eof)));
-    map_partial(pair_partial(identifier_arg, expr), |(ident, body)| {
-        let span = Span::merge(ident.span(), body.span());
-        FnDeclSimple::new(ident, body, span)
-    })(input)
+    let fn_decl = map_partial_spanned(pair_partial(pattern, expr), |span, (pattern, expr)| {
+        ExprFnDecl::new(pattern, expr, span)
+    });
+    terminated(fn_decl, many0(tokens::comment))(input)
 }
 
-fn formals(input: Tokens) -> IResult<Partial<FnDeclFormals>> {
+fn set_pattern(input: Tokens) -> IResult<Partial<SetPattern>> {
     // Definition:
     // a leading token sequence B of a non-terminal A is a production rule of B
     // such that if a non-terminal C satisfies the condition that all words in its
@@ -73,26 +67,11 @@ fn formals(input: Tokens) -> IResult<Partial<FnDeclFormals>> {
     let sep = pair(tokens::comma, many0(tokens::comment));
     let args = separated_list_partial(sep, tokens::brace_right, formal);
     let start = pair(tokens::brace_left, many0(tokens::comment));
-    let term = pair(tokens::brace_right, tokens::colon);
-    let formals = delimited(start, args, term);
+    let term = pair(tokens::brace_right, many0(tokens::comment));
 
-    let expr = alt((expr, util::error_expr_if(tokens::eof)));
-    map_partial_spanned(pair_partial(formals, expr), |span, (formals, expr)| {
-        FnDeclFormals::new(formals, None, None, expr, span)
+    map_partial_spanned(delimited(start, args, term), |span, formals| {
+        SetPattern::new(formals, None, None, span)
     })(input)
-}
-
-fn identifier_arg(input: Tokens) -> IResult<Partial<Ident>> {
-    if let Ok((remaining, ident)) = terminated(tokens::identifier, tokens::colon)(input) {
-        Ok((remaining, Partial::from(ident)))
-    } else {
-        let (remaining, tokens) = terminated(take(1usize), tokens::colon)(input)?;
-        let found = tokens.current().description();
-        let span = tokens.current().to_span();
-        let mut errors = Errors::new();
-        errors.push(ExpectedFoundError::new("identifier", found, span));
-        Ok((remaining, Partial::with_errors(None, errors)))
-    }
 }
 
 #[cfg(test)]

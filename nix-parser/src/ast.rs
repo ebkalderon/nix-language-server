@@ -310,15 +310,15 @@ impl Display for ExprList {
     }
 }
 
-impl HasSpan for ExprList {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
 impl From<ExprList> for Expr {
     fn from(e: ExprList) -> Self {
         Expr::List(e)
+    }
+}
+
+impl HasSpan for ExprList {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -379,15 +379,15 @@ impl Display for ExprSet {
     }
 }
 
-impl HasSpan for ExprSet {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
 impl From<ExprSet> for Expr {
     fn from(e: ExprSet) -> Self {
         Expr::Set(e)
+    }
+}
+
+impl HasSpan for ExprSet {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -521,15 +521,15 @@ impl Display for ExprUnary {
     }
 }
 
-impl HasSpan for ExprUnary {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
 impl From<ExprUnary> for Expr {
     fn from(e: ExprUnary) -> Self {
         Expr::Unary(Box::new(e))
+    }
+}
+
+impl HasSpan for ExprUnary {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -874,15 +874,15 @@ impl Display for ExprLet {
     }
 }
 
-impl HasSpan for ExprLet {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
 impl From<ExprLet> for Expr {
     fn from(e: ExprLet) -> Self {
         Expr::Let(e)
+    }
+}
+
+impl HasSpan for ExprLet {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -943,15 +943,15 @@ impl Display for ExprRec {
     }
 }
 
-impl HasSpan for ExprRec {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
 impl From<ExprRec> for Expr {
     fn from(e: ExprRec) -> Self {
         Expr::Rec(e)
+    }
+}
+
+impl HasSpan for ExprRec {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -1087,15 +1087,15 @@ impl Display for ExprProj {
     }
 }
 
-impl HasSpan for ExprProj {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
 impl From<ExprProj> for Expr {
     fn from(e: ExprProj) -> Expr {
         Expr::Proj(Box::new(e))
+    }
+}
+
+impl HasSpan for ExprProj {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -1153,15 +1153,15 @@ impl Display for ExprIf {
     }
 }
 
-impl HasSpan for ExprIf {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
 impl From<ExprIf> for Expr {
     fn from(e: ExprIf) -> Self {
         Expr::If(Box::new(e))
+    }
+}
+
+impl HasSpan for ExprIf {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -1202,15 +1202,15 @@ impl Display for ExprAssert {
     }
 }
 
-impl HasSpan for ExprAssert {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
 impl From<ExprAssert> for Expr {
     fn from(e: ExprAssert) -> Self {
         Expr::Assert(Box::new(e))
+    }
+}
+
+impl HasSpan for ExprAssert {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -1251,15 +1251,15 @@ impl Display for ExprWith {
     }
 }
 
-impl HasSpan for ExprWith {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
 impl From<ExprWith> for Expr {
     fn from(e: ExprWith) -> Self {
         Expr::With(Box::new(e))
+    }
+}
+
+impl HasSpan for ExprWith {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -1313,15 +1313,15 @@ impl Display for ExprLetIn {
     }
 }
 
-impl HasSpan for ExprLetIn {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
 impl From<ExprLetIn> for Expr {
     fn from(e: ExprLetIn) -> Self {
         Expr::LetIn(Box::new(e))
+    }
+}
+
+impl HasSpan for ExprLetIn {
+    fn span(&self) -> Span {
+        self.span
     }
 }
 
@@ -1331,26 +1331,40 @@ impl PartialEq for ExprLetIn {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum ExprFnDecl {
-    Simple(FnDeclSimple),
-    Formals(FnDeclFormals),
+#[derive(Clone, Debug)]
+pub struct ExprFnDecl {
+    pattern: Pattern,
+    body: Expr,
+    span: Span,
+}
+
+impl ExprFnDecl {
+    pub fn new(pattern: Pattern, body: Expr, span: Span) -> Self {
+        ExprFnDecl {
+            pattern,
+            body,
+            span,
+        }
+    }
+
+    pub fn pattern(&self) -> &Pattern {
+        &self.pattern
+    }
+
+    pub fn body(&self) -> &Expr {
+        &self.body
+    }
 }
 
 impl Display for ExprFnDecl {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        match *self {
-            ExprFnDecl::Simple(ref s) => s.fmt(fmt),
-            ExprFnDecl::Formals(ref f) => f.fmt(fmt),
-        }
-    }
-}
-
-impl HasSpan for ExprFnDecl {
-    fn span(&self) -> Span {
-        match *self {
-            ExprFnDecl::Simple(ref d) => d.span(),
-            ExprFnDecl::Formals(ref d) => d.span(),
+        if fmt.alternate() {
+            match &self.pattern {
+                pat @ Pattern::Simple(_) => write!(fmt, "{}: {:#}", pat, self.body),
+                pat @ Pattern::Set(_) => write!(fmt, "{:#}:\n\n{:#}", pat, self.body),
+            }
+        } else {
+            write!(fmt, "{}: {}", self.pattern, self.body)
         }
     }
 }
@@ -1361,46 +1375,143 @@ impl From<ExprFnDecl> for Expr {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct FnDeclSimple {
-    name: Ident,
-    body: Expr,
-    span: Span,
-}
-
-impl FnDeclSimple {
-    pub fn new(name: Ident, body: Expr, span: Span) -> Self {
-        FnDeclSimple { name, body, span }
-    }
-
-    pub fn name(&self) -> &Ident {
-        &self.name
-    }
-
-    pub fn body(&self) -> &Expr {
-        &self.body
-    }
-}
-
-impl Display for FnDeclSimple {
-    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        if fmt.alternate() {
-            write!(fmt, "{}: {:#}", self.name, self.body)
-        } else {
-            write!(fmt, "{}: {}", self.name, self.body)
-        }
-    }
-}
-
-impl HasSpan for FnDeclSimple {
+impl HasSpan for ExprFnDecl {
     fn span(&self) -> Span {
         self.span
     }
 }
 
-impl PartialEq for FnDeclSimple {
+impl PartialEq for ExprFnDecl {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && self.body == other.body
+        self.pattern == other.pattern && self.body == other.body
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Pattern {
+    Simple(Ident),
+    Set(SetPattern),
+}
+
+impl Display for Pattern {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        match *self {
+            Pattern::Simple(ref ident) => ident.fmt(fmt),
+            Pattern::Set(ref set) => set.fmt(fmt),
+        }
+    }
+}
+
+impl HasSpan for Pattern {
+    fn span(&self) -> Span {
+        match *self {
+            Pattern::Simple(ref ident) => ident.span(),
+            Pattern::Set(ref set) => set.span(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SetPattern {
+    formals: Vec<Formal>,
+    ellipsis: Option<Span>,
+    extra: Option<Ident>,
+    span: Span,
+}
+
+impl SetPattern {
+    pub fn new(
+        formals: Vec<Formal>,
+        ellipsis: Option<Span>,
+        extra: Option<Ident>,
+        span: Span,
+    ) -> Self {
+        SetPattern {
+            formals,
+            ellipsis,
+            extra,
+            span,
+        }
+    }
+
+    pub fn formals(&self) -> &[Formal] {
+        self.formals.as_slice()
+    }
+
+    pub fn ellipsis(&self) -> Option<&Span> {
+        self.ellipsis.as_ref()
+    }
+
+    pub fn extra(&self) -> Option<&Ident> {
+        self.extra.as_ref()
+    }
+}
+
+impl Display for SetPattern {
+    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        if let Some(ref ident) = &self.extra {
+            write!(fmt, "{}@", ident)?;
+        }
+
+        write!(fmt, "{{")?;
+
+        if fmt.alternate() {
+            if self.formals.len() > 1 || !self.formals.is_empty() && self.ellipsis.is_some() {
+                write!(fmt, "\n")?;
+                for formal in &self.formals {
+                    writeln!(fmt.indent(2), "{:#},", formal)?;
+                }
+
+                if self.ellipsis.is_some() {
+                    writeln!(fmt.indent(2), ", ...")?;
+                }
+            } else if let Some(ref formal) = self.formals.first() {
+                write!(fmt, " {:#}", formal)?;
+                if self.ellipsis.is_some() {
+                    if self.formals.is_empty() {
+                        write!(fmt, " ... ")?;
+                    } else {
+                        write!(fmt, ", ... ")?;
+                    }
+                } else {
+                    write!(fmt, " ")?;
+                }
+            }
+        } else {
+            let mut formals = self.formals.iter();
+
+            if let Some(ref formal) = formals.next() {
+                write!(fmt, "{}", formal)?;
+            }
+
+            for formal in formals {
+                write!(fmt, ", {}", formal)?;
+            }
+
+            if self.ellipsis.is_some() {
+                if self.formals.is_empty() {
+                    write!(fmt, "...")?;
+                } else {
+                    write!(fmt, ", ...")?;
+                }
+            }
+        }
+
+        write!(fmt, "}}")
+    }
+}
+
+impl HasSpan for SetPattern {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
+impl PartialEq for SetPattern {
+    fn eq(&self, other: &Self) -> bool {
+        self.formals == other.formals
+            && self.ellipsis.is_some() == other.ellipsis.is_some()
+            && self.extra == other.extra
     }
 }
 
@@ -1452,103 +1563,6 @@ impl HasSpan for Formal {
 impl PartialEq for Formal {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name && self.default == other.default
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct FnDeclFormals {
-    formals: Vec<Formal>,
-    ellipsis: Option<Span>,
-    extra: Option<Ident>,
-    body: Expr,
-    span: Span,
-}
-
-impl FnDeclFormals {
-    pub fn new(
-        formals: Vec<Formal>,
-        ellipsis: Option<Span>,
-        extra: Option<Ident>,
-        body: Expr,
-        span: Span,
-    ) -> Self {
-        FnDeclFormals {
-            formals,
-            ellipsis,
-            extra,
-            body,
-            span,
-        }
-    }
-}
-
-impl Display for FnDeclFormals {
-    fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
-        if let Some(ref ident) = &self.extra {
-            write!(fmt, "{}@", ident)?;
-        }
-
-        write!(fmt, "{{")?;
-
-        if fmt.alternate() {
-            if self.formals.len() > 1 || !self.formals.is_empty() && self.ellipsis.is_some() {
-                write!(fmt, "\n")?;
-                for formal in &self.formals {
-                    writeln!(fmt.indent(2), "{:#},", formal)?;
-                }
-
-                if self.ellipsis.is_some() {
-                    writeln!(fmt.indent(2), ", ...")?;
-                }
-            } else if let Some(ref formal) = self.formals.first() {
-                write!(fmt, " {:#}", formal)?;
-                if self.ellipsis.is_some() {
-                    if self.formals.is_empty() {
-                        write!(fmt, " ... ")?;
-                    } else {
-                        write!(fmt, ", ... ")?;
-                    }
-                } else {
-                    write!(fmt, " ")?;
-                }
-            }
-
-            write!(fmt, "}}:\n\n{:#}", self.body)
-        } else {
-            let mut formals = self.formals.iter();
-
-            if let Some(ref formal) = formals.next() {
-                write!(fmt, "{}", formal)?;
-            }
-
-            for formal in formals {
-                write!(fmt, ", {}", formal)?;
-            }
-
-            if self.ellipsis.is_some() {
-                if self.formals.is_empty() {
-                    write!(fmt, "...")?;
-                } else {
-                    write!(fmt, ", ...")?;
-                }
-            }
-
-            write!(fmt, "}}: {}", self.body)
-        }
-    }
-}
-
-impl HasSpan for FnDeclFormals {
-    fn span(&self) -> Span {
-        self.span
-    }
-}
-
-impl PartialEq for FnDeclFormals {
-    fn eq(&self, other: &Self) -> bool {
-        self.formals == other.formals
-            && self.ellipsis.is_some() == other.ellipsis.is_some()
-            && self.body == other.body
     }
 }
 

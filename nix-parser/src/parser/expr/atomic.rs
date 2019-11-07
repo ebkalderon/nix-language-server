@@ -97,7 +97,7 @@ fn list_elem(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 pub fn string(input: Tokens) -> IResult<Partial<ExprString>> {
-    let (remaining, (fragments, span)) = tokens::string(input)?;
+    let (remaining, (fragments, _kind, span)) = tokens::string(input)?;
     let mut parts = Vec::with_capacity(fragments.len());
 
     for frag in fragments {

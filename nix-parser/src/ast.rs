@@ -398,24 +398,22 @@ impl PartialEq for ExprSet {
 }
 
 #[derive(Clone, Debug)]
-pub struct ExprString(Vec<StringFragment>, Span);
+pub struct ExprString {
+    fragments: Vec<StringFragment>,
+    span: Span,
+}
 
 impl ExprString {
     pub fn new(fragments: Vec<StringFragment>, span: Span) -> Self {
-        ExprString(fragments, span)
+        ExprString { fragments, span }
     }
 }
 
 impl Display for ExprString {
     fn fmt(&self, fmt: &mut Formatter) -> FmtResult {
+        // FIXME: Need to properly unescape the string here.
         write!(fmt, "\"")?;
-
-        // FIXME: Should record whether this string is a single or multi string so we can properly
-        // escape the string here.
-        for segment in &self.0 {
-            write!(fmt, "{}", segment)?;
-        }
-
+        self.fragments.iter().try_for_each(|frag| frag.fmt(fmt))?;
         write!(fmt, "\"")
     }
 }
@@ -428,13 +426,13 @@ impl From<ExprString> for Expr {
 
 impl HasSpan for ExprString {
     fn span(&self) -> Span {
-        self.1
+        self.span
     }
 }
 
 impl PartialEq for ExprString {
     fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+        self.fragments == other.fragments
     }
 }
 

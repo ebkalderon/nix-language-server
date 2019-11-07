@@ -1,6 +1,6 @@
 //! Utilities for lexing and tokenizing.
 
-pub use self::tokens::{CommentKind, StringFragment, Token, Tokens};
+pub use self::tokens::{CommentKind, StringFragment, StringKind, Token, Tokens};
 
 use codespan::Span;
 use nom::branch::alt;

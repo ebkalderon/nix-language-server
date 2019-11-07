@@ -10,17 +10,18 @@ use nom::sequence::{pair, terminated};
 
 use super::punct_interpolate;
 use crate::lexer::util::split_lines_without_indent;
-use crate::lexer::{token, IResult, LocatedSpan, StringFragment, Token};
+use crate::lexer::{token, IResult, LocatedSpan, StringFragment, StringKind, Token};
 use crate::ToSpan;
 
 pub fn string(input: LocatedSpan) -> IResult<Token> {
-    let single = string_body(tag("\""), false);
-    let multi = string_body(tag("''"), true);
+    let single = string_body(tag("\""), StringKind::Normal, false);
+    let multi = string_body(tag("''"), StringKind::Indented, true);
     alt((single, multi))(input)
 }
 
 fn string_body<'a, F>(
     delimiter: F,
+    kind: StringKind,
     is_multiline: bool,
 ) -> impl Fn(LocatedSpan<'a>) -> IResult<'a, Token>
 where
@@ -86,7 +87,7 @@ where
         }
 
         let span = Span::new(start.offset as u32, remaining.offset as u32);
-        Ok((remaining, Token::String(fragments, span)))
+        Ok((remaining, Token::String(fragments, kind, span)))
     }
 }
 

@@ -5,7 +5,7 @@ use nom::error::ErrorKind;
 use super::IResult;
 use crate::ast::tokens::{Comment, Ident};
 use crate::error::{Error, Errors, ExpectedFoundError};
-use crate::lexer::{StringFragment, Token, Tokens};
+use crate::lexer::{StringFragment, StringKind, Token, Tokens};
 use crate::ToSpan;
 
 pub fn comment(input: Tokens) -> IResult<Comment> {
@@ -46,10 +46,10 @@ pub fn interpolation(input: Tokens) -> IResult<(&[Token], Span)> {
     }
 }
 
-pub fn string(input: Tokens) -> IResult<(&[StringFragment], Span)> {
+pub fn string(input: Tokens) -> IResult<(&[StringFragment], StringKind, Span)> {
     let (remaining, tokens) = take(1usize)(input)?;
     match tokens.current() {
-        Token::String(ref frags, ref span) => Ok((remaining, (&frags[..], *span))),
+        Token::String(ref frags, ref kind, ref span) => Ok((remaining, (&frags[..], *kind, *span))),
         token => {
             let mut errors = Errors::new();
             errors.push(Error::Nom(token.to_span(), ErrorKind::Tag));

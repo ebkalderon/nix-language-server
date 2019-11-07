@@ -251,6 +251,19 @@ impl<'a> Debug for StringFragment<'a> {
     }
 }
 
+/// List of valid types of string literals.
+///
+/// This enum indicates whether a [`Token::String`] is a normal string or an indented string.
+///
+/// [`Token::String`]: ./enum.Token.html#variant.String
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StringKind {
+    /// A string literal beginning with a double-quote, `"`.
+    Normal,
+    /// A string literal beginning with two single quotes, `''`.
+    Indented,
+}
+
 /// A token with span information.
 #[derive(Clone, PartialEq)]
 pub enum Token<'a> {
@@ -268,7 +281,7 @@ pub enum Token<'a> {
     Interpolation(Vec<Token<'a>>, Span),
     Path(Cow<'a, str>, Span),
     PathTemplate(Cow<'a, str>, Span),
-    String(Vec<StringFragment<'a>>, Span),
+    String(Vec<StringFragment<'a>>, StringKind, Span),
     Uri(Cow<'a, str>, Span),
 
     // Operators
@@ -376,7 +389,7 @@ impl<'a> Token<'a> {
             Token::Interpolation(_, _) => "interpolation".into(),
             Token::Path(_, _) => "path literal".into(),
             Token::PathTemplate(_, _) => "path template".into(),
-            Token::String(_, _) => "string".into(),
+            Token::String(_, _, _) => "string".into(),
             Token::Uri(_, _) => "URI".into(),
 
             Token::Add(_) => "operator `+`".into(),
@@ -445,7 +458,7 @@ impl<'a> Debug for Token<'a> {
                 .finish(),
             Token::Identifier(ref text, ref span) => fmt
                 .debug_tuple("Identifier")
-                .field(&text)
+                .field(text)
                 .field(&span.to_string())
                 .finish(),
             Token::Null(ref span) => fmt.debug_tuple("Null").field(&span.to_string()).finish(),
@@ -455,7 +468,7 @@ impl<'a> Debug for Token<'a> {
             Token::Float(_, ref span) => fmt.debug_tuple("Float").field(&span.to_string()).finish(),
             Token::Interpolation(ref value, ref span) => fmt
                 .debug_tuple("Interpolation")
-                .field(&value)
+                .field(value)
                 .field(&span.to_string())
                 .finish(),
             Token::Integer(_, ref span) => {
@@ -466,9 +479,10 @@ impl<'a> Debug for Token<'a> {
                 .debug_tuple("PathTemplate")
                 .field(&span.to_string())
                 .finish(),
-            Token::String(ref value, ref span) => fmt
+            Token::String(ref value, ref kind, ref span) => fmt
                 .debug_tuple("String")
-                .field(&value)
+                .field(value)
+                .field(kind)
                 .field(&span.to_string())
                 .finish(),
             Token::Uri(_, ref span) => fmt.debug_tuple("Uri").field(&span.to_string()).finish(),
@@ -571,7 +585,7 @@ impl<'a> ToSpan for Token<'a> {
             Token::Interpolation(_, ref span) => *span,
             Token::Path(_, ref span) => *span,
             Token::PathTemplate(_, ref span) => *span,
-            Token::String(_, ref span) => *span,
+            Token::String(_, _, ref span) => *span,
             Token::Uri(_, ref span) => *span,
 
             Token::Add(ref span) => *span,

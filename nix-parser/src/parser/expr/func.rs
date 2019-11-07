@@ -85,6 +85,6 @@ mod tests {
         let source = r#"{foo}:foo"#;
         let lexer = Lexer::new(source).unwrap();
         let tokens = lexer.tokens();
-        formals(tokens).unwrap();
+        set_pattern(tokens).unwrap();
     }
 }

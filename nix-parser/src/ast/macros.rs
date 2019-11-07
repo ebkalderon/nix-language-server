@@ -334,24 +334,23 @@ macro_rules! nix_expr {
 #[macro_export]
 macro_rules! function {
     (@rule (_:) $($rest:tt)+) => {{
-        let name = $crate::nix_token!(_);
+        let pattern = Pattern::Simple($crate::nix_token!(_));
         let body = $crate::nix!($($rest)+);
-        let simple = FnDeclSimple::new(name, body, Default::default());
-        Expr::from(ExprFnDecl::Simple(simple))
+        Expr::from(ExprFnDecl::new(pattern, body, Default::default()))
     }};
 
     (@rule ($arg:ident:) $($rest:tt)+) => {{
-        let name = $crate::nix_token!($arg);
+        let pattern = Pattern::Simple($crate::nix_token!($arg));
         let body = $crate::nix!($($rest)+);
-        let simple = FnDeclSimple::new(name, body, Default::default());
-        Expr::from(ExprFnDecl::Simple(simple))
+        Expr::from(ExprFnDecl::new(pattern, body, Default::default()))
     }};
 
     (@rule ({ $($formals:tt)* }:) $($rest:tt)+) => {{
         let formals = $crate::nix_formals!($($formals)*).collect();
+        let set_pattern = SetPattern::new(formals, None, None, Default::default());
+        let pattern = Pattern::Set(set_pattern);
         let body = $crate::nix!($($rest)+);
-        let formals = FnDeclFormals::new(formals, None, None, body, Default::default());
-        Expr::from(ExprFnDecl::Formals(formals))
+        Expr::from(ExprFnDecl::new(pattern, body, Default::default()))
     }};
 
     (@rule (with $($expr:tt)+) ; $($rest:tt)+) => {{

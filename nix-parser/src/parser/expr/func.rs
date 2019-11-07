@@ -1,7 +1,7 @@
 use codespan::Span;
 use nom::branch::alt;
 use nom::combinator::{map, opt};
-use nom::multi::many0;
+use nom::multi::many0_count;
 use nom::sequence::{delimited, pair, preceded, terminated};
 
 use super::{expr, util};
@@ -21,7 +21,7 @@ pub fn fn_decl(input: Tokens) -> IResult<Partial<ExprFnDecl>> {
     let fn_decl = map_partial_spanned(pair_partial(pattern, expr), |span, (pattern, expr)| {
         ExprFnDecl::new(pattern, expr, span)
     });
-    terminated(fn_decl, many0(tokens::comment))(input)
+    terminated(fn_decl, many0_count(tokens::comment))(input)
 }
 
 fn set_pattern(input: Tokens) -> IResult<Partial<SetPattern>> {
@@ -41,7 +41,7 @@ fn set_pattern(input: Tokens) -> IResult<Partial<SetPattern>> {
     // left-curly-bracket ( right-curly-bracket colon / ellipsis / ident ( question / comma / right-curly-bracket ))
     fn ignore<T>(_: T) {}
     preceded(
-        pair(tokens::brace_left, many0(tokens::comment)),
+        pair(tokens::brace_left, many0_count(tokens::comment)),
         alt((
             map(preceded(tokens::brace_right, tokens::colon), ignore),
             map(tokens::ellipsis, ignore),
@@ -64,10 +64,10 @@ fn set_pattern(input: Tokens) -> IResult<Partial<SetPattern>> {
         Partial::from(Formal::new(name, def, Span::merge(name_span, default_span)))
     });
 
-    let sep = pair(tokens::comma, many0(tokens::comment));
+    let sep = pair(tokens::comma, many0_count(tokens::comment));
     let args = separated_list_partial(sep, tokens::brace_right, formal);
-    let start = pair(tokens::brace_left, many0(tokens::comment));
-    let term = pair(tokens::brace_right, many0(tokens::comment));
+    let start = pair(tokens::brace_left, many0_count(tokens::comment));
+    let term = pair(tokens::brace_right, many0_count(tokens::comment));
 
     map_partial_spanned(delimited(start, args, term), |span, formals| {
         SetPattern::new(formals, None, None, span)

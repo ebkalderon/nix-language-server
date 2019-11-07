@@ -1,7 +1,7 @@
 use codespan::Span;
 use nom::branch::alt;
 use nom::combinator::map;
-use nom::multi::many0;
+use nom::multi::{many0, many0_count};
 use nom::sequence::{pair, preceded};
 
 use super::{attr, expr, util};
@@ -42,13 +42,13 @@ fn simple(input: Tokens) -> IResult<Partial<BindSimple>> {
 }
 
 fn inherit(input: Tokens) -> IResult<Partial<BindInherit>> {
-    let keyword_inherit = pair(many0(tokens::comment), tokens::keyword_inherit);
+    let keyword_inherit = pair(many0_count(tokens::comment), tokens::keyword_inherit);
     let bind = preceded(keyword_inherit, ident_sequence);
     map_partial_spanned(bind, |span, idents| BindInherit::new(idents, span))(input)
 }
 
 fn inherit_expr(input: Tokens) -> IResult<Partial<BindInheritExpr>> {
-    let keyword_inherit = pair(many0(tokens::comment), tokens::keyword_inherit);
+    let keyword_inherit = pair(many0_count(tokens::comment), tokens::keyword_inherit);
     let inner = alt((expr, util::error_expr_if(tokens::paren_right)));
     let expr = expect_terminated(preceded(tokens::paren_left, inner), tokens::paren_right);
     let bind = preceded(keyword_inherit, pair_partial(expr, ident_sequence));

@@ -4,7 +4,7 @@ use codespan::Span;
 use nom::branch::alt;
 use nom::bytes::complete::take;
 use nom::combinator::{map, opt};
-use nom::multi::many0;
+use nom::multi::{many0, many0_count};
 use nom::sequence::{pair, preceded};
 
 use super::partial::{
@@ -25,7 +25,7 @@ mod stmt;
 mod util;
 
 pub fn expr(input: Tokens) -> IResult<Partial<Expr>> {
-    preceded(many0(tokens::comment), function)(input)
+    preceded(many0_count(tokens::comment), function)(input)
 }
 
 fn function(input: Tokens) -> IResult<Partial<Expr>> {

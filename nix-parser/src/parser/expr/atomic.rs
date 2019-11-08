@@ -25,20 +25,6 @@ pub fn paren(input: Tokens) -> IResult<Partial<ExprParen>> {
     map_partial_spanned(paren, |span, inner| ExprParen::new(inner, span))(input)
 }
 
-pub fn interpolation(input: Tokens) -> IResult<Partial<ExprInterpolation>> {
-    let (remaining, (tokens, span)) = tokens::interpolation(input)?;
-    let expr = if tokens.is_empty() {
-        let mut errors = Errors::new();
-        errors.push(Error::Message(span, "interpolation cannot be empty".into()));
-        Partial::with_errors(Some(Expr::Error(span)), errors)
-    } else {
-        let (_, expr) = expr(Tokens::new(&tokens))?;
-        expr
-    };
-
-    Ok((remaining, expr.map(|e| ExprInterpolation::new(e, span))))
-}
-
 pub fn set(input: Tokens) -> IResult<Partial<ExprSet>> {
     map_partial_spanned(set_binds, |span, binds| ExprSet::new(binds, span))(input)
 }

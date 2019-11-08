@@ -267,15 +267,12 @@ fn atomic(input: Tokens) -> IResult<Partial<Expr>> {
     let ident = map_partial(atomic::identifier, Expr::from);
     let string = map_partial(atomic::string, Expr::from);
     let literal = map_partial(atomic::literal, Expr::from);
-    let inter = map_partial(atomic::interpolation, Expr::from);
     let paren = map_partial(atomic::paren, Expr::from);
     let set = map_partial(atomic::set, Expr::from);
     let list = map_partial(atomic::list, Expr::from);
     let rec_set = map_partial(atomic::rec_set, Expr::from);
     let let_set = map_partial(atomic::let_set, Expr::from);
-    alt((
-        ident, string, literal, inter, paren, set, list, rec_set, let_set,
-    ))(input)
+    alt((ident, string, literal, paren, set, list, rec_set, let_set))(input)
 }
 
 fn error(input: Tokens) -> IResult<Partial<Expr>> {

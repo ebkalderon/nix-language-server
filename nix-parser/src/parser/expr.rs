@@ -13,7 +13,7 @@ use super::partial::{
 use super::{tokens, IResult};
 use crate::ast::tokens::Ident;
 use crate::ast::{BinaryOp, Expr, ExprBinary, ExprFnApp, ExprIf, ExprProj, ExprUnary, UnaryOp};
-use crate::error::{Errors, UnexpectedError};
+use crate::error::{Error, Errors, UnexpectedError};
 use crate::lexer::{Token, Tokens};
 use crate::{HasSpan, ToSpan};
 
@@ -232,24 +232,29 @@ fn fn_app(input: Tokens) -> IResult<Partial<Expr>> {
 }
 
 fn project(input: Tokens) -> IResult<Partial<Expr>> {
-    let (input, atomic) = atomic(input)?;
+    let (input, mut atomic) = atomic(input)?;
 
-    if let Ok((remaining, _)) = tokens::dot(input) {
+    if let Ok((remaining, dot)) = tokens::dot(input) {
         let default = alt((project, error, util::error_expr_if(tokens::eof)));
         let or_default = opt_partial(preceded(tokens::keyword_or, default));
 
-        let (remaining, path) = pair_partial(attr::attr_path, or_default)(remaining)?;
-        let proj = atomic.flat_map(|atomic| {
-            path.map(|(path, default)| {
-                let span = Span::merge(atomic.span(), path.span());
-                match default {
-                    Some(expr) => Expr::from(ExprProj::new(atomic, path, Some(expr), span)),
-                    None => Expr::from(ExprProj::new(atomic, path, None, span)),
-                }
-            })
-        });
+        if let Ok((remaining, path)) = pair_partial(attr::attr_path, or_default)(remaining) {
+            let proj = atomic.flat_map(|atomic| {
+                path.map(|(path, default)| {
+                    let span = Span::merge(atomic.span(), path.span());
+                    match default {
+                        Some(expr) => Expr::from(ExprProj::new(atomic, path, Some(expr), span)),
+                        None => Expr::from(ExprProj::new(atomic, path, None, span)),
+                    }
+                })
+            });
 
-        Ok((remaining, proj))
+            Ok((remaining, proj))
+        } else {
+            let error = UnexpectedError::new(input.current().description(), dot);
+            atomic.extend_errors(iter::once(error.into()));
+            Ok((remaining, atomic))
+        }
     } else if let Ok((remaining, or_span)) = tokens::keyword_or(input) {
         let expr = atomic.map(|atomic| {
             let arg = Expr::Ident(Ident::from(("or", or_span)));
@@ -277,15 +282,20 @@ fn atomic(input: Tokens) -> IResult<Partial<Expr>> {
 
 fn error(input: Tokens) -> IResult<Partial<Expr>> {
     let (remaining, tokens) = take(1usize)(input)?;
+
     let mut errors = Errors::new();
-    errors.push(UnexpectedError::new(
-        tokens.current().description(),
-        tokens.to_span(),
-    ));
-    if let Token::Eof(_) = tokens.current() {
-        Err(nom::Err::Error(errors))
-    } else {
-        let error = Expr::Error(tokens.to_span());
-        Ok((remaining, Partial::with_errors(Some(error), errors)))
-    }
+    let expr = match tokens.current() {
+        Token::Eof(_) => return Err(nom::Err::Error(errors)),
+        Token::Interpolation(.., span) => {
+            let message = "interpolation not permitted in this position".into();
+            errors.push(Error::Message(*span, message));
+            Expr::Error(*span)
+        }
+        token => {
+            errors.push(UnexpectedError::new(token.description(), token.to_span()));
+            Expr::Error(token.to_span())
+        }
+    };
+
+    Ok((remaining, Partial::with_errors(Some(expr), errors)))
 }

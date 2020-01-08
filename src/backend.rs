@@ -10,13 +10,14 @@ use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
 use log::info;
 use nix_parser::ast::SourceFile;
 use serde_json::Value;
+use tower_lsp::lsp_types::request::GotoDefinitionResponse;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, Printer};
 
 #[derive(Debug)]
 struct State {
     sources: HashMap<Url, FileId>,
-    files: Files,
+    files: Files<String>,
 }
 
 #[derive(Debug)]
@@ -41,10 +42,14 @@ impl LanguageServer for Nix {
     type ExecuteFuture = FutureResult<Option<Value>, Error>;
     type CompletionFuture = FutureResult<Option<CompletionResponse>, Error>;
     type HoverFuture = BoxFuture<Option<Hover>>;
+    type DeclarationFuture = FutureResult<Option<GotoDefinitionResponse>, Error>;
+    type DefinitionFuture = FutureResult<Option<GotoDefinitionResponse>, Error>;
+    type TypeDefinitionFuture = FutureResult<Option<GotoDefinitionResponse>, Error>;
     type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
 
     fn initialize(&self, _: &Printer, _: InitializeParams) -> RpcResult<InitializeResult> {
         Ok(InitializeResult {
+            server_info: None,
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::Incremental,
@@ -52,9 +57,12 @@ impl LanguageServer for Nix {
                 completion_provider: Some(CompletionOptions {
                     resolve_provider: Some(true),
                     trigger_characters: Some(vec![".".to_string()]),
+                    work_done_progress_options: WorkDoneProgressOptions::default(),
                 }),
                 signature_help_provider: Some(SignatureHelpOptions {
                     trigger_characters: None,
+                    retrigger_characters: None,
+                    work_done_progress_options: WorkDoneProgressOptions::default(),
                 }),
                 hover_provider: Some(true),
                 document_formatting_provider: Some(true),
@@ -83,18 +91,30 @@ impl LanguageServer for Nix {
         future::ok(None)
     }
 
+    fn goto_declaration(&self, _: TextDocumentPositionParams) -> Self::DeclarationFuture {
+        future::ok(None)
+    }
+
+    fn goto_definition(&self, _: TextDocumentPositionParams) -> Self::DefinitionFuture {
+        future::ok(None)
+    }
+
+    fn goto_type_definition(&self, _: TextDocumentPositionParams) -> Self::TypeDefinitionFuture {
+        future::ok(None)
+    }
+
     fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
         let id = get_or_insert_source(&mut state, &params.text_document);
         let diags = get_diagnostics(&state, &params.text_document.uri, id);
-        printer.publish_diagnostics(params.text_document.uri, diags);
+        printer.publish_diagnostics(params.text_document.uri, diags, None);
     }
 
     fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
         let id = reload_source(&mut state, &params.text_document, params.content_changes);
         let diags = get_diagnostics(&state, &params.text_document.uri, id);
-        printer.publish_diagnostics(params.text_document.uri, diags);
+        printer.publish_diagnostics(params.text_document.uri, diags, None);
     }
 
     fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {

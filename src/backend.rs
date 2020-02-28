@@ -5,12 +5,9 @@ use std::sync::Mutex;
 
 use codespan::{FileId, Files};
 use codespan_lsp::{make_lsp_diagnostic, range_to_byte_span};
-use futures::future::{self, FutureResult};
-use jsonrpc_core::{BoxFuture, Error, Result as RpcResult};
+use jsonrpc_core::Result as RpcResult;
 use log::info;
 use nix_parser::ast::SourceFile;
-use serde_json::Value;
-use tower_lsp::lsp_types::request::GotoDefinitionResponse;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{LanguageServer, Printer};
 
@@ -36,17 +33,8 @@ impl Nix {
     }
 }
 
+#[tower_lsp::async_trait]
 impl LanguageServer for Nix {
-    type ShutdownFuture = FutureResult<(), Error>;
-    type SymbolFuture = FutureResult<Option<Vec<SymbolInformation>>, Error>;
-    type ExecuteFuture = FutureResult<Option<Value>, Error>;
-    type CompletionFuture = FutureResult<Option<CompletionResponse>, Error>;
-    type HoverFuture = BoxFuture<Option<Hover>>;
-    type DeclarationFuture = FutureResult<Option<GotoDefinitionResponse>, Error>;
-    type DefinitionFuture = FutureResult<Option<GotoDefinitionResponse>, Error>;
-    type TypeDefinitionFuture = FutureResult<Option<GotoDefinitionResponse>, Error>;
-    type HighlightFuture = BoxFuture<Option<Vec<DocumentHighlight>>>;
-
     fn initialize(&self, _: &Printer, _: InitializeParams) -> RpcResult<InitializeResult> {
         Ok(InitializeResult {
             server_info: None,
@@ -75,32 +63,8 @@ impl LanguageServer for Nix {
         })
     }
 
-    fn shutdown(&self) -> Self::ShutdownFuture {
-        future::ok(())
-    }
-
-    fn symbol(&self, _: WorkspaceSymbolParams) -> Self::SymbolFuture {
-        future::ok(None)
-    }
-
-    fn execute_command(&self, _: &Printer, _: ExecuteCommandParams) -> Self::ExecuteFuture {
-        future::ok(None)
-    }
-
-    fn completion(&self, _: CompletionParams) -> Self::CompletionFuture {
-        future::ok(None)
-    }
-
-    fn goto_declaration(&self, _: TextDocumentPositionParams) -> Self::DeclarationFuture {
-        future::ok(None)
-    }
-
-    fn goto_definition(&self, _: TextDocumentPositionParams) -> Self::DefinitionFuture {
-        future::ok(None)
-    }
-
-    fn goto_type_definition(&self, _: TextDocumentPositionParams) -> Self::TypeDefinitionFuture {
-        future::ok(None)
+    async fn shutdown(&self) -> RpcResult<()> {
+        Ok(())
     }
 
     fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
@@ -115,14 +79,6 @@ impl LanguageServer for Nix {
         let id = reload_source(&mut state, &params.text_document, params.content_changes);
         let diags = get_diagnostics(&state, &params.text_document.uri, id);
         printer.publish_diagnostics(params.text_document.uri, diags, None);
-    }
-
-    fn hover(&self, _: TextDocumentPositionParams) -> Self::HoverFuture {
-        Box::new(future::ok(None))
-    }
-
-    fn document_highlight(&self, _: TextDocumentPositionParams) -> Self::HighlightFuture {
-        Box::new(future::ok(None))
     }
 }
 

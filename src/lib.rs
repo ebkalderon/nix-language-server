@@ -17,7 +17,7 @@ pub struct Args {
     interactive: bool,
 }
 
-pub fn run(_args: Args) {
+pub async fn run(_args: Args) {
     env_logger::init();
     info!("Nix Language Server {}", env!("CARGO_PKG_VERSION"));
 
@@ -30,5 +30,5 @@ pub fn run(_args: Args) {
         .interleave(messages)
         .serve(service);
 
-    tokio::run(handle.run_until_exit(server));
+    handle.run_until_exit(server).await;
 }

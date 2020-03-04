@@ -9,7 +9,7 @@ use jsonrpc_core::Result as RpcResult;
 use log::info;
 use nix_parser::ast::SourceFile;
 use tower_lsp::lsp_types::*;
-use tower_lsp::{LanguageServer, Printer};
+use tower_lsp::{Client, LanguageServer};
 
 #[derive(Debug)]
 struct State {
@@ -35,7 +35,7 @@ impl Nix {
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Nix {
-    fn initialize(&self, _: &Printer, _: InitializeParams) -> RpcResult<InitializeResult> {
+    fn initialize(&self, _: &Client, _: InitializeParams) -> RpcResult<InitializeResult> {
         Ok(InitializeResult {
             server_info: None,
             capabilities: ServerCapabilities {
@@ -67,18 +67,18 @@ impl LanguageServer for Nix {
         Ok(())
     }
 
-    fn did_open(&self, printer: &Printer, params: DidOpenTextDocumentParams) {
+    async fn did_open(&self, client: &Client, params: DidOpenTextDocumentParams) {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
         let id = get_or_insert_source(&mut state, &params.text_document);
         let diags = get_diagnostics(&state, &params.text_document.uri, id);
-        printer.publish_diagnostics(params.text_document.uri, diags, None);
+        client.publish_diagnostics(params.text_document.uri, diags, None);
     }
 
-    fn did_change(&self, printer: &Printer, params: DidChangeTextDocumentParams) {
+    async fn did_change(&self, client: &Client, params: DidChangeTextDocumentParams) {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
         let id = reload_source(&mut state, &params.text_document, params.content_changes);
         let diags = get_diagnostics(&state, &params.text_document.uri, id);
-        printer.publish_diagnostics(params.text_document.uri, diags, None);
+        client.publish_diagnostics(params.text_document.uri, diags, None);
     }
 }
 

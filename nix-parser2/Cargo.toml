@@ -1,0 +1,20 @@
+[package]
+name = "nix-parser2"
+version = "0.1.0"
+authors = ["Eyal Kalderon <ebkalderon@gmail.com>"]
+edition = "2018"
+
+[features]
+default = ["serialization"]
+serialization = ["codespan/serialization", "serde"]
+
+[dependencies]
+codespan = "0.8"
+nom = "5.1"
+nom_locate = "2.0"
+smallvec = "1.2"
+
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+[dev-dependencies]
+serde_json = "1.0"

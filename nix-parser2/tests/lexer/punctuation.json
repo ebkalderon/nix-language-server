@@ -1,0 +1,212 @@
+[
+  {
+    "kind": "At",
+    "span": {
+      "start": 0,
+      "end": 1
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 1,
+      "end": 2
+    }
+  },
+  {
+    "kind": "Colon",
+    "span": {
+      "start": 2,
+      "end": 3
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 3,
+      "end": 4
+    }
+  },
+  {
+    "kind": "Unknown",
+    "span": {
+      "start": 4,
+      "end": 5
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 5,
+      "end": 6
+    }
+  },
+  {
+    "kind": "Dot",
+    "span": {
+      "start": 6,
+      "end": 7
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 7,
+      "end": 8
+    }
+  },
+  {
+    "kind": "Ellipsis",
+    "span": {
+      "start": 8,
+      "end": 11
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 11,
+      "end": 12
+    }
+  },
+  {
+    "kind": "Eq",
+    "span": {
+      "start": 12,
+      "end": 13
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 13,
+      "end": 14
+    }
+  },
+  {
+    "kind": "Interpolate",
+    "span": {
+      "start": 14,
+      "end": 16
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 16,
+      "end": 17
+    }
+  },
+  {
+    "kind": "OpenBrace",
+    "span": {
+      "start": 17,
+      "end": 18
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 18,
+      "end": 19
+    }
+  },
+  {
+    "kind": "CloseBrace",
+    "span": {
+      "start": 19,
+      "end": 20
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 20,
+      "end": 21
+    }
+  },
+  {
+    "kind": "OpenBracket",
+    "span": {
+      "start": 21,
+      "end": 22
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 22,
+      "end": 23
+    }
+  },
+  {
+    "kind": "CloseBracket",
+    "span": {
+      "start": 23,
+      "end": 24
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 24,
+      "end": 25
+    }
+  },
+  {
+    "kind": "OpenParen",
+    "span": {
+      "start": 25,
+      "end": 26
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 26,
+      "end": 27
+    }
+  },
+  {
+    "kind": "CloseParen",
+    "span": {
+      "start": 27,
+      "end": 28
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 28,
+      "end": 29
+    }
+  },
+  {
+    "kind": "Semi",
+    "span": {
+      "start": 29,
+      "end": 30
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 30,
+      "end": 31
+    }
+  },
+  {
+    "kind": "Unknown",
+    "span": {
+      "start": 31,
+      "end": 32
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 32,
+      "end": 33
+    }
+  }
+]

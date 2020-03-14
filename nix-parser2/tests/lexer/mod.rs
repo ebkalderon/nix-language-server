@@ -17,15 +17,13 @@ macro_rules! assert_tokens_match {
             );
 
             let source = files.source(file_id);
-            let tokens: Vec<_> = lexer::tokenize(source)
-                .inspect(|t| {
-                    println!(
-                        "Kind: {:?}, Span: {:?}",
-                        t.kind,
-                        files.source_slice(file_id, t.span)
-                    )
-                })
-                .collect();
+            let actual = lexer::tokenize(source).inspect(|t| {
+                println!(
+                    "Kind: {:?}, Span: {:?}",
+                    t.kind,
+                    files.source_slice(file_id, t.span)
+                )
+            });
 
             let expected: Vec<_> = serde_json::from_str(include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
@@ -35,7 +33,9 @@ macro_rules! assert_tokens_match {
             )))
             .expect("JSON parsing failed");
 
-            assert_eq!(tokens, expected);
+            for (actual, expect) in actual.zip(expected) {
+                assert_eq!(actual, expect);
+            }
         }
     };
 

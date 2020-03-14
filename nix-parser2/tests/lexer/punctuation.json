@@ -28,7 +28,7 @@
     }
   },
   {
-    "kind": "Unknown",
+    "kind": "Comma",
     "span": {
       "start": 4,
       "end": 5

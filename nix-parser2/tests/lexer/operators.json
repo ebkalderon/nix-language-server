@@ -210,7 +210,7 @@
     }
   },
   {
-    "kind": "Sub",
+    "kind": "Imply",
     "span": {
       "start": 38,
       "end": 40

@@ -98,8 +98,8 @@ fn token<'a>(mode: LexerMode) -> impl Fn(LocatedSpan<'a>) -> IResult<Token> {
             float,
             integer,
             path_template,
-            punctuation,
-            operators,
+            interpolate,
+            symbol,
             string_term,
             unknown,
         ))(input),
@@ -207,36 +207,40 @@ fn path_template(input: LocatedSpan) -> IResult<Token> {
     })(input)
 }
 
-fn punctuation(input: LocatedSpan) -> IResult<Token> {
-    let token = alt((
-        map(tag("@"), |span: LocatedSpan| (TokenKind::At, span)),
-        map(tag(":"), |span| (TokenKind::Colon, span)),
-        map(tag("..."), |span| (TokenKind::Ellipsis, span)),
-        map(tag("."), |span| (TokenKind::Dot, span)),
-        map(tag("${"), |span| (TokenKind::Interpolate, span)),
-        map(tag("{"), |span| (TokenKind::OpenBrace, span)),
-        map(tag("}"), |span| (TokenKind::CloseBrace, span)),
-        map(tag("["), |span| (TokenKind::OpenBracket, span)),
-        map(tag("]"), |span| (TokenKind::CloseBracket, span)),
-        map(tag("("), |span| (TokenKind::OpenParen, span)),
-        map(tag(")"), |span| (TokenKind::CloseParen, span)),
-        map(tag(";"), |span| (TokenKind::Semi, span)),
-    ));
-
-    map(token, |(kind, span)| Token::new(kind, span.to_span()))(input)
+fn interpolate(input: LocatedSpan) -> IResult<Token> {
+    map(tag("${"), |span: LocatedSpan| {
+        Token::new(TokenKind::Interpolate, span.to_span())
+    })(input)
 }
 
-fn operators(input: LocatedSpan) -> IResult<Token> {
+fn symbol(input: LocatedSpan) -> IResult<Token> {
+    let punctuation = alt((
+        map(tag(";"), |span: LocatedSpan| (TokenKind::Semi, span)),
+        map(tag(","), |span| (TokenKind::Comma, span)),
+        map(tag("..."), |span| (TokenKind::Ellipsis, span)),
+        map(tag("."), |span| (TokenKind::Dot, span)),
+        map(tag("{"), |span| (TokenKind::OpenBrace, span)),
+        map(tag("}"), |span| (TokenKind::CloseBrace, span)),
+        map(tag("("), |span| (TokenKind::OpenParen, span)),
+        map(tag(")"), |span| (TokenKind::CloseParen, span)),
+        map(tag("["), |span| (TokenKind::OpenBracket, span)),
+        map(tag("]"), |span| (TokenKind::CloseBracket, span)),
+        map(tag("?"), |span| (TokenKind::Question, span)),
+        map(tag(":"), |span| (TokenKind::Colon, span)),
+        map(tag("@"), |span| (TokenKind::At, span)),
+    ));
+
     let token = alt((
-        map(tag("++"), |span: LocatedSpan| (TokenKind::Concat, span)),
+        punctuation,
+        map(tag("=="), |span| (TokenKind::IsEq, span)),
+        map(tag("="), |span| (TokenKind::Eq, span)),
+        map(tag("++"), |span| (TokenKind::Concat, span)),
         map(tag("+"), |span| (TokenKind::Add, span)),
-        map(tag("->"), |span| (TokenKind::Sub, span)),
+        map(tag("->"), |span| (TokenKind::Imply, span)),
         map(tag("-"), |span| (TokenKind::Sub, span)),
         map(tag("*"), |span| (TokenKind::Mul, span)),
         map(tag("//"), |span| (TokenKind::Update, span)),
         map(tag("/"), |span| (TokenKind::Div, span)),
-        map(tag("=="), |span| (TokenKind::IsEq, span)),
-        map(tag("="), |span| (TokenKind::Eq, span)),
         map(tag("!="), |span| (TokenKind::NotEq, span)),
         map(tag("!"), |span| (TokenKind::Not, span)),
         map(tag("<="), |span| (TokenKind::LessThanEq, span)),
@@ -245,7 +249,6 @@ fn operators(input: LocatedSpan) -> IResult<Token> {
         map(tag(">"), |span| (TokenKind::GreaterThan, span)),
         map(tag("&&"), |span| (TokenKind::LogicalAnd, span)),
         map(tag("||"), |span| (TokenKind::LogicalOr, span)),
-        map(tag("?"), |span| (TokenKind::Question, span)),
     ));
 
     map(token, |(kind, span)| Token::new(kind, span.to_span()))(input)

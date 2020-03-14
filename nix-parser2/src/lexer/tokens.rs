@@ -27,7 +27,7 @@ impl Token {
 }
 
 /// A list specifying all possible tokens.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serialization", derive(Deserialize, Serialize))]
 pub enum TokenKind {
     /// `# foo`
@@ -126,7 +126,7 @@ impl TokenKind {
 }
 
 /// A list of valid literal values.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serialization", derive(Deserialize, Serialize))]
 pub enum LiteralKind {
     /// `3.14`
@@ -142,7 +142,7 @@ pub enum LiteralKind {
 }
 
 /// A list of valid string terminators.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "serialization", derive(Deserialize, Serialize))]
 pub enum StringKind {
     /// A string terminated by double quotes, `"`.

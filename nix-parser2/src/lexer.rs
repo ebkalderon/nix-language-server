@@ -18,7 +18,7 @@ use crate::ToSpan;
 
 mod tokens;
 
-type LocatedSpan<'a> = nom_locate::LocatedSpan<&'a str, LexState>;
+type LocatedSpan<'a> = nom_locate::LocatedSpan<&'a str>;
 type IResult<'a, T> = nom::IResult<LocatedSpan<'a>, T>;
 
 impl<'a> ToSpan for LocatedSpan<'a> {
@@ -30,7 +30,7 @@ impl<'a> ToSpan for LocatedSpan<'a> {
 }
 
 /// A list of all possible lexer modes.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 enum LexerMode {
     /// Default lexer mode.
     Normal,
@@ -39,13 +39,12 @@ enum LexerMode {
 }
 
 /// Represents the current lexer state.
-#[derive(Clone, Debug)]
 struct LexState(SmallVec<[LexerMode; 1]>);
 
 impl LexState {
     /// Constructs a new lexer state stack.
     pub fn new() -> Self {
-        LexState(SmallVec::new())
+        LexState(SmallVec::with_capacity(1))
     }
 
     /// Returns the current lexer mode.
@@ -66,9 +65,23 @@ impl LexState {
 
 /// Converts an input string into a sequence of tokens.
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
-    let mut input = LocatedSpan::new_extra(input, LexState::new());
-    std::iter::from_fn(move || match token(input.clone()) {
+    let mut state = LexState::new();
+    let mut input = LocatedSpan::new(input);
+    std::iter::from_fn(move || match token(*state.current_mode())(input.clone()) {
         Ok((remaining, out)) => {
+            use StringKind::*;
+            use TokenKind::*;
+
+            match (state.current_mode(), out.kind) {
+                (LexerMode::Normal, StringTerm { kind }) => state.push(LexerMode::String(kind)),
+                (LexerMode::String(Normal), StringTerm { kind: Normal }) => state.pop(),
+                (LexerMode::String(Indented), StringTerm { kind: Indented }) => state.pop(),
+                (LexerMode::String(_), StringTerm { .. }) => {
+                    panic!("lexer returned TokenKind::StringTerm not matching current lexer mode");
+                }
+                _ => (),
+            }
+
             input = remaining;
             Some(out)
         }
@@ -78,8 +91,8 @@ pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     })
 }
 
-fn token(input: LocatedSpan) -> IResult<Token> {
-    match input.extra.current_mode() {
+fn token<'a>(mode: LexerMode) -> impl Fn(LocatedSpan<'a>) -> IResult<Token> {
+    move |input| match mode {
         LexerMode::Normal => alt((
             line_comment,
             block_comment,
@@ -95,7 +108,7 @@ fn token(input: LocatedSpan) -> IResult<Token> {
             string_term,
             unknown,
         ))(input),
-        LexerMode::String(_) => alt((string_literal, string_term))(input),
+        LexerMode::String(_) => alt((string_literal(mode), string_term))(input),
     }
 }
 
@@ -250,44 +263,26 @@ fn unknown(input: LocatedSpan) -> IResult<Token> {
 }
 
 fn string_term(input: LocatedSpan) -> IResult<Token> {
-    let (remaining, span, kind) = match input.extra.current_mode() {
-        LexerMode::Normal => {
-            let term = alt((
-                map(tag("\""), |span: LocatedSpan| (StringKind::Normal, span)),
-                map(tag("''"), |span| (StringKind::Indented, span)),
-            ));
-            let (mut remaining, (kind, span)) = term(input)?;
-            remaining.extra.push(LexerMode::String(kind));
-            (remaining, span.to_span(), kind)
-        }
-        LexerMode::String(StringKind::Normal) => {
-            let (mut remaining, span) = tag("\"")(input)?;
-            remaining.extra.pop();
-            (remaining, span.to_span(), StringKind::Normal)
-        }
-        LexerMode::String(StringKind::Indented) => {
-            let (mut remaining, span) = tag("''")(input)?;
-            remaining.extra.pop();
-            (remaining, span.to_span(), StringKind::Indented)
-        }
-    };
+    let normal = map(tag("\""), |span: LocatedSpan| (StringKind::Normal, span));
+    let indented = map(tag("''"), |span: LocatedSpan| (StringKind::Indented, span));
+    let term = alt((normal, indented));
 
-    Ok((remaining, Token::new(TokenKind::StringTerm { kind }, span)))
+    map(term, |(kind, span)| {
+        Token::new(TokenKind::StringTerm { kind }, span.to_span())
+    })(input)
 }
 
 /// FIXME: Support interpolations.
-fn string_literal(input: LocatedSpan) -> IResult<Token> {
-    fn many_till_ne<'a, F, G>(f: F, term: G) -> impl Fn(LocatedSpan<'a>) -> IResult<LocatedSpan<'a>>
+fn string_literal<'a>(mode: LexerMode) -> impl Fn(LocatedSpan<'a>) -> IResult<Token> {
+    fn many_till_ne<'a, F, G>(f: F, term: G) -> impl Fn(LocatedSpan<'a>) -> IResult<LocatedSpan>
     where
         F: Fn(LocatedSpan<'a>) -> IResult<LocatedSpan>,
         G: Fn(LocatedSpan<'a>) -> IResult<LocatedSpan>,
     {
         move |i| {
-            let i = match peek(&term)(i) {
-                Ok((i, _)) => return Err(nom::Err::Error((i, ErrorKind::NonEmpty))),
-                Err(nom::Err::Error((i, _))) => i,
-                Err(err) => return Err(err),
-            };
+            if peek(&term)(i.clone()).is_ok() {
+                return Err(nom::Err::Error((i, ErrorKind::NonEmpty)));
+            }
 
             let literal_chunk = alt((&f, recognize(anychar)));
             match recognize(many_till(literal_chunk, peek(&term)))(i.clone()) {
@@ -300,20 +295,22 @@ fn string_literal(input: LocatedSpan) -> IResult<Token> {
         }
     }
 
-    let (remaining, span) = match input.extra.current_mode() {
-        LexerMode::String(StringKind::Normal) => {
-            let escape = tag("\\\"");
-            let end_tag = tag("\"");
-            many_till_ne(escape, end_tag)(input)?
-        }
-        LexerMode::String(StringKind::Indented) => {
-            let escape = terminated(tag("''"), one_of("'$"));
-            let end_tag = terminated(tag("''"), peek(none_of("'$")));
-            many_till_ne(escape, end_tag)(input)?
-        }
-        _ => panic!("string_literal() called outside string lexer state"),
-    };
+    move |input| {
+        let (remaining, span) = match mode {
+            LexerMode::String(StringKind::Normal) => {
+                let escape = tag("\\\"");
+                let end_tag = tag("\"");
+                many_till_ne(escape, end_tag)(input)?
+            }
+            LexerMode::String(StringKind::Indented) => {
+                let escape = terminated(tag("''"), one_of("'$"));
+                let end_tag = terminated(tag("''"), peek(none_of("'$")));
+                many_till_ne(escape, end_tag)(input)?
+            }
+            _ => panic!("string_literal() called outside string lexer state"),
+        };
 
-    let token_kind = TokenKind::StringLiteral;
-    Ok((remaining, Token::new(token_kind, span.to_span())))
+        let token_kind = TokenKind::StringLiteral;
+        Ok((remaining, Token::new(token_kind, span.to_span())))
+    }
 }

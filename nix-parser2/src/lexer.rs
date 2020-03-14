@@ -30,7 +30,7 @@ impl<'a> ToSpan for LocatedSpan<'a> {
 }
 
 /// A list of all possible lexer modes.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 enum LexerMode {
     /// Default lexer mode.
     Normal,

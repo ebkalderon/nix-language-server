@@ -38,27 +38,22 @@ enum LexerMode {
     String(StringKind),
 }
 
-/// Represents the current lexer state.
 struct LexState(SmallVec<[LexerMode; 1]>);
 
 impl LexState {
-    /// Constructs a new lexer state stack.
-    pub fn new() -> Self {
+    fn new() -> Self {
         LexState(SmallVec::with_capacity(1))
     }
 
-    /// Returns the current lexer mode.
-    pub fn current_mode(&self) -> &LexerMode {
+    fn current_mode(&self) -> &LexerMode {
         self.0.last().unwrap_or(&LexerMode::Normal)
     }
 
-    /// Pushes a new lexer mode.
-    pub fn push(&mut self, mode: LexerMode) {
+    fn push(&mut self, mode: LexerMode) {
         self.0.push(mode)
     }
 
-    /// Restores the previous lexer mode.
-    pub fn pop(&mut self) {
+    fn pop(&mut self) {
         self.0.pop();
     }
 }

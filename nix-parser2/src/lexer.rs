@@ -78,51 +78,48 @@ impl LexState {
 
 /// Converts an input string into a sequence of tokens.
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
+    use TokenKind::*;
+
     let mut state = LexState::new();
     let mut input = LocatedSpan::new(input);
-    std::iter::from_fn(move || match token(*state.current_mode())(input) {
-        Ok((remaining, out)) => {
-            use TokenKind::*;
+    std::iter::from_fn(move || {
+        let (remaining, out) = next_token(input, *state.current_mode())?;
+        input = remaining;
 
-            match (state.current_mode(), out.kind) {
-                // Switch to and from `Normal` and `String` modes when encountering `"` or `''`.
-                (LexerMode::Normal, StringTerm { kind }) => state.push(LexerMode::String(kind)),
-                (LexerMode::String(kind), StringTerm { kind: term_kind }) => {
-                    debug_assert_eq!(*kind, term_kind);
-                    state.pop();
-                }
-
-                // Switch back to `Normal` mode when a string interpolation is detected.
-                (LexerMode::String(_), Interpolate) => {
-                    state.increment_depth();
-                    state.push(LexerMode::Normal);
-                }
-
-                // Count opening and closing braces, popping back to the previous mode (if any)
-                // when we reach a brace depth of zero.
-                (LexerMode::Normal, Interpolate) => state.increment_depth(),
-                (LexerMode::Normal, OpenBrace) => state.increment_depth(),
-                (LexerMode::Normal, CloseBrace) => {
-                    state.decrement_depth();
-                    if state.current_depth() == 0 {
-                        state.pop();
-                    }
-                }
-
-                _ => (),
+        match (state.current_mode(), out.kind) {
+            // Switch to and from `Normal` and `String` modes when encountering `"` or `''`.
+            (LexerMode::Normal, StringTerm { kind }) => state.push(LexerMode::String(kind)),
+            (LexerMode::String(kind), StringTerm { kind: term_kind }) => {
+                debug_assert_eq!(*kind, term_kind);
+                state.pop();
             }
 
-            input = remaining;
-            Some(out)
+            // Switch back to `Normal` mode when a string interpolation is detected.
+            (LexerMode::String(_), Interpolate) => {
+                state.increment_depth();
+                state.push(LexerMode::Normal);
+            }
+
+            // Count opening and closing braces, popping back to the previous mode (if any) when we
+            // reach a brace depth of zero.
+            (LexerMode::Normal, Interpolate) => state.increment_depth(),
+            (LexerMode::Normal, OpenBrace) => state.increment_depth(),
+            (LexerMode::Normal, CloseBrace) => {
+                state.decrement_depth();
+                if state.current_depth() == 0 {
+                    state.pop();
+                }
+            }
+
+            _ => (),
         }
-        Err(nom::Err::Error(_)) => None,
-        Err(nom::Err::Failure(err)) => unreachable!("lexer failed with: {:?}", err),
-        Err(nom::Err::Incomplete(inc)) => unreachable!("lexer returned incomplete: {:?}", inc),
+
+        Some(out)
     })
 }
 
-fn token<'a>(mode: LexerMode) -> impl Fn(LocatedSpan<'a>) -> IResult<Token> {
-    move |input| match mode {
+fn next_token(input: LocatedSpan, mode: LexerMode) -> Option<(LocatedSpan, Token)> {
+    let result = match mode {
         LexerMode::Normal => alt((
             line_comment,
             block_comment,
@@ -139,6 +136,13 @@ fn token<'a>(mode: LexerMode) -> impl Fn(LocatedSpan<'a>) -> IResult<Token> {
             unknown,
         ))(input),
         LexerMode::String(_) => alt((interpolate, string_literal(mode), string_term))(input),
+    };
+
+    match result {
+        Ok((remaining, token)) => Some((remaining, token)),
+        Err(nom::Err::Error(_)) => None,
+        Err(nom::Err::Failure(err)) => unreachable!("lexer failed with: {:?}", err),
+        Err(nom::Err::Incomplete(inc)) => unreachable!("lexer returned incomplete: {:?}", inc),
     }
 }
 

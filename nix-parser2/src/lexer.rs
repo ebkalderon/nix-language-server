@@ -82,14 +82,15 @@ pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     let mut input = LocatedSpan::new(input);
     std::iter::from_fn(move || match token(*state.current_mode())(input.clone()) {
         Ok((remaining, out)) => {
-            use StringKind::*;
             use TokenKind::*;
 
             match (state.current_mode(), out.kind) {
                 // Switch to and from `Normal` and `String` modes when encountering `"` or `''`.
                 (LexerMode::Normal, StringTerm { kind }) => state.push(LexerMode::String(kind)),
-                (LexerMode::String(Normal), StringTerm { kind: Normal }) => state.pop(),
-                (LexerMode::String(Indented), StringTerm { kind: Indented }) => state.pop(),
+                (LexerMode::String(kind), StringTerm { kind: term_kind }) => {
+                    debug_assert_eq!(*kind, term_kind);
+                    state.pop();
+                }
 
                 // Switch back to `Normal` mode when a string interpolation is detected.
                 (LexerMode::String(_), Interpolate) => {

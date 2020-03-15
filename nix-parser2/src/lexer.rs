@@ -80,7 +80,7 @@ impl LexState {
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     let mut state = LexState::new();
     let mut input = LocatedSpan::new(input);
-    std::iter::from_fn(move || match token(*state.current_mode())(input.clone()) {
+    std::iter::from_fn(move || match token(*state.current_mode())(input) {
         Ok((remaining, out)) => {
             use TokenKind::*;
 
@@ -150,8 +150,7 @@ fn line_comment(input: LocatedSpan) -> IResult<Token> {
 }
 
 fn block_comment(input: LocatedSpan) -> IResult<Token> {
-    let i = input.clone();
-    let (remaining, span, terminated) = match recognize(pair(tag("/*"), take_until("*/")))(i) {
+    let (remaining, span, terminated) = match recognize(pair(tag("/*"), take_until("*/")))(input) {
         Ok((remaining, span)) => (remaining, span, true),
         Err(nom::Err::Error((remaining, ErrorKind::TakeUntil))) => (remaining, input, false),
         Err(err) => return Err(err),
@@ -312,12 +311,12 @@ fn string_literal<'a>(mode: LexerMode) -> impl Fn(LocatedSpan<'a>) -> IResult<To
         G: Fn(LocatedSpan<'a>) -> IResult<LocatedSpan>,
     {
         move |i| {
-            if peek(&term)(i.clone()).is_ok() {
+            if peek(&term)(i).is_ok() {
                 return Err(nom::Err::Error((i, ErrorKind::NonEmpty)));
             }
 
             let literal_chunk = alt((&f, recognize(anychar)));
-            match recognize(many_till(literal_chunk, peek(&term)))(i.clone()) {
+            match recognize(many_till(literal_chunk, peek(&term)))(i) {
                 Ok((remaining, span)) => Ok((remaining, span)),
                 Err(nom::Err::Error((remaining, ErrorKind::Eof))) if !i.fragment().is_empty() => {
                     Ok((remaining, i))

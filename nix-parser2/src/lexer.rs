@@ -307,7 +307,7 @@ fn string_literal<'a>(mode: Mode) -> impl Fn(LocatedSpan<'a>) -> IResult<Token> 
     move |input| {
         let (remaining, span) = match mode {
             Mode::String(StringKind::Normal) => {
-                let escape = alt((tag("\\\""), tag("\\${")));
+                let escape = terminated(tag("\\"), one_of("\"$"));
                 let end_tag = tag("\"");
                 many_till_ne(escape, alt((end_tag, recognize(interpolate))))(input)?
             }

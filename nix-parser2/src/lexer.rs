@@ -31,34 +31,30 @@ impl<'a> ToSpan for LocatedSpan<'a> {
 
 /// A list of all possible lexer modes.
 #[derive(Clone, Copy)]
-enum LexerMode {
+enum Mode {
     /// Default lexer mode.
     Normal,
     /// Mode used when tokenizing a string.
     String(StringKind),
 }
 
-struct LexState {
-    modes: SmallVec<[LexerMode; 8]>,
-}
+struct LexerModes(SmallVec<[Mode; 8]>);
 
-impl LexState {
+impl LexerModes {
     fn new() -> Self {
-        LexState {
-            modes: SmallVec::with_capacity(8),
-        }
+        LexerModes(SmallVec::with_capacity(8))
     }
 
-    fn current_mode(&self) -> &LexerMode {
-        self.modes.last().unwrap_or(&LexerMode::Normal)
+    fn current(&self) -> &Mode {
+        self.0.last().unwrap_or(&Mode::Normal)
     }
 
-    fn push(&mut self, mode: LexerMode) {
-        self.modes.push(mode)
+    fn push(&mut self, mode: Mode) {
+        self.0.push(mode)
     }
 
     fn pop(&mut self) {
-        self.modes.pop();
+        self.0.pop();
     }
 }
 
@@ -66,27 +62,27 @@ impl LexState {
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     use TokenKind::*;
 
-    let mut state = LexState::new();
+    let mut modes = LexerModes::new();
     let mut input = LocatedSpan::new(input);
     std::iter::from_fn(move || {
-        let (remaining, out) = next_token(input, *state.current_mode())?;
+        let (remaining, out) = next_token(input, *modes.current())?;
         input = remaining;
 
-        match (state.current_mode(), out.kind) {
+        match (modes.current(), out.kind) {
             // Switch to and from `Normal` and `String` modes when encountering `"` or `''`.
-            (LexerMode::Normal, StringTerm { kind }) => state.push(LexerMode::String(kind)),
-            (LexerMode::String(kind), StringTerm { kind: term_kind }) => {
+            (Mode::Normal, StringTerm { kind }) => modes.push(Mode::String(kind)),
+            (Mode::String(kind), StringTerm { kind: term_kind }) => {
                 debug_assert_eq!(*kind, term_kind);
-                state.pop();
+                modes.pop();
             }
 
             // Switch back to `Normal` mode when a string interpolation is detected.
-            (LexerMode::String(_), Interpolate) => state.push(LexerMode::Normal),
+            (Mode::String(_), Interpolate) => modes.push(Mode::Normal),
 
             // Count opening and closing braces, popping back to the previous mode, if any.
-            (LexerMode::Normal, Interpolate) => state.push(LexerMode::Normal),
-            (LexerMode::Normal, OpenBrace) => state.push(LexerMode::Normal),
-            (LexerMode::Normal, CloseBrace) => state.pop(),
+            (Mode::Normal, Interpolate) => modes.push(Mode::Normal),
+            (Mode::Normal, OpenBrace) => modes.push(Mode::Normal),
+            (Mode::Normal, CloseBrace) => modes.pop(),
 
             _ => (),
         }
@@ -95,9 +91,9 @@ pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
     })
 }
 
-fn next_token(input: LocatedSpan, mode: LexerMode) -> Option<(LocatedSpan, Token)> {
+fn next_token(input: LocatedSpan, mode: Mode) -> Option<(LocatedSpan, Token)> {
     let result = match mode {
-        LexerMode::Normal => alt((
+        Mode::Normal => alt((
             line_comment,
             block_comment,
             whitespace,
@@ -112,7 +108,7 @@ fn next_token(input: LocatedSpan, mode: LexerMode) -> Option<(LocatedSpan, Token
             string_term,
             unknown,
         ))(input),
-        LexerMode::String(_) => alt((interpolate, string_literal(mode), string_term))(input),
+        Mode::String(_) => alt((interpolate, string_literal(mode), string_term))(input),
     };
 
     match result {
@@ -285,7 +281,7 @@ fn string_term(input: LocatedSpan) -> IResult<Token> {
     })(input)
 }
 
-fn string_literal<'a>(mode: LexerMode) -> impl Fn(LocatedSpan<'a>) -> IResult<Token> {
+fn string_literal<'a>(mode: Mode) -> impl Fn(LocatedSpan<'a>) -> IResult<Token> {
     fn many_till_ne<'a, F, G>(f: F, term: G) -> impl Fn(LocatedSpan<'a>) -> IResult<LocatedSpan>
     where
         F: Fn(LocatedSpan<'a>) -> IResult<LocatedSpan>,
@@ -309,12 +305,12 @@ fn string_literal<'a>(mode: LexerMode) -> impl Fn(LocatedSpan<'a>) -> IResult<To
 
     move |input| {
         let (remaining, span) = match mode {
-            LexerMode::String(StringKind::Normal) => {
+            Mode::String(StringKind::Normal) => {
                 let escape = alt((tag("\\\""), tag("\\${")));
                 let end_tag = tag("\"");
                 many_till_ne(escape, alt((end_tag, recognize(interpolate))))(input)?
             }
-            LexerMode::String(StringKind::Indented) => {
+            Mode::String(StringKind::Indented) => {
                 let escape = terminated(tag("''"), one_of("'$"));
                 let end_tag = terminated(tag("''"), peek(none_of("'$")));
                 many_till_ne(escape, alt((end_tag, recognize(interpolate))))(input)?

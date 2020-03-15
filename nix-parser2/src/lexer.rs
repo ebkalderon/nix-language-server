@@ -60,8 +60,6 @@ impl LexerModes {
 
 /// Converts an input string into a sequence of tokens.
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
-    use TokenKind::*;
-
     let mut modes = LexerModes::new();
     let mut input = LocatedSpan::new(input);
     std::iter::from_fn(move || {
@@ -70,19 +68,19 @@ pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
 
         match (modes.current(), out.kind) {
             // Switch to and from `Normal` and `String` modes when encountering `"` or `''`.
-            (Mode::Normal, StringTerm { kind }) => modes.push(Mode::String(kind)),
-            (Mode::String(kind), StringTerm { kind: term_kind }) => {
+            (Mode::Normal, TokenKind::StringTerm { kind }) => modes.push(Mode::String(kind)),
+            (Mode::String(kind), TokenKind::StringTerm { kind: term_kind }) => {
                 debug_assert_eq!(*kind, term_kind);
                 modes.pop();
             }
 
             // Switch back to `Normal` mode when a string interpolation is detected.
-            (Mode::String(_), Interpolate) => modes.push(Mode::Normal),
+            (Mode::String(_), TokenKind::Interpolate) => modes.push(Mode::Normal),
 
             // Count opening and closing braces, popping back to the previous mode, if any.
-            (Mode::Normal, Interpolate) => modes.push(Mode::Normal),
-            (Mode::Normal, OpenBrace) => modes.push(Mode::Normal),
-            (Mode::Normal, CloseBrace) => modes.pop(),
+            (Mode::Normal, TokenKind::Interpolate) => modes.push(Mode::Normal),
+            (Mode::Normal, TokenKind::OpenBrace) => modes.push(Mode::Normal),
+            (Mode::Normal, TokenKind::CloseBrace) => modes.pop(),
 
             _ => (),
         }

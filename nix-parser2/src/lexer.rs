@@ -38,23 +38,41 @@ enum LexerMode {
     String(StringKind),
 }
 
-struct LexState(SmallVec<[LexerMode; 1]>);
+struct LexState {
+    modes: SmallVec<[LexerMode; 1]>,
+    brace_depth: usize,
+}
 
 impl LexState {
     fn new() -> Self {
-        LexState(SmallVec::with_capacity(1))
+        LexState {
+            modes: SmallVec::with_capacity(1),
+            brace_depth: 0,
+        }
     }
 
     fn current_mode(&self) -> &LexerMode {
-        self.0.last().unwrap_or(&LexerMode::Normal)
+        self.modes.last().unwrap_or(&LexerMode::Normal)
     }
 
     fn push(&mut self, mode: LexerMode) {
-        self.0.push(mode)
+        self.modes.push(mode)
     }
 
     fn pop(&mut self) {
-        self.0.pop();
+        self.modes.pop();
+    }
+
+    fn current_depth(&self) -> usize {
+        self.brace_depth
+    }
+
+    fn increment_depth(&mut self) {
+        self.brace_depth += 1;
+    }
+
+    fn decrement_depth(&mut self) {
+        self.brace_depth = self.brace_depth.saturating_sub(1);
     }
 }
 
@@ -68,12 +86,28 @@ pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
             use TokenKind::*;
 
             match (state.current_mode(), out.kind) {
+                // Switch to and from `Normal` and `String` modes when encountering `"` or `''`.
                 (LexerMode::Normal, StringTerm { kind }) => state.push(LexerMode::String(kind)),
                 (LexerMode::String(Normal), StringTerm { kind: Normal }) => state.pop(),
                 (LexerMode::String(Indented), StringTerm { kind: Indented }) => state.pop(),
-                (LexerMode::String(_), StringTerm { .. }) => {
-                    panic!("lexer returned TokenKind::StringTerm not matching current lexer mode");
+
+                // Switch back to `Normal` mode when a string interpolation is detected.
+                (LexerMode::String(_), Interpolate) => {
+                    state.increment_depth();
+                    state.push(LexerMode::Normal);
                 }
+
+                // Count opening and closing braces, popping back to the previous mode (if any)
+                // when we reach a brace depth of zero.
+                (LexerMode::Normal, Interpolate) => state.increment_depth(),
+                (LexerMode::Normal, OpenBrace) => state.increment_depth(),
+                (LexerMode::Normal, CloseBrace) => {
+                    state.decrement_depth();
+                    if state.current_depth() == 0 {
+                        state.pop();
+                    }
+                }
+
                 _ => (),
             }
 
@@ -103,7 +137,7 @@ fn token<'a>(mode: LexerMode) -> impl Fn(LocatedSpan<'a>) -> IResult<Token> {
             string_term,
             unknown,
         ))(input),
-        LexerMode::String(_) => alt((string_literal(mode), string_term))(input),
+        LexerMode::String(_) => alt((interpolate, string_literal(mode), string_term))(input),
     }
 }
 
@@ -270,7 +304,6 @@ fn string_term(input: LocatedSpan) -> IResult<Token> {
     })(input)
 }
 
-/// FIXME: Support interpolations.
 fn string_literal<'a>(mode: LexerMode) -> impl Fn(LocatedSpan<'a>) -> IResult<Token> {
     fn many_till_ne<'a, F, G>(f: F, term: G) -> impl Fn(LocatedSpan<'a>) -> IResult<LocatedSpan>
     where
@@ -296,14 +329,14 @@ fn string_literal<'a>(mode: LexerMode) -> impl Fn(LocatedSpan<'a>) -> IResult<To
     move |input| {
         let (remaining, span) = match mode {
             LexerMode::String(StringKind::Normal) => {
-                let escape = tag("\\\"");
+                let escape = alt((tag("\\\""), tag("\\${")));
                 let end_tag = tag("\"");
-                many_till_ne(escape, end_tag)(input)?
+                many_till_ne(escape, alt((end_tag, recognize(interpolate))))(input)?
             }
             LexerMode::String(StringKind::Indented) => {
                 let escape = terminated(tag("''"), one_of("'$"));
                 let end_tag = terminated(tag("''"), peek(none_of("'$")));
-                many_till_ne(escape, end_tag)(input)?
+                many_till_ne(escape, alt((end_tag, recognize(interpolate))))(input)?
             }
             _ => panic!("string_literal() called outside string lexer state"),
         };

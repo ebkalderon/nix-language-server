@@ -633,6 +633,48 @@
     "kind": "StringLiteral",
     "span": {
       "start": 363,
+      "end": 368
+    }
+  },
+  {
+    "kind": "Interpolate",
+    "span": {
+      "start": 368,
+      "end": 370
+    }
+  },
+  {
+    "kind": "Ident",
+    "span": {
+      "start": 370,
+      "end": 373
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 373,
+      "end": 374
+    }
+  },
+  {
+    "kind": "Ident",
+    "span": {
+      "start": 374,
+      "end": 377
+    }
+  },
+  {
+    "kind": "CloseBrace",
+    "span": {
+      "start": 377,
+      "end": 378
+    }
+  },
+  {
+    "kind": "StringLiteral",
+    "span": {
+      "start": 378,
       "end": 391
     }
   },
@@ -669,6 +711,48 @@
     "kind": "StringLiteral",
     "span": {
       "start": 395,
+      "end": 400
+    }
+  },
+  {
+    "kind": "Interpolate",
+    "span": {
+      "start": 400,
+      "end": 402
+    }
+  },
+  {
+    "kind": "Ident",
+    "span": {
+      "start": 402,
+      "end": 405
+    }
+  },
+  {
+    "kind": "Whitespace",
+    "span": {
+      "start": 405,
+      "end": 406
+    }
+  },
+  {
+    "kind": "Ident",
+    "span": {
+      "start": 406,
+      "end": 409
+    }
+  },
+  {
+    "kind": "CloseBrace",
+    "span": {
+      "start": 409,
+      "end": 410
+    }
+  },
+  {
+    "kind": "StringLiteral",
+    "span": {
+      "start": 410,
       "end": 425
     }
   },

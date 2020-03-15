@@ -16,6 +16,8 @@ use smallvec::SmallVec;
 
 use crate::ToSpan;
 
+pub mod unescape;
+
 mod tokens;
 
 type LocatedSpan<'a> = nom_locate::LocatedSpan<&'a str>;

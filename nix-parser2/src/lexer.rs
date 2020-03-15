@@ -39,15 +39,13 @@ enum LexerMode {
 }
 
 struct LexState {
-    modes: SmallVec<[LexerMode; 1]>,
-    brace_depth: usize,
+    modes: SmallVec<[LexerMode; 8]>,
 }
 
 impl LexState {
     fn new() -> Self {
         LexState {
-            modes: SmallVec::with_capacity(1),
-            brace_depth: 0,
+            modes: SmallVec::with_capacity(8),
         }
     }
 
@@ -61,18 +59,6 @@ impl LexState {
 
     fn pop(&mut self) {
         self.modes.pop();
-    }
-
-    fn current_depth(&self) -> usize {
-        self.brace_depth
-    }
-
-    fn increment_depth(&mut self) {
-        self.brace_depth += 1;
-    }
-
-    fn decrement_depth(&mut self) {
-        self.brace_depth = self.brace_depth.saturating_sub(1);
     }
 }
 
@@ -95,21 +81,12 @@ pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
             }
 
             // Switch back to `Normal` mode when a string interpolation is detected.
-            (LexerMode::String(_), Interpolate) => {
-                state.increment_depth();
-                state.push(LexerMode::Normal);
-            }
+            (LexerMode::String(_), Interpolate) => state.push(LexerMode::Normal),
 
-            // Count opening and closing braces, popping back to the previous mode (if any) when we
-            // reach a brace depth of zero.
-            (LexerMode::Normal, Interpolate) => state.increment_depth(),
-            (LexerMode::Normal, OpenBrace) => state.increment_depth(),
-            (LexerMode::Normal, CloseBrace) => {
-                state.decrement_depth();
-                if state.current_depth() == 0 {
-                    state.pop();
-                }
-            }
+            // Count opening and closing braces, popping back to the previous mode, if any.
+            (LexerMode::Normal, Interpolate) => state.push(LexerMode::Normal),
+            (LexerMode::Normal, OpenBrace) => state.push(LexerMode::Normal),
+            (LexerMode::Normal, CloseBrace) => state.pop(),
 
             _ => (),
         }

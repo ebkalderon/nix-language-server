@@ -10,7 +10,7 @@ use nom::character::complete::{
 };
 use nom::combinator::{map, opt, peek, recognize, verify};
 use nom::error::ErrorKind;
-use nom::multi::{many1_count, many_till};
+use nom::multi::{many0_count, many1_count, many_till};
 use nom::sequence::{delimited, pair, preceded, terminated, tuple};
 use smallvec::SmallVec;
 
@@ -152,11 +152,11 @@ fn identifier(input: LocatedSpan) -> IResult<Token> {
     })(input)
 }
 
-fn path(input: LocatedSpan) -> IResult<Token> {
-    fn is_path_segment(c: char) -> bool {
-        c.is_ascii_alphanumeric() || "._-+".contains(c)
-    }
+fn is_path_segment(c: char) -> bool {
+    c.is_ascii_alphanumeric() || "._-+".contains(c)
+}
 
+fn path(input: LocatedSpan) -> IResult<Token> {
     let segments = many1_count(preceded(char('/'), take_while1(is_path_segment)));
     let relative = map(pair(take_while(is_path_segment), &segments), |_| ());
     let home = map(pair(char('~'), &segments), |_| ());
@@ -208,14 +208,17 @@ fn integer(input: LocatedSpan) -> IResult<Token> {
 }
 
 fn path_template(input: LocatedSpan) -> IResult<Token> {
-    let name = take_while1(|c: char| c.is_ascii_alphanumeric() || "/._-+".contains(c));
-    let template = recognize(delimited(char('<'), name, char('>')));
+    let segment = take_while1(is_path_segment);
+    let segments = terminated(&segment, many0_count(preceded(char('/'), &segment)));
+    let path = terminated(segments, opt(char('/')));
+    let (remaining, span) = recognize(delimited(char('<'), path, char('>')))(input)?;
 
-    map(template, |span: LocatedSpan| {
-        let kind = LiteralKind::PathTemplate;
-        let token_kind = TokenKind::Literal { kind };
-        Token::new(token_kind, span.to_span())
-    })(input)
+    let trailing_slash = span.fragment().ends_with('/');
+    let token_kind = TokenKind::Literal {
+        kind: LiteralKind::PathTemplate { trailing_slash },
+    };
+
+    Ok((remaining, Token::new(token_kind, span.to_span())))
 }
 
 fn interpolate(input: LocatedSpan) -> IResult<Token> {

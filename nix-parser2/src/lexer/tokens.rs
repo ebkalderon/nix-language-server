@@ -135,8 +135,8 @@ pub enum LiteralKind {
     Integer,
     /// `./foo/bar`, `~/foo/bar`, `/foo/bar`, `foo/bar`
     Path { trailing_slash: bool },
-    /// `<nixpkgs>`
-    PathTemplate,
+    /// `<nixpkgs>`, `<nixpkgs/foo>`
+    PathTemplate { trailing_slash: bool },
     /// `https://github.com/NixOS/nix`
     Uri,
 }

@@ -316,7 +316,7 @@ fn string_literal<'a>(mode: Mode) -> impl Fn(LocatedSpan<'a>) -> IResult<Token> 
                 let end_tag = terminated(tag("''"), peek(none_of("'$")));
                 many_till_ne(escape, alt((end_tag, recognize(interpolate))))(input)?
             }
-            _ => panic!("string_literal() called outside string lexer state"),
+            _ => panic!("string_literal() called outside String lexer mode"),
         };
 
         let token_kind = TokenKind::StringLiteral;

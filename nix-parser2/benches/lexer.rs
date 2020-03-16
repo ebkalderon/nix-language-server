@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
 use nix_parser::lexer::Lexer;
 use nix_parser2::lexer;

@@ -1,4 +1,4 @@
-//! Utilities for breaking strings into token streams.
+//! Low-level lexer for the Nix language.
 
 pub use self::tokens::{LiteralKind, StringKind, Token, TokenKind};
 

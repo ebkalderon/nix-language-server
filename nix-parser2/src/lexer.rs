@@ -16,6 +16,7 @@ use smallvec::SmallVec;
 
 use crate::ToSpan;
 
+pub mod split;
 pub mod unescape;
 
 mod tokens;

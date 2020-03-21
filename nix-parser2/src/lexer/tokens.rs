@@ -1,5 +1,7 @@
 //! Types of tokens and token kinds.
 
+use std::fmt::{self, Display, Formatter};
+
 use codespan::Span;
 #[cfg(feature = "serialization")]
 use serde::{Deserialize, Serialize};
@@ -23,6 +25,34 @@ impl Token {
     /// Returns whether the given token is a kind of trivia, i.e. whitespace and comments.
     pub fn is_trivia(&self) -> bool {
         self.kind.is_trivia()
+    }
+
+    /// Returns an object which implements `Display` which can be used to display a token, given a
+    /// slice of source text.
+    pub const fn display<'s>(&self, source: &'s str) -> DisplayToken<'s> {
+        DisplayToken {
+            source,
+            kind: self.kind,
+            span: self.span,
+        }
+    }
+}
+
+/// Helper struct for printing tokens with `format!` and `{}`.
+pub struct DisplayToken<'s> {
+    source: &'s str,
+    kind: TokenKind,
+    span: Span,
+}
+
+impl<'s> Display for DisplayToken<'s> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let range = self.span.start().to_usize()..self.span.end().to_usize();
+        write!(
+            f,
+            "Kind: {:?}, Span: {}, Text: {:?}",
+            self.kind, self.span, &self.source[range]
+        )
     }
 }
 

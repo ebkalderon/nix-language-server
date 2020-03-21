@@ -1,6 +1,6 @@
 //! Low-level lexer for the Nix language.
 
-pub use self::tokens::{LiteralKind, StringKind, Token, TokenKind};
+pub use self::tokens::{DisplayToken, LiteralKind, StringKind, Token, TokenKind};
 
 use codespan::Span;
 use nom::branch::alt;

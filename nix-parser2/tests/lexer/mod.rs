@@ -17,21 +17,15 @@ macro_rules! assert_tokens_match {
             );
 
             let source = files.source(file_id);
-            let actual = lexer::tokenize(source).inspect(|t| {
-                println!(
-                    "Kind: {:?}, Span: {:?}",
-                    t.kind,
-                    files.source_slice(file_id, t.span)
-                )
-            });
+            let actual = lexer::tokenize(&source).map(|t| t.display(&source).to_string());
 
-            let expected: Vec<_> = serde_json::from_str(include_str!(concat!(
+            let expected = include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/tests/lexer/",
                 stringify!($expression_file_name),
-                ".json"
-            )))
-            .expect("JSON parsing failed");
+                ".snap"
+            ))
+            .split_terminator('\n');
 
             for (actual, expect) in actual.zip(expected) {
                 assert_eq!(actual, expect);
@@ -54,25 +48,18 @@ macro_rules! assert_tokens_match {
             );
 
             let source = files.source(file_id);
-            let tokens: Vec<_> = lexer::tokenize(source)
-                .inspect(|t| {
-                    println!(
-                        "Kind: {:?}, Span: {:?}",
-                        t.kind,
-                        files.source_slice(file_id, t.span)
-                    )
-                })
+            let tokens: Vec<_> = lexer::tokenize(&source)
+                .map(|t| t.display(&source).to_string())
                 .collect();
 
-            let json = serde_json::to_string_pretty(&tokens).unwrap();
             std::fs::write(
                 concat!(
                     env!("CARGO_MANIFEST_DIR"),
                     "/tests/lexer/",
                     stringify!($expression_file_name),
-                    ".json"
+                    ".snap"
                 ),
-                json,
+                tokens.join("\n"),
             )
             .unwrap();
         }

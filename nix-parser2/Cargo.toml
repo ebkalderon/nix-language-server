@@ -5,7 +5,7 @@ authors = ["Eyal Kalderon <ebkalderon@gmail.com>"]
 edition = "2018"
 
 [features]
-default = ["serialization"]
+default = []
 serialization = ["codespan/serialization", "serde"]
 
 [dependencies]

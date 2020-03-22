@@ -153,6 +153,65 @@ impl TokenKind {
             _ => false,
         }
     }
+
+    /// Returns a static description of a `TokenKind` suitable for error reporting.
+    pub fn description(&self) -> &'static str {
+        match *self {
+            TokenKind::LineComment => "line comment",
+            TokenKind::BlockComment { .. } => "block comment",
+            TokenKind::Whitespace => "whitespace",
+
+            TokenKind::Ident => "identifier",
+            TokenKind::Literal { kind } => match kind {
+                LiteralKind::Float => "float literal",
+                LiteralKind::Integer => "integer literal",
+                LiteralKind::Path { .. } => "path literal",
+                LiteralKind::PathTemplate { .. } => "path template literal",
+                LiteralKind::Uri => "URI literal",
+            },
+            TokenKind::StringTerm { kind } => match kind {
+                StringKind::Normal => "`\"`",
+                StringKind::Indented => "`''`",
+            },
+            TokenKind::StringLiteral => "string literal",
+
+            TokenKind::Add => "`+`",
+            TokenKind::Sub => "`-`",
+            TokenKind::Mul => "`*`",
+            TokenKind::Div => "`/`",
+
+            TokenKind::IsEq => "`==`",
+            TokenKind::NotEq => "`!=`",
+            TokenKind::LessThan => "`<`",
+            TokenKind::LessThanEq => "`<=`",
+            TokenKind::GreaterThan => "`>`",
+            TokenKind::GreaterThanEq => "`>=`",
+            TokenKind::LogicalAnd => "`&&`",
+            TokenKind::LogicalOr => "`||`",
+            TokenKind::Concat => "`&&`",
+            TokenKind::Update => "`//`",
+            TokenKind::Question => "`?`",
+            TokenKind::Imply => "`->`",
+            TokenKind::Not => "`!`",
+
+            TokenKind::At => "`@`",
+            TokenKind::Colon => "`:`",
+            TokenKind::Comma => "`,`",
+            TokenKind::Dot => "`.`",
+            TokenKind::Ellipsis => "`...`",
+            TokenKind::Eq => "`=`",
+            TokenKind::Interpolate => "`${`",
+            TokenKind::OpenBrace => "`{`",
+            TokenKind::CloseBrace => "`}`",
+            TokenKind::OpenBracket => "`[`",
+            TokenKind::CloseBracket => "`]`",
+            TokenKind::OpenParen => "`(`",
+            TokenKind::CloseParen => "`)`",
+            TokenKind::Semi => "`;`",
+
+            TokenKind::Unknown => "<unknown>",
+        }
+    }
 }
 
 /// A list of valid literal values.

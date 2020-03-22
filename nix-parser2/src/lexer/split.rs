@@ -6,13 +6,13 @@ use super::LocatedSpan;
 
 /// Splits the input string into lines with leading indentation normalized appropriately.
 ///
-/// This is useful for splitting multi-line `''` string literals or block comments in order to
-/// retrieve their actual text while preserving meaningful indentation inside of them.
+/// This utility function is useful for splitting multi-line `''` string literals or block comments
+/// in order to retrieve their actual text while preserving meaningful indentation inside of them.
 ///
 /// # Examples
 ///
 /// ```
-/// use nix_parser2::lexer::split::split_lines_without_indent;
+/// use nix_parser2::lexer::split_lines_without_indent;
 ///
 /// let string_literal = "
 ///     hello world

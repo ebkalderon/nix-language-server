@@ -1,6 +1,8 @@
 //! Low-level lexer for the Nix language.
 
+pub use self::split::split_lines_without_indent;
 pub use self::tokens::{DisplayToken, LiteralKind, StringKind, Token, TokenKind};
+pub use self::unescape::unescape_str;
 
 use codespan::Span;
 use nom::branch::alt;
@@ -16,10 +18,9 @@ use smallvec::SmallVec;
 
 use crate::ToSpan;
 
-pub mod split;
-pub mod unescape;
-
+mod split;
 mod tokens;
+mod unescape;
 
 type LocatedSpan<'a> = nom_locate::LocatedSpan<&'a str>;
 type IResult<'a, T> = nom::IResult<LocatedSpan<'a>, T>;

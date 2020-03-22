@@ -1,5 +1,6 @@
 use codespan::Span;
 
+pub mod error;
 pub mod lexer;
 
 pub trait ToSpan {

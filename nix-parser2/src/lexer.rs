@@ -63,8 +63,8 @@ impl LexerModes {
 
 /// Converts an input string into a sequence of tokens.
 pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
-    let mut modes = LexerModes::new();
     let mut input = LocatedSpan::new(input);
+    let mut modes = LexerModes::new();
     std::iter::from_fn(move || {
         let (remaining, out) = next_token(input, *modes.current())?;
         input = remaining;

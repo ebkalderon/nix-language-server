@@ -147,16 +147,16 @@ pub enum TokenKind {
 
 impl TokenKind {
     /// Returns whether the given token is a kind of trivia, i.e. whitespace and comments.
-    pub fn is_trivia(&self) -> bool {
-        match *self {
+    pub fn is_trivia(self) -> bool {
+        match self {
             TokenKind::LineComment | TokenKind::BlockComment { .. } | TokenKind::Whitespace => true,
             _ => false,
         }
     }
 
     /// Returns a static description of a `TokenKind` suitable for error reporting.
-    pub fn description(&self) -> &'static str {
-        match *self {
+    pub fn description(self) -> &'static str {
+        match self {
             TokenKind::LineComment => "line comment",
             TokenKind::BlockComment { .. } => "block comment",
             TokenKind::Whitespace => "whitespace",

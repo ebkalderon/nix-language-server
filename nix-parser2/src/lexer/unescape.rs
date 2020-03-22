@@ -64,7 +64,7 @@ fn unescape_indented_str(s: &str) -> Cow<str> {
 
         while let Some(c) = chars.next() {
             if c == '\'' && chars.peek() == Some(&'\'') {
-                match chars.by_ref().skip(1).next() {
+                match chars.by_ref().nth(1) {
                     Some('$') => res.push('$'),
                     Some('\'') => res.push('\''),
                     Some(c) => {

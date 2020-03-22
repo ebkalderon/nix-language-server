@@ -42,10 +42,10 @@ where
             [single] => format!("expected {}", single),
             [first, second] => format!("expected {} or {}", first, second),
             [first @ .., last] => {
-                let first: Vec<_> = first.into_iter().map(ToString::to_string).collect();
+                let first: Vec<_> = first.iter().map(ToString::to_string).collect();
                 format!("expected one of {} or {}", first.join(", "), last)
             }
-            [] => format!("expected <eof>"),
+            [] => "expected <eof>".to_string(),
         }
     }
 }

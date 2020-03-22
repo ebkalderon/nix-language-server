@@ -11,11 +11,7 @@ fn main() {
     let file_id = files.add("<stdin>", &buffer);
     let source = files.source(file_id);
 
-    for token in lexer::tokenize(source) {
-        println!(
-            "Kind: {:?}, Span: {:?}",
-            token.kind,
-            files.source_slice(file_id, token.span)
-        );
+    for token in lexer::tokenize(&source) {
+        println!("{}", token.display(&source));
     }
 }

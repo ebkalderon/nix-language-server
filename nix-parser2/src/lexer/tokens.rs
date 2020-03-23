@@ -1,6 +1,7 @@
 //! Types of tokens and token kinds.
 
 use std::fmt::{self, Display, Formatter};
+use std::ops::Range;
 
 use codespan::Span;
 #[cfg(feature = "serialization")]
@@ -47,7 +48,7 @@ pub struct DisplayToken<'s> {
 
 impl<'s> Display for DisplayToken<'s> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let range = self.span.start().to_usize()..self.span.end().to_usize();
+        let range = Range::from(self.span);
         write!(
             f,
             "Kind: {:?}, Span: {}, Text: {:?}",

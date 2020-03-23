@@ -1,6 +1,6 @@
 //! Types of tokens and token kinds.
 
-use std::fmt::{self, Display, Formatter};
+use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
 
 use codespan::Span;
@@ -46,7 +46,16 @@ pub struct DisplayToken<'s> {
     span: Span,
 }
 
-impl<'s> Display for DisplayToken<'s> {
+impl Debug for DisplayToken<'_> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct(stringify!(Token))
+            .field("kind", &self.kind)
+            .field("span", &self.span)
+            .finish()
+    }
+}
+
+impl Display for DisplayToken<'_> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let range = Range::from(self.span);
         write!(

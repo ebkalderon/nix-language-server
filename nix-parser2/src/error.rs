@@ -1,8 +1,11 @@
 //! Common types and traits used by all kinds of errors.
 
 use std::fmt::{self, Display, Formatter};
+use std::slice::Iter;
 
 use codespan::FileId;
+use codespan_reporting::diagnostic::Diagnostic;
+use lsp_types::Diagnostic as LspDiagnostic;
 use smallvec::SmallVec;
 
 /// A trait for converting an error type into a reportable diagnostic.
@@ -12,6 +15,82 @@ use smallvec::SmallVec;
 pub trait ToDiagnostic<D> {
     /// Converts the error to a diagnostic `D` for the given source file specified by `file_id`.
     fn to_diagnostic(&self, file_id: FileId) -> D;
+}
+
+/// A generic growable stack for accumulating errors.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Errors<E>(SmallVec<[E; 4]>);
+
+impl<E> Errors<E> {
+    /// Constructs a new, empty `Errors` stack.
+    ///
+    /// The stack will not allocate until new errors are pushed onto it.
+    #[inline]
+    pub fn new() -> Self {
+        Errors(SmallVec::new())
+    }
+
+    /// Returns the number of errors in the stack.
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Returns `true` if the error stack is empty.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Appends a new error to the stack.
+    pub fn push(&mut self, error: E) {
+        self.0.push(error);
+    }
+
+    /// Removes the last error from the stack and returns it, or [`None`] if it is empty.
+    ///
+    /// [`None`]: https://doc.rust-lang.org/std/option/enum.Option.html#variant.None
+    pub fn pop(&mut self) -> Option<E> {
+        self.0.pop()
+    }
+
+    /// Returns the last error in the stack, or [`None`] if it is empty.
+    ///
+    /// [`None`]: https://doc.rust-lang.org/std/option/enum.Option.html#variant.None
+    pub fn last(&self) -> Option<&E> {
+        self.0.last()
+    }
+
+    /// Returns an iterator of errors.
+    pub fn iter(&self) -> Iter<E> {
+        self.0.iter()
+    }
+}
+
+impl<E> Errors<E>
+where
+    E: ToDiagnostic<Diagnostic<FileId>>,
+{
+    /// Returns an iterator which yields each error converted to a [`Diagnostic`].
+    ///
+    /// [`Diagnostic`]: https://docs.rs/codespan-reporting/0.9.1/codespan_reporting/diagnostic/struct.Diagnostic.html
+    #[inline]
+    pub fn to_diagnostics(&self, file_id: FileId) -> impl Iterator<Item = Diagnostic<FileId>> + '_ {
+        self.iter().map(move |e| e.to_diagnostic(file_id))
+    }
+}
+
+impl<E> Errors<E>
+where
+    E: ToDiagnostic<LspDiagnostic>,
+{
+    /// Returns an iterator which yields each error converted to an LSP [`Diagnostic`].
+    ///
+    /// [`Diagnostic`]: https://docs.rs/lsp-types/0.73.0/lsp_types/struct.Diagnostic.html
+    #[inline]
+    pub fn to_lsp_diagnostics(&self, file_id: FileId) -> impl Iterator<Item = LspDiagnostic> + '_ {
+        self.iter().map(move |e| e.to_diagnostic(file_id))
+    }
 }
 
 /// Helper struct for producing pretty "expected foo, found bar" error messages.

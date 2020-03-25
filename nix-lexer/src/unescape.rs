@@ -11,7 +11,7 @@ use super::tokens::StringKind;
 /// Normal strings:
 ///
 /// ```
-/// use nix_parser2::lexer::{unescape_str, StringKind};
+/// use nix_lexer::{unescape_str, StringKind};
 ///
 /// let unescaped = unescape_str("foo \\${bar} \\n\\r\\t \\' \\^ baz", StringKind::Normal);
 /// assert_eq!(unescaped, "foo ${bar} \n\r\t ' ^ baz");
@@ -20,7 +20,7 @@ use super::tokens::StringKind;
 /// Indented strings:
 ///
 /// ```
-/// use nix_parser2::lexer::{unescape_str, StringKind};
+/// use nix_lexer::{unescape_str, StringKind};
 ///
 /// let unescaped = unescape_str("foo ''${bar} ''' ''^ baz", StringKind::Indented);
 /// assert_eq!(unescaped, "foo ${bar} ' ''^ baz");

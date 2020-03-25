@@ -21,4 +21,4 @@ codegen-units = 1
 lto = true
 
 [workspace]
-members = ["nix-parser", "nix-parser2"]
+members = ["nix-parser", "nix-lexer", "nix-parser2"]

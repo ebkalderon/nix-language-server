@@ -1,5 +1,4 @@
 use codespan::Files;
-use nix_parser2::lexer;
 
 macro_rules! assert_tokens_match {
     ($expression_file_name:ident) => {
@@ -10,18 +9,18 @@ macro_rules! assert_tokens_match {
                 stringify!($expression_file_name),
                 include_str!(concat!(
                     env!("CARGO_MANIFEST_DIR"),
-                    "/tests/lexer/",
+                    "/tests/",
                     stringify!($expression_file_name),
                     ".nix"
                 )),
             );
 
             let source = files.source(file_id);
-            let actual = lexer::tokenize(&source).map(|t| t.display(&source).to_string());
+            let actual = nix_lexer::tokenize(&source).map(|t| t.display(&source).to_string());
 
             let expected = include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
-                "/tests/lexer/",
+                "/tests/",
                 stringify!($expression_file_name),
                 ".snap"
             ))

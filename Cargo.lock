@@ -710,6 +710,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "nix-lexer"
+version = "0.1.0"
+dependencies = [
+ "codespan 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "criterion 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nix-parser 0.1.0",
+ "nom 5.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nom_locate 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.48 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "nix-parser"
 version = "0.1.0"
 dependencies = [
@@ -732,13 +746,8 @@ version = "0.1.0"
 dependencies = [
  "codespan 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "codespan-reporting 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "criterion 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types 0.73.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "nix-parser 0.1.0",
- "nom 5.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "nom_locate 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.48 (registry+https://github.com/rust-lang/crates.io-index)",
+ "nix-lexer 0.1.0",
  "smallvec 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",

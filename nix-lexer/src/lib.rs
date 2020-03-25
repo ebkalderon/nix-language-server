@@ -1,5 +1,7 @@
 //! Low-level lexer for the Nix language.
 
+#![forbid(unsafe_code)]
+
 pub use self::split::split_lines_without_indent;
 pub use self::tokens::{DisplayToken, LiteralKind, StringKind, Token, TokenKind};
 pub use self::unescape::unescape_str;
@@ -16,14 +18,32 @@ use nom::multi::{many0_count, many1_count, many_till};
 use nom::sequence::{delimited, pair, preceded, terminated, tuple};
 use smallvec::SmallVec;
 
-use crate::ToSpan;
-
 mod split;
 mod tokens;
 mod unescape;
 
 type LocatedSpan<'a> = nom_locate::LocatedSpan<&'a str>;
 type IResult<'a, T> = nom::IResult<LocatedSpan<'a>, T>;
+
+/// A trait for converting a value to a `codespan::Span`.
+///
+/// This is helpful for getting spanned types from external crates to interoperate with `codespan`.
+pub trait ToSpan {
+    /// Converts the given value to a `Span`.
+    fn to_span(&self) -> Span;
+}
+
+impl ToSpan for Span {
+    fn to_span(&self) -> Span {
+        *self
+    }
+}
+
+impl<'a, T: ToSpan> ToSpan for &'a T {
+    fn to_span(&self) -> Span {
+        (*self).to_span()
+    }
+}
 
 impl<'a> ToSpan for LocatedSpan<'a> {
     fn to_span(&self) -> Span {

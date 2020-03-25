@@ -1,0 +1,26 @@
+[package]
+name = "nix-lexer"
+version = "0.1.0"
+authors = ["Eyal Kalderon <ebkalderon@gmail.com>"]
+edition = "2018"
+
+[features]
+default = []
+serialization = ["codespan/serialization", "serde"]
+
+[dependencies]
+codespan = "0.9.1"
+nom = { version = "5.1", default-features = false }
+nom_locate = "2.0"
+smallvec = "1.2"
+
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+[dev-dependencies]
+criterion = "0.3"
+nix-parser = { path = "../nix-parser" }
+serde_json = "1.0"
+
+[[bench]]
+name = "lexer"
+harness = false

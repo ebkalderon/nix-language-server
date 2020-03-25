@@ -1,6 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
 use nix_parser::lexer::Lexer;
-use nix_parser2::lexer;
 
 const EXAMPLE_FILE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -20,7 +19,7 @@ fn lexer(b: &mut Criterion) {
     });
     group.bench_function("new", move |b| {
         b.iter(|| {
-            let lexer: Vec<_> = lexer::tokenize(module).collect();
+            let lexer: Vec<_> = nix_lexer::tokenize(module).collect();
             black_box(lexer);
         });
     });

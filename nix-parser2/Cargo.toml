@@ -6,25 +6,13 @@ edition = "2018"
 
 [features]
 default = []
-serialization = ["codespan/serialization", "serde"]
+serialization = ["codespan/serialization", "nix-lexer/serialization"]
 
 [dependencies]
 codespan = "0.9.1"
 codespan-reporting = "0.9"
 lsp-types = "0.73"
-nom = { version = "5.1", default-features = false }
-nom_locate = "2.0"
+nix-lexer = { path = "../nix-lexer" }
 smallvec = "1.2"
 smol_str = "0.1"
 url = "2.1"
-
-serde = { version = "1.0", features = ["derive"], optional = true }
-
-[dev-dependencies]
-criterion = "0.3"
-nix-parser = { path = "../nix-parser" }
-serde_json = "1.0"
-
-[[bench]]
-name = "lexer"
-harness = false

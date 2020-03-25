@@ -12,7 +12,7 @@ use super::LocatedSpan;
 /// # Examples
 ///
 /// ```
-/// use nix_parser2::lexer::split_lines_without_indent;
+/// use nix_lexer::split_lines_without_indent;
 ///
 /// let string_literal = "
 ///     hello world

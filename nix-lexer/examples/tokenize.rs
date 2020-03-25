@@ -1,7 +1,6 @@
 use std::io::Read;
 
 use codespan::Files;
-use nix_parser2::lexer;
 
 fn main() {
     let mut buffer = String::new();
@@ -11,7 +10,7 @@ fn main() {
     let file_id = files.add("<stdin>", &buffer);
     let source = files.source(file_id);
 
-    for token in lexer::tokenize(&source) {
+    for token in nix_lexer::tokenize(&source) {
         println!("{}", token.display(&source));
     }
 }

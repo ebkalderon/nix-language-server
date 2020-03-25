@@ -1,5 +1,6 @@
 use codespan::Span;
 
+pub mod ast;
 pub mod error;
 pub mod lexer;
 

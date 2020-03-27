@@ -235,7 +235,7 @@ fn path_template(input: LocatedSpan) -> IResult<Token> {
     let path = terminated(segments, opt(char('/')));
     let (remaining, span) = recognize(delimited(char('<'), path, char('>')))(input)?;
 
-    let trailing_slash = span.fragment().ends_with('/');
+    let trailing_slash = span.fragment().ends_with("/>");
     let token_kind = TokenKind::Literal {
         kind: LiteralKind::PathTemplate { trailing_slash },
     };

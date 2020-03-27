@@ -1,13 +1,13 @@
 //! HACK: All of this.
 
 use std::collections::HashMap;
-use std::sync::Mutex;
 
 use codespan::{FileId, Files};
 use codespan_lsp::{make_lsp_diagnostic, range_to_byte_span};
 use jsonrpc_core::Result as RpcResult;
 use log::info;
 use nix_parser::ast::SourceFile;
+use tokio::sync::Mutex;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
 
@@ -68,14 +68,14 @@ impl LanguageServer for Nix {
     }
 
     async fn did_open(&self, client: &Client, params: DidOpenTextDocumentParams) {
-        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let mut state = self.state.lock().await;
         let id = get_or_insert_source(&mut state, &params.text_document);
         let diags = get_diagnostics(&state, &params.text_document.uri, id);
         client.publish_diagnostics(params.text_document.uri, diags, None);
     }
 
     async fn did_change(&self, client: &Client, params: DidChangeTextDocumentParams) {
-        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let mut state = self.state.lock().await;
         let id = reload_source(&mut state, &params.text_document, params.content_changes);
         let diags = get_diagnostics(&state, &params.text_document.uri, id);
         client.publish_diagnostics(params.text_document.uri, diags, None);

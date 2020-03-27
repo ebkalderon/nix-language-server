@@ -3,7 +3,7 @@
 use std::fmt::{self, Display, Formatter};
 use std::slice::Iter;
 
-use codespan::FileId;
+use codespan::{FileId, Files};
 use codespan_reporting::diagnostic::Diagnostic;
 use lsp_types::Diagnostic as LspDiagnostic;
 use smallvec::SmallVec;
@@ -14,7 +14,7 @@ use smallvec::SmallVec;
 /// produced using this interface.
 pub trait ToDiagnostic<D> {
     /// Converts the error to a diagnostic `D` for the given source file specified by `file_id`.
-    fn to_diagnostic(&self, file_id: FileId) -> D;
+    fn to_diagnostic<S: AsRef<str>>(&self, file_id: FileId, files: &Files<S>) -> D;
 }
 
 /// A generic growable stack for accumulating errors.
@@ -74,9 +74,15 @@ where
     /// Returns an iterator which yields each error converted to a [`Diagnostic`].
     ///
     /// [`Diagnostic`]: https://docs.rs/codespan-reporting/0.9.1/codespan_reporting/diagnostic/struct.Diagnostic.html
-    #[inline]
-    pub fn to_diagnostics(&self, file_id: FileId) -> impl Iterator<Item = Diagnostic<FileId>> + '_ {
-        self.iter().map(move |e| e.to_diagnostic(file_id))
+    pub fn to_diagnostics<'a, S>(
+        &'a self,
+        file_id: FileId,
+        files: &'a Files<S>,
+    ) -> impl Iterator<Item = Diagnostic<FileId>> + 'a
+    where
+        S: AsRef<str>,
+    {
+        self.iter().map(move |e| e.to_diagnostic(file_id, files))
     }
 }
 
@@ -87,9 +93,15 @@ where
     /// Returns an iterator which yields each error converted to an LSP [`Diagnostic`].
     ///
     /// [`Diagnostic`]: https://docs.rs/lsp-types/0.73.0/lsp_types/struct.Diagnostic.html
-    #[inline]
-    pub fn to_lsp_diagnostics(&self, file_id: FileId) -> impl Iterator<Item = LspDiagnostic> + '_ {
-        self.iter().map(move |e| e.to_diagnostic(file_id))
+    pub fn to_lsp_diagnostics<'a, S>(
+        &'a self,
+        file_id: FileId,
+        files: &'a Files<S>,
+    ) -> impl Iterator<Item = LspDiagnostic> + 'a
+    where
+        S: AsRef<str>,
+    {
+        self.iter().map(move |e| e.to_diagnostic(file_id, files))
     }
 }
 

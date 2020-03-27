@@ -33,6 +33,7 @@ assert
 
 <nixpkgs>
 <nix/foo_bar-baz+quux.nix>
+<intentionally/invalid/>
 
 https://github.com/mozilla/nixpkgs-mozilla/archive/master.tar.gz
 

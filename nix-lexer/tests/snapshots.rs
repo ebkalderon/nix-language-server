@@ -40,21 +40,21 @@ macro_rules! assert_tokens_match {
                 stringify!($expression_file_name),
                 include_str!(concat!(
                     env!("CARGO_MANIFEST_DIR"),
-                    "/tests/lexer/",
+                    "/tests/",
                     stringify!($expression_file_name),
                     ".nix"
                 )),
             );
 
             let source = files.source(file_id);
-            let tokens: Vec<_> = lexer::tokenize(&source)
+            let tokens: Vec<_> = nix_lexer::tokenize(&source)
                 .map(|t| t.display(&source).to_string())
                 .collect();
 
             std::fs::write(
                 concat!(
                     env!("CARGO_MANIFEST_DIR"),
-                    "/tests/lexer/",
+                    "/tests/",
                     stringify!($expression_file_name),
                     ".snap"
                 ),

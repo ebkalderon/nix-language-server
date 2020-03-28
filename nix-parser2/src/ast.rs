@@ -140,7 +140,7 @@ impl Display for ExprKind {
 
                 if f.alternate() && !elems.is_empty() {
                     if elems.len() > 2 {
-                        write!(f, "\n")?;
+                        writeln!(f)?;
                         for elem in elems {
                             writeln!(f.indent(2), "{:#}", elem)?;
                         }
@@ -164,99 +164,18 @@ impl Display for ExprKind {
                 write!(f, "]")
             }
             ExprKind::Rec(ref binds) => {
-                write!(f, "rec {{")?;
-
-                if f.alternate() && !binds.is_empty() {
-                    if binds.len() > 1 {
-                        write!(f, "\n")?;
-                        for bind in binds {
-                            writeln!(f.indent(2), "{:#}", bind)?;
-                        }
-                    } else if let Some(ref bind) = binds.first() {
-                        match &bind.kind {
-                            BindingKind::Inherit(..) => write!(f, " {:#} ", bind)?,
-                            BindingKind::Simple(..) => {
-                                write!(f, "\n")?;
-                                writeln!(f.indent(2), "{:#}", bind)?;
-                            }
-                        }
-                    }
-                } else {
-                    for bind in binds {
-                        write!(f, " {}", bind)?;
-                    }
-
-                    if !binds.is_empty() {
-                        f.write_str(" ")?;
-                    }
-                }
-
-                write!(f, "}}")
+                write!(f, "rec ")?;
+                display_attr_set(f, &binds)
             }
-            ExprKind::Set(ref binds) => {
-                write!(f, "{{")?;
-
-                if f.alternate() && !binds.is_empty() {
-                    if binds.len() > 1 {
-                        write!(f, "\n")?;
-                        for bind in binds {
-                            writeln!(f.indent(2), "{:#}", bind)?;
-                        }
-                    } else if let Some(ref bind) = binds.first() {
-                        match &bind.kind {
-                            BindingKind::Inherit(..) => write!(f, " {:#} ", bind)?,
-                            BindingKind::Simple(..) => {
-                                f.write_str("\n")?;
-                                writeln!(f.indent(2), "{:#}", bind)?;
-                            }
-                        }
-                    }
-                } else {
-                    for bind in binds {
-                        write!(f, " {}", bind)?;
-                    }
-
-                    if !binds.is_empty() {
-                        f.write_str(" ")?;
-                    }
-                }
-
-                write!(f, "}}")
-            }
+            ExprKind::Set(ref binds) => display_attr_set(f, &binds),
 
             ExprKind::Unary(ref e) => Display::fmt(e, f),
             ExprKind::Binary(ref e) => Display::fmt(e, f),
 
             ExprKind::If(ref e) => Display::fmt(e, f),
             ExprKind::LegacyLet(ref binds) => {
-                write!(f, "let {{")?;
-
-                if f.alternate() && !binds.is_empty() {
-                    if binds.len() > 1 {
-                        write!(f, "\n")?;
-                        for bind in binds {
-                            writeln!(f.indent(2), "{:#}", bind)?;
-                        }
-                    } else if let Some(ref bind) = binds.first() {
-                        match &bind.kind {
-                            BindingKind::Inherit(..) => write!(f, " {:#} ", bind)?,
-                            BindingKind::Simple(..) => {
-                                f.write_str("\n")?;
-                                writeln!(f.indent(2), "{:#}", bind)?;
-                            }
-                        }
-                    }
-                } else {
-                    for bind in binds {
-                        write!(f, " {}", bind)?;
-                    }
-
-                    if !binds.is_empty() {
-                        f.write_str(" ")?;
-                    }
-                }
-
-                write!(f, "}}")
+                write!(f, "let ")?;
+                display_attr_set(f, &binds)
             }
             ExprKind::LetIn(ref e) => Display::fmt(e, f),
             ExprKind::Proj(ref e) => Display::fmt(e, f),
@@ -270,6 +189,38 @@ impl Display for ExprKind {
             ExprKind::Error => f.write_str("<error>"),
         }
     }
+}
+
+/// Renders an attribute set given a set of attribute bindings.
+fn display_attr_set(f: &mut Formatter, binds: &[Binding]) -> fmt::Result {
+    write!(f, "{{")?;
+
+    if f.alternate() && !binds.is_empty() {
+        if binds.len() > 1 {
+            writeln!(f)?;
+            for bind in binds {
+                writeln!(f.indent(2), "{:#}", bind)?;
+            }
+        } else if let Some(ref bind) = binds.first() {
+            match &bind.kind {
+                BindingKind::Inherit(..) => write!(f, " {:#} ", bind)?,
+                BindingKind::Simple(..) => {
+                    writeln!(f)?;
+                    writeln!(f.indent(2), "{:#}", bind)?;
+                }
+            }
+        }
+    } else {
+        for bind in binds {
+            write!(f, " {}", bind)?;
+        }
+
+        if !binds.is_empty() {
+            f.write_str(" ")?;
+        }
+    }
+
+    write!(f, "}}")
 }
 
 /// A list of all possible components of a string.
@@ -569,13 +520,13 @@ impl Display for ExprLetIn {
         f.write_str("let")?;
 
         if f.alternate() {
-            f.write_str("\n")?;
+            writeln!(f)?;
 
             for bind in &self.bindings {
                 writeln!(f.indent(2), "{:#}", bind)?;
             }
 
-            f.write_str("in\n")?;
+            writeln!(f, "in")?;
             write!(f.indent(2), "{:#}", self.body)
         } else {
             for bind in &self.bindings {
@@ -764,7 +715,8 @@ impl Display for SetPattern {
 
         if f.alternate() {
             if self.args.len() > 1 || !self.args.is_empty() && self.ellipsis {
-                write!(f, "\n")?;
+                writeln!(f)?;
+
                 for arg in &self.args {
                     writeln!(f.indent(2), "{:#},", arg)?;
                 }

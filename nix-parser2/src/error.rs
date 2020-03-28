@@ -108,6 +108,12 @@ where
     }
 }
 
+impl<E> Default for Errors<E> {
+    fn default() -> Self {
+        Errors::new()
+    }
+}
+
 /// Helper struct for producing pretty "expected foo, found bar" error messages.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExpectedFound<T, U = T> {

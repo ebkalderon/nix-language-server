@@ -10,6 +10,7 @@ serialization = ["codespan/serialization", "nix-lexer/serialization"]
 
 [dependencies]
 codespan = "0.9.1"
+codespan-lsp = "0.9"
 codespan-reporting = "0.9"
 lsp-types = "0.73"
 nix-lexer = { path = "../nix-lexer" }

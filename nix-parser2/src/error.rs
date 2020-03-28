@@ -8,6 +8,9 @@ use codespan_reporting::diagnostic::Diagnostic;
 use lsp_types::Diagnostic as LspDiagnostic;
 use smallvec::SmallVec;
 
+/// A specialized `Result` type for LSP diagnostic conversions.
+pub type LspResult<T> = std::result::Result<T, codespan_lsp::Error>;
+
 /// A trait for converting an error type into a reportable diagnostic.
 ///
 /// This trait is generic so that both CLI diagnostics and Language Server diagnostics can be
@@ -88,7 +91,7 @@ where
 
 impl<E> Errors<E>
 where
-    E: ToDiagnostic<LspDiagnostic>,
+    E: ToDiagnostic<LspResult<LspDiagnostic>>,
 {
     /// Returns an iterator which yields each error converted to an LSP [`Diagnostic`].
     ///
@@ -97,7 +100,7 @@ where
         &'a self,
         file_id: FileId,
         files: &'a Files<S>,
-    ) -> impl Iterator<Item = LspDiagnostic> + 'a
+    ) -> impl Iterator<Item = LspResult<LspDiagnostic>> + 'a
     where
         S: AsRef<str>,
     {

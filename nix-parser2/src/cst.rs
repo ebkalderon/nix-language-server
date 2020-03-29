@@ -304,7 +304,7 @@ impl From<TokenKind> for SyntaxKind {
 
 /// Constructs a new concrete syntax tree node-by-node.
 #[derive(Debug, Default)]
-pub struct CstBuilder {
+pub(crate) struct CstBuilder {
     errors: Errors<Error>,
     inner: GreenNodeBuilder<'static>,
 }

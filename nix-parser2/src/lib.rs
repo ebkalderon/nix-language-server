@@ -1,5 +1,11 @@
+pub use crate::error::Error;
+
+use codespan::Span;
+
 pub mod ast;
-pub mod error;
+pub mod cst;
+
+mod error;
 
 /// A trait for converting a value to a `codespan::Span`.
 ///

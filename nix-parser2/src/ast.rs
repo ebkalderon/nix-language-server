@@ -85,7 +85,7 @@ pub enum ExprKind {
     Literal(Literal),
     /// `"foo"`, `''bar''`, `"baz ${quux}"`
     String(Vec<StringFragment>),
-    /// `[1 2 3 4]`
+    /// `[ 1 2 3 4 ]`
     List(Vec<Expr>),
     /// `rec { foo = "bar"; bar = 123; }`
     Rec(Vec<Binding>),
@@ -99,7 +99,7 @@ pub enum ExprKind {
 
     /// `if true then "success" else "failure"`
     If(Box<ExprIf>),
-    /// `let { foo = "hello"; bar = 123; }`
+    /// `let { foo = "hello"; body = foo; }`
     LegacyLet(Vec<Binding>),
     /// `let foo = "bar"; in foo`
     LetIn(Box<ExprLetIn>),

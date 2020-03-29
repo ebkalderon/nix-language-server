@@ -25,24 +25,8 @@ mod unescape;
 type LocatedSpan<'a> = nom_locate::LocatedSpan<&'a str>;
 type IResult<'a, T> = nom::IResult<LocatedSpan<'a>, T>;
 
-/// A trait for converting a value to a `codespan::Span`.
-///
-/// This is helpful for getting spanned types from external crates to interoperate with `codespan`.
-pub trait ToSpan {
-    /// Converts the given value to a `Span`.
+trait ToSpan {
     fn to_span(&self) -> Span;
-}
-
-impl ToSpan for Span {
-    fn to_span(&self) -> Span {
-        *self
-    }
-}
-
-impl<'a, T: ToSpan> ToSpan for &'a T {
-    fn to_span(&self) -> Span {
-        (*self).to_span()
-    }
 }
 
 impl<'a> ToSpan for LocatedSpan<'a> {

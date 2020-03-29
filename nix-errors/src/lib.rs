@@ -1,12 +1,16 @@
 //! Common types and traits used by all kinds of errors.
 
 use std::fmt::{self, Display, Formatter};
+use std::iter::FromIterator;
 use std::slice::Iter;
 
 use codespan::{FileId, Files};
 use codespan_reporting::diagnostic::Diagnostic;
 use lsp_types::Diagnostic as LspDiagnostic;
 use smallvec::SmallVec;
+
+/// Number of errors to keep on the stack before spilling onto the heap.
+const NUM_ERRORS: usize = 4;
 
 /// A specialized `Result` type for LSP diagnostic conversions.
 pub type LspResult<T> = std::result::Result<T, codespan_lsp::Error>;
@@ -22,7 +26,7 @@ pub trait ToDiagnostic<D> {
 
 /// A generic growable stack for accumulating errors.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Errors<E>(SmallVec<[E; 4]>);
+pub struct Errors<E>(SmallVec<[E; NUM_ERRORS]>);
 
 impl<E> Errors<E> {
     /// Constructs a new, empty `Errors` stack.
@@ -111,6 +115,27 @@ where
 impl<E> Default for Errors<E> {
     fn default() -> Self {
         Errors::new()
+    }
+}
+
+impl<E> Extend<E> for Errors<E> {
+    fn extend<I: IntoIterator<Item = E>>(&mut self, iter: I) {
+        self.0.extend(iter)
+    }
+}
+
+impl<E> FromIterator<E> for Errors<E> {
+    fn from_iter<I: IntoIterator<Item = E>>(iter: I) -> Self {
+        Errors(SmallVec::from_iter(iter))
+    }
+}
+
+impl<E> IntoIterator for Errors<E> {
+    type Item = E;
+    type IntoIter = smallvec::IntoIter<[E; NUM_ERRORS]>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 

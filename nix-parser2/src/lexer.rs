@@ -1,12 +1,12 @@
 //! Utility functions which wrap and extend `nix-lexer`.
 
-use nix_errors::Errors;
+use nix_errors::{Errors, Partial};
 use nix_lexer::{LiteralKind, Token, TokenKind};
 
 use crate::error::Error;
 
 /// Converts an input string into a sequence of tokens and an optional stack of errors.
-pub fn tokenize(input: &str) -> (Vec<Token>, Errors<Error>) {
+pub fn tokenize(input: &str) -> Partial<Vec<Token>, Error> {
     let mut errors = Errors::new();
 
     #[rustfmt::skip]
@@ -25,5 +25,5 @@ pub fn tokenize(input: &str) -> (Vec<Token>, Errors<Error>) {
         })
         .collect();
 
-    (tokens, errors)
+    Partial::with_errors(tokens, errors)
 }

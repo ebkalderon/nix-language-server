@@ -145,7 +145,7 @@ impl<'a, E> IntoIterator for &'a Errors<E> {
     type IntoIter = Iter<'a, E>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.0.iter()
+        self.iter()
     }
 }
 
@@ -193,5 +193,83 @@ where
 {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}, found {}", self.expected_message(), self.found)
+    }
+}
+
+/// A partial value which might contain errors.
+///
+/// `Partial<T, E>` is a tuple-like data structure which contains some value and an associated
+/// [`Errors`] stack.
+///
+/// [`Errors`]: ../struct.Errors.html
+///
+/// This type is used to accumulate errors and apply monadic transformations to possibly incomplete
+/// or invalid data structures. Consumers of `Partial<T, E>` values can choose to assert that the
+/// contained value exists without errors with [`Partial::verify()`], which will consume the
+/// `Partial<T, E>` and transform it into a `Result<T, Errors<E>>` which can be handled normally.
+///
+/// [`Partial::verify()`]: #method.verify
+#[must_use = "partial values must be either verified or destructured"]
+#[derive(Clone, Debug, PartialEq)]
+pub struct Partial<T, E> {
+    value: T,
+    errors: Errors<E>,
+}
+
+impl<T, E> Partial<T, E> {
+    /// Constructs a new `Partial<T, E>` with the given initial value.
+    pub fn new(value: T) -> Self {
+        Partial::with_errors(value, Errors::new())
+    }
+
+    /// Constructs a new `Partial<T, E>` with the given initial value and a stack of errors.
+    pub fn with_errors(value: T, errors: Errors<E>) -> Self {
+        Partial { value, errors }
+    }
+
+    /// Returns whether this partial value contains errors.
+    pub fn has_errors(&self) -> bool {
+        !self.errors.is_empty()
+    }
+
+    /// Returns the contained partial value, if any.
+    pub fn value(&self) -> &T {
+        &self.value
+    }
+
+    /// Returns a reference to any errors associated with the partial value.
+    pub fn errors(&self) -> &Errors<E> {
+        &self.errors
+    }
+
+    /// Appends the given error to the error stack contained in this partial value.
+    pub fn extend_errors<I: IntoIterator<Item = E>>(&mut self, error: I) {
+        self.errors.extend(error);
+    }
+
+    /// Calls `f` on the contained value and accumulates any errors it may have produced.
+    pub fn flat_map<U, F>(mut self, f: F) -> Partial<U, E>
+    where
+        F: FnOnce(T) -> Partial<U, E>,
+    {
+        let mut partial = f(self.value);
+        self.errors.extend(partial.errors);
+        partial.errors = self.errors;
+        partial
+    }
+
+    /// Destructures this `Partial<T, E>` into a tuple of its inner components.
+    pub fn into_inner(self) -> (T, Errors<E>) {
+        (self.value, self.errors)
+    }
+
+    /// Transforms the `Partial<T, E>` into a `Result<T, Errors<E>>`, asserting that the contained
+    /// value has no errors.
+    pub fn verify(self) -> Result<T, Errors<E>> {
+        if self.errors.is_empty() {
+            Ok(self.value)
+        } else {
+            Err(self.errors)
+        }
     }
 }

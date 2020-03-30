@@ -1,7 +1,7 @@
 //! Lossless concrete syntax tree.
 
 use codespan::Span;
-use nix_errors::Errors;
+use nix_errors::{Errors, Partial};
 use nix_lexer::{LiteralKind, StringKind, TokenKind};
 use rowan::{GreenNodeBuilder, Language, SmolStr, TextRange};
 
@@ -338,8 +338,9 @@ impl CstBuilder {
     }
 
     /// Returns the finished concrete syntax tree and a stack of parse errors, if any.
-    pub fn finish(self) -> (SyntaxNode, Errors<Error>) {
+    pub fn finish(self) -> Partial<SyntaxNode, Error> {
         let green = self.inner.finish();
-        (SyntaxNode::new_root(green), self.errors)
+        let root_node = SyntaxNode::new_root(green);
+        Partial::with_errors(root_node, self.errors)
     }
 }

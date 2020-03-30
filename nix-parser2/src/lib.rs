@@ -3,7 +3,7 @@
 pub use crate::error::Error;
 
 use codespan::Span;
-use nix_errors::Errors;
+use nix_errors::Partial;
 use nix_lexer::Token;
 
 use crate::cst::{CstBuilder, SyntaxKind, SyntaxNode};
@@ -23,11 +23,8 @@ pub trait ToSpan {
 }
 
 /// Converts an input string to a concrete syntax tree and a stack of parse errors, if any.
-pub fn parse(input: &str) -> (SyntaxNode, Errors<Error>) {
-    let (tokens, mut errors) = lexer::tokenize(input);
-    let (tree, parse_errors) = Parser::from_tokens(tokens).parse();
-    errors.extend(parse_errors);
-    (tree, errors)
+pub fn parse(input: &str) -> Partial<SyntaxNode, Error> {
+    lexer::tokenize(input).flat_map(|tokens| Parser::from_tokens(tokens).parse())
 }
 
 struct Parser {
@@ -43,7 +40,7 @@ impl Parser {
         }
     }
 
-    pub fn parse(mut self) -> (SyntaxNode, Errors<Error>) {
+    pub fn parse(mut self) -> Partial<SyntaxNode, Error> {
         self.builder.start_node(SyntaxKind::Root);
         // TODO: Implement parser here.
         self.builder.finish_node();

@@ -113,6 +113,7 @@ where
 }
 
 impl<E> Default for Errors<E> {
+    /// Creates an empty `Errors` stack.
     fn default() -> Self {
         Errors::new()
     }
@@ -136,6 +137,15 @@ impl<E> IntoIterator for Errors<E> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+impl<'a, E> IntoIterator for &'a Errors<E> {
+    type Item = &'a E;
+    type IntoIter = Iter<'a, E>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
     }
 }
 

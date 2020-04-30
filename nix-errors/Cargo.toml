@@ -5,8 +5,8 @@ authors = ["Eyal Kalderon <ebkalderon@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-codespan = "0.9"
-codespan-lsp = "0.9"
-codespan-reporting = "0.9"
-lsp-types = "0.73"
+codespan = "0.9.3"
+codespan-lsp = "0.9.3"
+codespan-reporting = "0.9.3"
+lsp-types = "0.74"
 smallvec = "1.2"

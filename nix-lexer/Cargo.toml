@@ -9,7 +9,7 @@ default = []
 serialization = ["codespan/serialization", "serde"]
 
 [dependencies]
-codespan = "0.9.1"
+codespan = "0.9"
 nom = { version = "5.1", default-features = false }
 nom_locate = "2.0"
 smallvec = "1.2"

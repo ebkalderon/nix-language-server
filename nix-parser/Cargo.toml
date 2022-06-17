@@ -11,7 +11,7 @@ codespan-reporting = "0.8.0"
 lexical-core = "0.6.2"
 nom_locate = "1.0.0"
 once_cell = "1.1.0"
-smallvec = "0.6.12"
+smallvec = "0.6.14"
 url = "2.1.0"
 
 [dependencies.nom]
